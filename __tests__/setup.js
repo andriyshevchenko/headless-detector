@@ -3,6 +3,10 @@
  * This prevents "Not implemented: HTMLCanvasElement.prototype.getContext" errors
  */
 
+// WebGL debug renderer info extension constants
+const UNMASKED_VENDOR_WEBGL = 0x9245;
+const UNMASKED_RENDERER_WEBGL = 0x9246;
+
 // Mock HTMLCanvasElement.prototype.getContext
 HTMLCanvasElement.prototype.getContext = function(contextType) {
   if (contextType === '2d') {
@@ -70,16 +74,16 @@ HTMLCanvasElement.prototype.getContext = function(contextType) {
       getExtension: jest.fn((name) => {
         if (name === 'WEBGL_debug_renderer_info') {
           return {
-            UNMASKED_VENDOR_WEBGL: 0x9245,
-            UNMASKED_RENDERER_WEBGL: 0x9246
+            UNMASKED_VENDOR_WEBGL: UNMASKED_VENDOR_WEBGL,
+            UNMASKED_RENDERER_WEBGL: UNMASKED_RENDERER_WEBGL
           };
         }
         return null;
       }),
       getParameter: jest.fn((param) => {
-        // Mock renderer info
-        if (param === 0x9245) return 'Mock Vendor';
-        if (param === 0x9246) return 'Mock Renderer';
+        // Mock renderer info using WebGL extension constants
+        if (param === UNMASKED_VENDOR_WEBGL) return 'Mock Vendor';
+        if (param === UNMASKED_RENDERER_WEBGL) return 'Mock Renderer';
         return null;
       }),
       clearColor: jest.fn(),
