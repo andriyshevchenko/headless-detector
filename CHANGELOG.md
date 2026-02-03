@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.1] - 2026-02-03
 
 ### Fixed
-- Fixed HTMLCanvasElement.prototype.getContext errors in Jest test environment by adding canvas package as dev dependency
+- Fixed HTMLCanvasElement.prototype.getContext errors in Jest test environment by mocking canvas operations in test setup
 
 ## [1.0.0] - 2026-02-03
 
