@@ -64,7 +64,7 @@ You can use the library directly in the browser via CDN or local installation:
 
 **Via CDN (Recommended for quick testing):**
 ```html
-<script src="https://unpkg.com/headless-detector@1.0.0/scripts/headless-detector.js"></script>
+<script src="https://unpkg.com/headless-detector@1/scripts/headless-detector.js"></script>
 <script>
   const results = detectHeadless();
   console.log('Detection Results:', results);
@@ -80,7 +80,7 @@ You can use the library directly in the browser via CDN or local installation:
 </script>
 ```
 
-**Note:** When using via npm, ensure your build process or server makes the file accessible, or use a bundler like webpack/rollup.
+**Note:** When using via npm, ensure your build process or server makes the file accessible, or use a bundler like Webpack/Rollup.
 
 ### Clone from GitHub
 
