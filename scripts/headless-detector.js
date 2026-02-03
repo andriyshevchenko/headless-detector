@@ -9,7 +9,7 @@
  * - W3C Fingerprinting Guidance
  * 
  * @module HeadlessDetector
- * @version 2.1.0
+ * @version 1.0.0
  */
 
 /**
@@ -44,7 +44,7 @@ function detectHeadless(attachToWindow = false) {
         // Metadata
         timestamp: Date.now(),
         userAgent: navigator.userAgent,
-        detectionVersion: '2.1.0'
+        detectionVersion: '1.0.0'
     };
 
     // Attach to window for easy automation access

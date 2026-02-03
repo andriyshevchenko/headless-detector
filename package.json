@@ -1,6 +1,6 @@
 {
   "name": "headless-detector",
-  "version": "2.1.0",
+  "version": "1.0.0",
   "description": "A comprehensive JavaScript library for detecting headless browsers, automation frameworks, and bot activity",
   "main": "scripts/headless-detector.js",
   "scripts": {
@@ -38,6 +38,7 @@
   "files": [
     "scripts/",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ]
 }

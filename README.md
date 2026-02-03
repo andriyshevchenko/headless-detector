@@ -1,7 +1,7 @@
 # Headless Browser Detector
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](https://github.com/andriyshevchenko/headless-detector)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/andriyshevchenko/headless-detector)
 [![CI Tests](https://github.com/andriyshevchenko/headless-detector/actions/workflows/test.yml/badge.svg)](https://github.com/andriyshevchenko/headless-detector/actions/workflows/test.yml)
 [![npm version](https://img.shields.io/npm/v/headless-detector.svg)](https://www.npmjs.com/package/headless-detector)
 
@@ -233,19 +233,18 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Version History
 
-### 2.1.0 (2026-02-03)
-- Added detection explanations and summary reports
-- Enhanced automation testing access
-- Added Media Devices and WebRTC checks
-- Implemented Canvas, Audio Context, and Font fingerprinting
-- Improved CDP detection with stack trace analysis
-- Added 10+ detection vectors
-
-### 2.0.0 (2026-02-03)
-- Initial release with modern detection techniques
+### 1.0.0 (2026-02-03)
+- Initial stable release with comprehensive headless browser detection
+- 10+ detection vectors for multi-layered approach
 - WebDriver, CDP, and User-Agent detection
-- WebGL renderer analysis
-- Basic automation flag detection
+- Advanced CDP/Runtime checks with error stack trace analysis
+- WebGL renderer analysis (software vs hardware GPU)
+- Media Devices and WebRTC availability checks
+- Canvas, Audio Context, and Font fingerprinting
+- Automation framework detection (Selenium, Puppeteer, Playwright, Cypress)
+- Detection explanations and summary reports
+- Detailed risk assessment and classification
+- NPM package with automated testing and publishing
 
 ---
 
