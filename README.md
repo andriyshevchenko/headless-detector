@@ -31,12 +31,43 @@ A comprehensive JavaScript library for detecting headless browsers, automation f
 
 ## Installation
 
+### NPM (Recommended)
+
+```bash
+npm install headless-detector
+```
+
+### Using in Node.js
+
+```javascript
+const { detectHeadless } = require('headless-detector');
+
+// Run detection
+const results = detectHeadless();
+console.log('Headless Score:', results.isHeadless);
+console.log('Classification:', results.summary.classification);
+```
+
+### Using in Browser
+
+You can also use the library directly in the browser:
+
+```html
+<script src="node_modules/headless-detector/scripts/headless-detector.js"></script>
+<script>
+  const results = detectHeadless();
+  console.log('Detection Results:', results);
+</script>
+```
+
+### Clone from GitHub
+
 ```bash
 # Clone the repository
 git clone https://github.com/andriyshevchenko/headless-detector.git
 
 # Navigate to the detector directory
-cd headless-detector/client/detectors
+cd headless-detector
 ```
 
 ## Usage

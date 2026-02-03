@@ -1,0 +1,43 @@
+{
+  "name": "headless-detector",
+  "version": "2.1.0",
+  "description": "A comprehensive JavaScript library for detecting headless browsers, automation frameworks, and bot activity",
+  "main": "scripts/headless-detector.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andriyshevchenko/headless-detector.git"
+  },
+  "keywords": [
+    "headless",
+    "browser",
+    "detector",
+    "bot",
+    "automation",
+    "puppeteer",
+    "playwright",
+    "selenium",
+    "webdriver",
+    "cdp",
+    "fingerprinting"
+  ],
+  "author": "Andriy Shevchenko",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/andriyshevchenko/headless-detector/issues"
+  },
+  "homepage": "https://github.com/andriyshevchenko/headless-detector#readme",
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  },
+  "files": [
+    "scripts/",
+    "README.md",
+    "LICENSE"
+  ]
+}
