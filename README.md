@@ -1,7 +1,9 @@
 # Headless Browser Detector
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](https://github.com/andriyshevchenko/headless-detector)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/andriyshevchenko/headless-detector)
+[![CI Tests](https://github.com/andriyshevchenko/headless-detector/actions/workflows/test.yml/badge.svg)](https://github.com/andriyshevchenko/headless-detector/actions/workflows/test.yml)
+[![npm version](https://img.shields.io/npm/v/headless-detector.svg)](https://www.npmjs.com/package/headless-detector)
 
 A comprehensive JavaScript library for detecting headless browsers, automation frameworks, and bot activity. Built with the latest 2025/2026 detection techniques from industry leaders like Castle.io, DataDome, and FingerprintJS.
 
@@ -31,12 +33,63 @@ A comprehensive JavaScript library for detecting headless browsers, automation f
 
 ## Installation
 
+### NPM (Recommended)
+
+```bash
+npm install headless-detector
+```
+
+### Using in Node.js
+
+**Note:** This library is designed for browser environments. For Node.js usage, you need a DOM implementation like jsdom:
+
+```javascript
+// Set up jsdom environment first
+const { JSDOM } = require('jsdom');
+const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
+global.window = dom.window;
+global.document = window.document;
+global.navigator = window.navigator;
+
+// Now you can use the detector
+const { detectHeadless } = require('headless-detector');
+const results = detectHeadless();
+console.log('Headless Score:', results.isHeadless);
+console.log('Classification:', results.summary.classification);
+```
+
+### Using in Browser
+
+You can use the library directly in the browser via CDN or local installation:
+
+**Via CDN (Recommended for quick testing):**
+```html
+<script src="https://unpkg.com/headless-detector@1/scripts/headless-detector.js"></script>
+<script>
+  const results = detectHeadless();
+  console.log('Detection Results:', results);
+</script>
+```
+
+**Via npm install:**
+```html
+<script src="node_modules/headless-detector/scripts/headless-detector.js"></script>
+<script>
+  const results = detectHeadless();
+  console.log('Detection Results:', results);
+</script>
+```
+
+**Note:** When using via npm, ensure your build process or server makes the file accessible, or use a bundler like Webpack/Rollup.
+
+### Clone from GitHub
+
 ```bash
 # Clone the repository
 git clone https://github.com/andriyshevchenko/headless-detector.git
 
 # Navigate to the detector directory
-cd headless-detector/client/detectors
+cd headless-detector
 ```
 
 ## Usage
@@ -200,19 +253,18 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Version History
 
-### 2.1.0 (2026-02-03)
-- Added detection explanations and summary reports
-- Enhanced automation testing access
-- Added Media Devices and WebRTC checks
-- Implemented Canvas, Audio Context, and Font fingerprinting
-- Improved CDP detection with stack trace analysis
-- Added 10+ detection vectors
-
-### 2.0.0 (2026-02-03)
-- Initial release with modern detection techniques
+### 1.0.0 (2026-02-03)
+- Initial stable release with comprehensive headless browser detection
+- 10+ detection vectors for multi-layered approach
 - WebDriver, CDP, and User-Agent detection
-- WebGL renderer analysis
-- Basic automation flag detection
+- Advanced CDP/Runtime checks with error stack trace analysis
+- WebGL renderer analysis (software vs hardware GPU)
+- Media Devices and WebRTC availability checks
+- Canvas, Audio Context, and Font fingerprinting
+- Automation framework detection (Selenium, Puppeteer, Playwright, Cypress)
+- Detection explanations and summary reports
+- Detailed risk assessment and classification
+- NPM package with automated testing and publishing
 
 ---
 
