@@ -453,6 +453,27 @@
             </div>
 
             <button class="refresh-btn" onclick="runDetection()">🔄 Run Detection Again</button>
+            
+            <!-- Automation Testing Info -->
+            <div class="metadata" style="margin-top: 20px; background: #f0f4ff; border: 2px solid #667eea;">
+                <div class="metadata-title" style="color: #667eea;">🤖 Automation Testing Access</div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Global Object:</span>
+                    <code class="metadata-value" style="background: #fff; padding: 2px 6px; border-radius: 4px;">window.__headlessDetection</code>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Score Access:</span>
+                    <code class="metadata-value" style="background: #fff; padding: 2px 6px; border-radius: 4px;">window.__headlessDetectionScore</code>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">DOM Attribute:</span>
+                    <code class="metadata-value" style="background: #fff; padding: 2px 6px; border-radius: 4px;">document.documentElement.getAttribute('data-headless-score')</code>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Individual Checks:</span>
+                    <code class="metadata-value" style="background: #fff; padding: 2px 6px; border-radius: 4px;">window.HeadlessDetector.checks.*</code>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -465,8 +486,15 @@
 
             // Run detection after short delay for effect
             setTimeout(() => {
-                const results = detectHeadless();
+                // Run detection and attach to window for automation access
+                const results = detectHeadless(true);
                 displayResults(results);
+                
+                // Log for automation testing
+                console.log('Detection completed. Access via:');
+                console.log('  window.__headlessDetection');
+                console.log('  window.__headlessDetectionScore =', window.__headlessDetectionScore);
+                console.log('  HTML attribute:', document.documentElement.getAttribute('data-headless-score'));
                 
                 // Hide loading, show results
                 document.getElementById('loading').style.display = 'none';

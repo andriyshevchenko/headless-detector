@@ -16,10 +16,11 @@
  * Detects headless browsers and automation frameworks by aggregating
  * multiple signals from the current browser session.
  * 
+ * @param {boolean} attachToWindow - If true, attaches results to window object for easy access
  * @returns {Object} Comprehensive headless detection results
  */
-function detectHeadless() {
-    return {
+function detectHeadless(attachToWindow = false) {
+    const results = {
         // Core detection results
         isHeadless: _calculateHeadlessScore(),
 
@@ -39,6 +40,21 @@ function detectHeadless() {
         userAgent: navigator.userAgent,
         detectionVersion: '2.1.0'
     };
+
+    // Attach to window for easy automation access
+    if (attachToWindow && typeof window !== 'undefined') {
+        window.__headlessDetection = results;
+        window.__headlessDetectionScore = results.isHeadless;
+
+        // Add to document for attribute-based access
+        if (document.documentElement) {
+            document.documentElement.setAttribute('data-headless-score', results.isHeadless.toFixed(3));
+            document.documentElement.setAttribute('data-headless-detected', results.isHeadless > 0.5 ? 'true' : 'false');
+            document.documentElement.setAttribute('data-detection-version', results.detectionVersion);
+        }
+    }
+
+    return results;
 }
 
 /**
@@ -732,9 +748,44 @@ function _checkFonts() {
 
 // Export for different module systems
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { detectHeadless };
+    module.exports = {
+        detectHeadless,
+        // Export individual detection functions for granular testing
+        getHeadlessScore: _calculateHeadlessScore,
+        checkWebdriver: _detectWebdriver,
+        checkCDP: _detectCDP,
+        checkUserAgent: _checkUserAgent,
+        checkWebGL: _checkWebGL
+    };
 }
 
 if (typeof window !== 'undefined') {
+    // Main detection function
     window.detectHeadless = detectHeadless;
+
+    // Expose individual checkers for automation testing
+    window.HeadlessDetector = {
+        detect: detectHeadless,
+        getScore: _calculateHeadlessScore,
+        checks: {
+            webdriver: _detectWebdriver,
+            cdp: _detectCDP,
+            userAgent: _checkUserAgent,
+            webgl: _checkWebGL,
+            automationFlags: _getAutomationFlags,
+            headlessIndicators: _getHeadlessIndicators,
+            advanced: _getAdvancedChecks,
+            media: _getMediaChecks,
+            fingerprints: _getFingerprintChecks
+        }
+    };
+
+    // Auto-detect and expose on page load for easy access
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            window.__headlessDetectionReady = true;
+        });
+    } else {
+        window.__headlessDetectionReady = true;
+    }
 }
