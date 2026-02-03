@@ -41,10 +41,18 @@ npm install headless-detector
 
 ### Using in Node.js
 
-```javascript
-const { detectHeadless } = require('headless-detector');
+**Note:** This library is designed for browser environments. For Node.js usage, you need a DOM implementation like jsdom:
 
-// Run detection
+```javascript
+// Set up jsdom environment first
+const { JSDOM } = require('jsdom');
+const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
+global.window = dom.window;
+global.document = window.document;
+global.navigator = window.navigator;
+
+// Now you can use the detector
+const { detectHeadless } = require('headless-detector');
 const results = detectHeadless();
 console.log('Headless Score:', results.isHeadless);
 console.log('Classification:', results.summary.classification);
@@ -52,8 +60,18 @@ console.log('Classification:', results.summary.classification);
 
 ### Using in Browser
 
-You can also use the library directly in the browser:
+You can use the library directly in the browser via CDN or local installation:
 
+**Via CDN (Recommended for quick testing):**
+```html
+<script src="https://unpkg.com/headless-detector@1.0.0/scripts/headless-detector.js"></script>
+<script>
+  const results = detectHeadless();
+  console.log('Detection Results:', results);
+</script>
+```
+
+**Via npm install:**
 ```html
 <script src="node_modules/headless-detector/scripts/headless-detector.js"></script>
 <script>
@@ -61,6 +79,8 @@ You can also use the library directly in the browser:
   console.log('Detection Results:', results);
 </script>
 ```
+
+**Note:** When using via npm, ensure your build process or server makes the file accessible, or use a bundler like webpack/rollup.
 
 ### Clone from GitHub
 

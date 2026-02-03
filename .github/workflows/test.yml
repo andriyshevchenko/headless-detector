@@ -16,7 +16,7 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [16.x, 18.x, 20.x]
+        node-version: [18.x, 20.x, 22.x]
     
     steps:
       - name: Checkout code
@@ -29,10 +29,10 @@ jobs:
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: npm install
       
-      - name: Run tests
-        run: npm test
+      - name: Run tests with coverage
+        run: npm run test:coverage
       
       - name: Upload coverage to Codecov
         if: matrix.node-version == '20.x'
