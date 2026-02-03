@@ -1,5 +1,8 @@
 name: Publish to NPM
 
+# This workflow publishes to npm on every push to master.
+# It checks if the version already exists on npm before publishing to prevent duplicates.
+# Alternative: Trigger on tags (e.g., 'v*') for more controlled releases.
 on:
   push:
     branches:
@@ -25,7 +28,20 @@ jobs:
       - name: Run tests
         run: npm test
       
+      - name: Check if version exists
+        id: check_version
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          if npm view headless-detector@$PACKAGE_VERSION version 2>/dev/null; then
+            echo "Version $PACKAGE_VERSION already exists on npm"
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+          else
+            echo "Version $PACKAGE_VERSION does not exist, will publish"
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Publish to NPM
+        if: steps.check_version.outputs.should_publish == 'true'
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
