@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Headless Browser Detector - Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .score-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .score-value {
+            font-size: 4rem;
+            font-weight: bold;
+            margin: 20px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .score-label {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-top: 10px;
+        }
+
+        .status-normal {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-suspicious {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .status-headless {
+            background: #ef4444;
+            color: white;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-icon {
+            font-size: 1.5rem;
+        }
+
+        .check-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .check-item:last-child {
+            border-bottom: none;
+        }
+
+        .check-label {
+            font-size: 0.95rem;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .check-value {
+            font-size: 0.9rem;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        .pass {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .fail {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .signal-list {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+        }
+
+        .signal-item {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            margin: 4px;
+        }
+
+        .metadata {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        .metadata-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .metadata-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.9rem;
+        }
+
+        .metadata-item:last-child {
+            border-bottom: none;
+        }
+
+        .metadata-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .metadata-value {
+            color: #777;
+            word-break: break-all;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .refresh-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+            display: block;
+            margin: 20px auto;
+        }
+
+        .refresh-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        .refresh-btn:active {
+            transform: scale(0.98);
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .score-value {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🕵️ Headless Browser Detector</h1>
+            <p>Real-time detection of automation frameworks and headless browsers</p>
+        </div>
+
+        <div id="loading" class="loading">
+            <div>🔍 Analyzing browser environment...</div>
+        </div>
+
+        <div id="results" style="display: none;">
+            <!-- Score Card -->
+            <div class="score-card">
+                <div class="score-label">Headless Detection Score</div>
+                <div class="score-value" id="score">0.00</div>
+                <div id="status-badge" class="status-badge status-normal">Normal Browser</div>
+                <p style="margin-top: 15px; color: #666; font-size: 0.95rem;">
+                    Score ranges from 0.0 (normal browser) to 1.0 (definitely headless)
+                </p>
+            </div>
+
+            <!-- Detection Cards Grid -->
+            <div class="grid">
+                <!-- WebDriver Detection -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">🤖</span>
+                        WebDriver Detection
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">WebDriver Present</span>
+                        <span class="check-value" id="webdriver-status">-</span>
+                    </div>
+                </div>
+
+                <!-- CDP Artifacts -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">🔧</span>
+                        CDP Artifacts
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Detected</span>
+                        <span class="check-value" id="cdp-detected">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">CDC Keys Found</span>
+                        <span class="check-value info" id="cdp-keys">-</span>
+                    </div>
+                    <div id="cdp-signals" class="signal-list" style="display: none;"></div>
+                </div>
+
+                <!-- User Agent -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">📱</span>
+                        User Agent
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Suspicious Patterns</span>
+                        <span class="check-value" id="ua-suspicious">-</span>
+                    </div>
+                    <div id="ua-matches" class="signal-list" style="display: none;"></div>
+                </div>
+
+                <!-- WebGL Renderer -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">🎨</span>
+                        WebGL Renderer
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Supported</span>
+                        <span class="check-value" id="webgl-supported">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Software Renderer</span>
+                        <span class="check-value" id="webgl-software">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Renderer</span>
+                        <span class="check-value info" id="webgl-renderer">-</span>
+                    </div>
+                </div>
+
+                <!-- Window Dimensions -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">📐</span>
+                        Window Dimensions
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Has Outer Dimensions</span>
+                        <span class="check-value" id="outer-dims">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Inner = Outer</span>
+                        <span class="check-value" id="inner-outer">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Dimensions</span>
+                        <span class="check-value info" id="dimensions">-</span>
+                    </div>
+                </div>
+
+                <!-- Browser APIs -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">🔌</span>
+                        Browser APIs
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Plugins</span>
+                        <span class="check-value info" id="plugins-count">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Languages</span>
+                        <span class="check-value" id="languages-check">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Media Devices</span>
+                        <span class="check-value" id="media-devices">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Notifications</span>
+                        <span class="check-value" id="notifications">-</span>
+                    </div>
+                </div>
+
+                <!-- Automation Flags -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">🚨</span>
+                        Automation Flags
+                    </div>
+                    <div id="automation-flags"></div>
+                </div>
+
+                <!-- System Info -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">💻</span>
+                        System Info
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Platform</span>
+                        <span class="check-value info" id="platform">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">CPU Cores</span>
+                        <span class="check-value info" id="cpu-cores">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Device Memory</span>
+                        <span class="check-value info" id="device-memory">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Touch Points</span>
+                        <span class="check-value info" id="touch-points">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metadata -->
+            <div class="metadata">
+                <div class="metadata-title">📋 Session Metadata</div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Timestamp:</span>
+                    <span class="metadata-value" id="timestamp">-</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">User Agent:</span>
+                    <span class="metadata-value" id="user-agent">-</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Timezone:</span>
+                    <span class="metadata-value" id="timezone">-</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Screen Resolution:</span>
+                    <span class="metadata-value" id="screen-res">-</span>
+                </div>
+            </div>
+
+            <button class="refresh-btn" onclick="runDetection()">🔄 Run Detection Again</button>
+        </div>
+    </div>
+
+    <script src="headless-detector.js"></script>
+    <script>
+        function runDetection() {
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+
+            // Run detection after short delay for effect
+            setTimeout(() => {
+                const results = detectHeadless();
+                displayResults(results);
+                
+                // Hide loading, show results
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('results').style.display = 'block';
+            }, 500);
+        }
+
+        function displayResults(results) {
+            // Score
+            const score = results.isHeadless;
+            document.getElementById('score').textContent = score.toFixed(2);
+            
+            const statusBadge = document.getElementById('status-badge');
+            if (score < 0.3) {
+                statusBadge.className = 'status-badge status-normal';
+                statusBadge.textContent = '✅ Normal Browser';
+            } else if (score < 0.6) {
+                statusBadge.className = 'status-badge status-suspicious';
+                statusBadge.textContent = '⚠️ Suspicious Activity';
+            } else {
+                statusBadge.className = 'status-badge status-headless';
+                statusBadge.textContent = '🚫 Headless Detected';
+            }
+
+            // WebDriver
+            setStatus('webdriver-status', results.webdriver);
+
+            // CDP Artifacts
+            setStatus('cdp-detected', results.cdpArtifacts.detected);
+            document.getElementById('cdp-keys').textContent = results.cdpArtifacts.cdcKeysFound || 0;
+            
+            if (results.cdpArtifacts.signals && results.cdpArtifacts.signals.length > 0) {
+                const cdpSignals = document.getElementById('cdp-signals');
+                cdpSignals.innerHTML = results.cdpArtifacts.signals.map(s => 
+                    `<span class="signal-item">${s}</span>`
+                ).join('');
+                cdpSignals.style.display = 'block';
+            }
+
+            // User Agent
+            setStatus('ua-suspicious', results.userAgentFlags.suspicious);
+            
+            if (results.userAgentFlags.matches && results.userAgentFlags.matches.length > 0) {
+                const uaMatches = document.getElementById('ua-matches');
+                uaMatches.innerHTML = results.userAgentFlags.matches.map(m => 
+                    `<span class="signal-item">${m}</span>`
+                ).join('');
+                uaMatches.style.display = 'block';
+            }
+
+            // WebGL
+            setStatus('webgl-supported', results.webglFlags.supported, true);
+            setStatus('webgl-software', results.webglFlags.isSoftwareRenderer);
+            document.getElementById('webgl-renderer').textContent = 
+                results.webglFlags.renderer ? results.webglFlags.renderer.substring(0, 30) : 'N/A';
+
+            // Window Dimensions
+            const hi = results.headlessIndicators;
+            setStatus('outer-dims', hi.hasOuterDimensions, true);
+            setStatus('inner-outer', hi.innerEqualsOuter);
+            document.getElementById('dimensions').textContent = 
+                `${hi.innerWidth}x${hi.innerHeight} / ${hi.outerWidth}x${hi.outerHeight}`;
+
+            // Browser APIs
+            document.getElementById('plugins-count').textContent = results.automationFlags.plugins;
+            setStatus('languages-check', results.automationFlags.languages, true);
+            setStatus('media-devices', hi.hasMediaDevices, true);
+            
+            const notifPerm = hi.notificationPermission;
+            const notifEl = document.getElementById('notifications');
+            notifEl.textContent = notifPerm;
+            notifEl.className = 'check-value ' + 
+                (notifPerm === 'denied' ? 'warning' : 
+                 notifPerm === 'granted' ? 'pass' : 'info');
+
+            // Automation Flags
+            const autoFlags = document.getElementById('automation-flags');
+            const flagsToShow = [
+                'domAutomation', '_selenium', '__webdriver_evaluate', 
+                '_phantom', '__nightmare', 'callPhantom'
+            ];
+            
+            autoFlags.innerHTML = flagsToShow.map(flag => {
+                const value = results.automationFlags[flag];
+                return `
+                    <div class="check-item">
+                        <span class="check-label">${flag}</span>
+                        <span class="check-value ${value ? 'fail' : 'pass'}">${value ? 'YES' : 'NO'}</span>
+                    </div>
+                `;
+            }).join('');
+
+            // System Info
+            document.getElementById('platform').textContent = hi.platform || 'N/A';
+            document.getElementById('cpu-cores').textContent = hi.hardwareConcurrency || 'N/A';
+            document.getElementById('device-memory').textContent = 
+                hi.deviceMemory ? `${hi.deviceMemory} GB` : 'N/A';
+            document.getElementById('touch-points').textContent = hi.maxTouchPoints;
+
+            // Metadata
+            document.getElementById('timestamp').textContent = new Date(results.timestamp).toLocaleString();
+            document.getElementById('user-agent').textContent = results.userAgent;
+            document.getElementById('timezone').textContent = 
+                `${hi.timezone} (UTC${hi.timezoneOffset > 0 ? '-' : '+'}${Math.abs(hi.timezoneOffset/60)})`;
+            document.getElementById('screen-res').textContent = 
+                `${hi.screenWidth}x${hi.screenHeight} @ ${hi.devicePixelRatio}x`;
+        }
+
+        function setStatus(elementId, value, invertLogic = false) {
+            const el = document.getElementById(elementId);
+            if (value === undefined || value === null) {
+                el.textContent = 'N/A';
+                el.className = 'check-value info';
+                return;
+            }
+
+            if (typeof value === 'boolean') {
+                el.textContent = value ? 'YES' : 'NO';
+                
+                // Invert logic for things where true is good
+                const isGood = invertLogic ? value : !value;
+                el.className = 'check-value ' + (isGood ? 'pass' : 'fail');
+            } else {
+                el.textContent = value;
+                el.className = 'check-value info';
+            }
+        }
+
+        // Run detection on page load
+        window.addEventListener('load', runDetection);
+    </script>
+</body>
+</html>
