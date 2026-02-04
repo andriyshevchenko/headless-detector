@@ -4,268 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Headless Browser Detector - Test Suite</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: #333;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
-        .score-card {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            text-align: center;
-        }
-
-        .score-value {
-            font-size: 4rem;
-            font-weight: bold;
-            margin: 20px 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .score-label {
-            font-size: 1.2rem;
-            color: #666;
-            margin-bottom: 10px;
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-weight: bold;
-            font-size: 1.1rem;
-            margin-top: 10px;
-        }
-
-        .status-normal {
-            background: #10b981;
-            color: white;
-        }
-
-        .status-suspicious {
-            background: #f59e0b;
-            color: white;
-        }
-
-        .status-headless {
-            background: #ef4444;
-            color: white;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
-        }
-
-        .card-title {
-            font-size: 1.3rem;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #667eea;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .card-icon {
-            font-size: 1.5rem;
-        }
-
-        .check-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .check-item:last-child {
-            border-bottom: none;
-        }
-
-        .check-label {
-            font-size: 0.95rem;
-            color: #555;
-            font-weight: 500;
-        }
-
-        .check-value {
-            font-size: 0.9rem;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-weight: 600;
-        }
-
-        .pass {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .fail {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .warning {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .info {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .signal-list {
-            background: #f9fafb;
-            border-radius: 8px;
-            padding: 12px;
-            margin-top: 10px;
-        }
-
-        .signal-item {
-            display: inline-block;
-            background: #667eea;
-            color: white;
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 0.85rem;
-            margin: 4px;
-        }
-
-        .metadata {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-top: 20px;
-        }
-
-        .metadata-title {
-            font-size: 1.2rem;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #667eea;
-        }
-
-        .metadata-item {
-            padding: 8px 0;
-            border-bottom: 1px solid #f0f0f0;
-            font-size: 0.9rem;
-        }
-
-        .metadata-item:last-child {
-            border-bottom: none;
-        }
-
-        .metadata-label {
-            font-weight: 600;
-            color: #555;
-        }
-
-        .metadata-value {
-            color: #777;
-            word-break: break-all;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 50px;
-            color: white;
-            font-size: 1.2rem;
-        }
-
-        .refresh-btn {
-            background: white;
-            color: #667eea;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 25px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: all 0.2s;
-            display: block;
-            margin: 20px auto;
-        }
-
-        .refresh-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-        }
-
-        .refresh-btn:active {
-            transform: scale(0.98);
-        }
-
-        @media (max-width: 768px) {
-            .grid {
-                grid-template-columns: 1fr;
-            }
-
-            .header h1 {
-                font-size: 2rem;
-            }
-
-            .score-value {
-                font-size: 3rem;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
@@ -338,6 +77,7 @@
                     <div class="card-title">
                         <span class="card-icon">🎨</span>
                         WebGL Renderer
+                        <span class="new-badge">ENHANCED</span>
                     </div>
                     <div class="check-item">
                         <span class="check-label">Supported</span>
@@ -350,6 +90,56 @@
                     <div class="check-item">
                         <span class="check-label">Renderer</span>
                         <span class="check-value info" id="webgl-renderer">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Rendering Test</span>
+                        <span class="check-value" id="webgl-rendering-test">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Noise Ratio</span>
+                        <span class="check-value info" id="webgl-noise">-</span>
+                    </div>
+                </div>
+
+                <!-- Worker UA Check (NEW 2026) -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">🔧</span>
+                        Worker UA Check
+                        <span class="new-badge">NEW 2026</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Available</span>
+                        <span class="check-value" id="worker-available">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">UA Mismatch</span>
+                        <span class="check-value" id="worker-mismatch">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Status</span>
+                        <span class="check-value info" id="worker-status">-</span>
+                    </div>
+                </div>
+
+                <!-- Emoji Rendering (NEW 2026) -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">😀</span>
+                        Emoji OS Check
+                        <span class="new-badge">NEW 2026</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Rendered</span>
+                        <span class="check-value" id="emoji-rendered">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Detected OS</span>
+                        <span class="check-value info" id="emoji-os">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Suspicious</span>
+                        <span class="check-value" id="emoji-suspicious">-</span>
                     </div>
                 </div>
 
@@ -404,6 +194,70 @@
                         Automation Flags
                     </div>
                     <div id="automation-flags"></div>
+                </div>
+
+                <!-- Advanced Checks -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">🔬</span>
+                        Advanced Checks
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">CDP Stack Trace</span>
+                        <span class="check-value" id="adv-stacktrace">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Chrome Runtime</span>
+                        <span class="check-value" id="adv-runtime">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Permissions API</span>
+                        <span class="check-value" id="adv-permissions">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Console Debug</span>
+                        <span class="check-value" id="adv-console">-</span>
+                    </div>
+                </div>
+
+                <!-- Media Checks -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">🎥</span>
+                        Media & WebRTC
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">WebRTC Available</span>
+                        <span class="check-value" id="media-webrtc">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Media Devices Count</span>
+                        <span class="check-value info" id="media-devices-count">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Battery API</span>
+                        <span class="check-value" id="media-battery">-</span>
+                    </div>
+                </div>
+
+                <!-- Fingerprint Checks -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="card-icon">🖌️</span>
+                        Fingerprinting
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Canvas Available</span>
+                        <span class="check-value" id="fp-canvas">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Audio Context</span>
+                        <span class="check-value" id="fp-audio">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Fonts Detected</span>
+                        <span class="check-value info" id="fp-fonts">-</span>
+                    </div>
                 </div>
 
                 <!-- System Info -->
@@ -499,6 +353,9 @@
                 // Hide loading, show results
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('results').style.display = 'block';
+                
+                // Initialize tooltips
+                setTimeout(initializeTooltips, 100);
             }, 500);
         }
 
@@ -550,6 +407,30 @@
             setStatus('webgl-software', results.webglFlags.isSoftwareRenderer);
             document.getElementById('webgl-renderer').textContent = 
                 results.webglFlags.renderer ? results.webglFlags.renderer.substring(0, 30) : 'N/A';
+            
+            // WebGL Rendering Test (NEW 2026)
+            if (results.webglFlags.renderingTest) {
+                const rt = results.webglFlags.renderingTest;
+                setStatus('webgl-rendering-test', rt.suspicious);
+                document.getElementById('webgl-noise').textContent = 
+                    rt.noiseRatio ? `${(parseFloat(rt.noiseRatio) * 100).toFixed(2)}%` : 'N/A';
+            }
+
+            // Worker UA Check (NEW 2026)
+            if (results.workerChecks) {
+                const wc = results.workerChecks;
+                setStatus('worker-available', wc.available, true);
+                setStatus('worker-mismatch', wc.userAgentMismatch);
+                document.getElementById('worker-status').textContent = wc.reason || wc.status || 'N/A';
+            }
+
+            // Emoji Rendering (NEW 2026)
+            if (results.fingerprintChecks && results.fingerprintChecks.canvas && results.fingerprintChecks.canvas.emojiCheck) {
+                const emoji = results.fingerprintChecks.canvas.emojiCheck;
+                setStatus('emoji-rendered', emoji.rendered, true);
+                document.getElementById('emoji-os').textContent = emoji.detectedOS || 'Unknown';
+                setStatus('emoji-suspicious', emoji.suspicious);
+            }
 
             // Window Dimensions
             const hi = results.headlessIndicators;
@@ -573,19 +454,44 @@
             // Automation Flags
             const autoFlags = document.getElementById('automation-flags');
             const flagsToShow = [
-                'domAutomation', '_selenium', '__webdriver_evaluate', 
-                '_phantom', '__nightmare', 'callPhantom'
+                { key: 'domAutomation', id: 'flag-domautomation' },
+                { key: '_selenium', id: 'flag-selenium' },
+                { key: '__webdriver_evaluate', id: 'flag-webdriver-evaluate' },
+                { key: '_phantom', id: 'flag-phantom' },
+                { key: '__nightmare', id: 'flag-nightmare' },
+                { key: 'callPhantom', id: 'flag-callphantom' }
             ];
             
             autoFlags.innerHTML = flagsToShow.map(flag => {
-                const value = results.automationFlags[flag];
+                const value = results.automationFlags[flag.key];
                 return `
                     <div class="check-item">
-                        <span class="check-label">${flag}</span>
-                        <span class="check-value ${value ? 'fail' : 'pass'}">${value ? 'YES' : 'NO'}</span>
+                        <span class="check-label">${flag.key}</span>
+                        <span class="check-value ${value ? 'fail' : 'pass'}" id="${flag.id}">${value ? 'YES' : 'NO'}</span>
                     </div>
                 `;
             }).join('');
+
+            // Advanced Checks
+            const adv = results.advancedChecks;
+            setStatus('adv-stacktrace', adv.stackTrace?.cdpDetected);
+            setStatus('adv-runtime', !adv.chromeRuntime?.missing, true);
+            setStatus('adv-permissions', !adv.permissions?.deniedByDefault, true);
+            setStatus('adv-console', adv.consoleDebug?.detected);
+
+            // Media Checks
+            const media = results.mediaChecks;
+            setStatus('media-webrtc', !media.webrtc?.suspicious, true);
+            document.getElementById('media-devices-count').textContent = 
+                media.mediaDevices?.deviceCount !== undefined ? media.mediaDevices.deviceCount : 'N/A';
+            setStatus('media-battery', media.battery?.available, true);
+
+            // Fingerprint Checks
+            const fp = results.fingerprintChecks;
+            setStatus('fp-canvas', fp.canvas?.available, true);
+            setStatus('fp-audio', fp.audioContext?.available, true);
+            document.getElementById('fp-fonts').textContent = 
+                fp.fonts ? `${fp.fonts.detectedCount}/${fp.fonts.totalTested}` : 'N/A';
 
             // System Info
             document.getElementById('platform').textContent = hi.platform || 'N/A';
@@ -622,6 +528,82 @@
                 el.className = 'check-value info';
             }
         }
+
+        // Initialize tooltips
+        function initializeTooltips() {
+            const results = window.__headlessDetection;
+            if (!results) return;
+
+            // Check item explanations - tooltips for individual check items
+            if (results.checkItemExplanations) {
+                const checkExplanations = results.checkItemExplanations;
+                
+                // Add tooltips to all check labels
+                document.querySelectorAll('.check-label').forEach(label => {
+                    // Try to match with explanation keys
+                    Object.keys(checkExplanations).forEach(key => {
+                        const parentItem = label.closest('.check-item');
+                        const valueElement = parentItem?.querySelector(`#${key}`);
+                        
+                        if (valueElement) {
+                            const exp = checkExplanations[key];
+                            const tooltipDiv = document.createElement('div');
+                            tooltipDiv.className = 'check-item-tooltip';
+                            
+                            // Determine if this check passed or failed based on value element
+                            const valueText = valueElement.textContent.trim().toUpperCase();
+                            const hasPassClass = valueElement.classList.contains('pass');
+                            const hasFailClass = valueElement.classList.contains('fail');
+                            const hasWarningClass = valueElement.classList.contains('warning');
+                            
+                            // Determine success: pass class, or YES/NO depends on context
+                            const isSuccess = hasPassClass || (!hasFailClass && !hasWarningClass && valueText !== '-');
+                            const isFail = hasFailClass || hasWarningClass;
+                            
+                            let content = `<div class="tooltip-desc">${exp.description}</div>`;
+                            
+                            // Show only relevant status based on actual result
+                            if (isFail && exp.bad) {
+                                content += `<div class="tooltip-status tooltip-bad">✗ ${exp.bad}</div>`;
+                            } else if (isSuccess && exp.good) {
+                                content += `<div class="tooltip-status tooltip-good">✓ ${exp.good}</div>`;
+                            } else if (exp.info) {
+                                content += `<div class="tooltip-status tooltip-info">ℹ ${exp.info}</div>`;
+                            }
+                            
+                            tooltipDiv.innerHTML = content;
+                            label.appendChild(tooltipDiv);
+                        }
+                    });
+                });
+            }
+        }
+
+        // Listen for worker check updates
+        window.addEventListener('headlessDetectionUpdated', (event) => {
+            const workerChecks = event.detail.workerChecks;
+            if (workerChecks) {
+                setStatus('worker-available', workerChecks.available, true);
+                setStatus('worker-mismatch', workerChecks.userAgentMismatch);
+                document.getElementById('worker-status').textContent = workerChecks.reason || 'Completed';
+                
+                // Update score display if mismatch detected
+                if (workerChecks.userAgentMismatch) {
+                    const scoreEl = document.getElementById('score');
+                    const newScore = window.__headlessDetectionScore;
+                    scoreEl.textContent = newScore.toFixed(2);
+                    
+                    const statusBadge = document.getElementById('status-badge');
+                    if (newScore >= 0.6) {
+                        statusBadge.className = 'status-badge status-headless';
+                        statusBadge.textContent = '🚫 Headless Detected';
+                    } else if (newScore >= 0.3) {
+                        statusBadge.className = 'status-badge status-suspicious';
+                        statusBadge.textContent = '⚠️ Suspicious Activity';
+                    }
+                }
+            }
+        });
 
         // Run detection on page load
         window.addEventListener('load', runDetection);

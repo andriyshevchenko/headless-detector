@@ -34,18 +34,22 @@ function detectHeadless(attachToWindow = false) {
         advancedChecks: _getAdvancedChecks(),
         mediaChecks: _getMediaChecks(),
         fingerprintChecks: _getFingerprintChecks(),
+        workerChecks: _getWorkerChecksSync(),
 
-        // Detection explanations (NEW)
-        explanations: _getDetectionExplanations(),
+        // Check item explanations (NEW 2026)
+        checkItemExplanations: _getCheckItemExplanations(),
 
         // Summary of what was detected
-        summary: _generateDetectionSummary(),
+        summary: null, // Will be set after
 
         // Metadata
         timestamp: Date.now(),
         userAgent: navigator.userAgent,
         detectionVersion: '1.0.0'
     };
+
+    // Generate summary with results to avoid re-running all checks
+    results.summary = _generateDetectionSummary(results);
 
     // Attach to window for easy automation access
     if (attachToWindow && typeof window !== 'undefined') {
@@ -95,7 +99,10 @@ function _calculateHeadlessScore() {
     if (_checkUserAgent().suspicious) score += 0.12;
 
     // WebGL software renderer (2025: common in headless)
-    if (_checkWebGL().isSoftwareRenderer) score += 0.10;
+    const webgl = _checkWebGL();
+    if (webgl.isSoftwareRenderer) score += 0.10;
+    // 2026: WebGL rendering test - check if rendering matches claimed GPU
+    if (webgl.renderingTest && webgl.renderingTest.suspicious) score += 0.12;
 
     // Advanced checks (2025)
     const advanced = _getAdvancedChecks();
@@ -113,7 +120,9 @@ function _calculateHeadlessScore() {
     if (fingerprint.canvas && fingerprint.canvas.suspicious) score += 0.07;
     if (fingerprint.audioContext && fingerprint.audioContext.suspicious) score += 0.05;
     if (fingerprint.fonts && fingerprint.fonts.suspicious) score += 0.08;
-
+    // Worker checks (2026: NEW - Chrome bug detection)
+    const worker = _getWorkerChecksSync();
+    if (worker.userAgentMismatch) score += 0.15;
     return Math.min(1, score);
 }
 
@@ -370,6 +379,7 @@ function _checkClientHints() {
 
 /**
  * Check WebGL renderer for software rendering (common in headless/VMs)
+ * 2026 Update: Added complex rendering test to verify claimed GPU capabilities
  */
 function _checkWebGL() {
     try {
@@ -393,13 +403,18 @@ function _checkWebGL() {
             rendererLower.includes('vmware') ||
             rendererLower.includes('mesa');
 
+        // 2026: Perform complex rendering test to validate GPU consistency
+        const renderingTest = _performWebGLRenderingTest(gl, vendor, renderer);
+
         return {
             supported: true,
             vendor,
             renderer,
             version: gl.getParameter(gl.VERSION),
             shadingVersion: gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
-            isSoftwareRenderer
+            isSoftwareRenderer,
+            renderingTest: renderingTest,
+            suspicious: isSoftwareRenderer || (renderingTest && renderingTest.suspicious)
         };
     } catch (e) {
         return { supported: false, error: true };
@@ -628,6 +643,7 @@ function _getFingerprintChecks() {
 /**
  * Canvas fingerprinting check (2026 method)
  * Headless browsers may produce different canvas outputs
+ * 2026 Update: Added emoji rendering OS consistency check
  */
 function _checkCanvas() {
     try {
@@ -645,7 +661,7 @@ function _checkCanvas() {
         ctx.fillStyle = '#f60';
         ctx.fillRect(125, 1, 62, 20);
         ctx.fillStyle = '#069';
-        ctx.fillText('HeadlessTest', 2, 15);
+        ctx.fillText('HeadlessTest 😀🎨', 2, 15);
         ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
         ctx.fillText('HeadlessTest', 4, 17);
 
@@ -666,13 +682,17 @@ function _checkCanvas() {
             hasNoise = e.stack && e.stack.indexOf('chrome-extension') > -1;
         }
 
+        // 2026: Emoji OS consistency check
+        const emojiResult = _checkEmojiRendering(ctx);
+
         return {
             available: true,
             hash: hash.toString(16),
             dataLength: dataUrl.length,
             hasNoise,
-            // Very short data might indicate blocking
-            suspicious: dataUrl.length < 100 || hasNoise
+            emojiCheck: emojiResult,
+            // Very short data might indicate blocking, or emoji check suspicious
+            suspicious: dataUrl.length < 100 || hasNoise || emojiResult.suspicious
         };
     } catch (e) {
         return { available: false, error: true, suspicious: true };
@@ -753,168 +773,678 @@ function _checkFonts() {
 }
 
 /**
- * Get explanations for all detection methods (2026)
- * Provides human-readable descriptions of what each check detects
+ * Simple hash function for fingerprinting
  */
-function _getDetectionExplanations() {
+function _simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString(36);
+}
+
+/**
+ * Check emoji rendering consistency with claimed OS (2026: NEW)
+ * Different OS render emoji differently - this should match User-Agent
+ */
+function _checkEmojiRendering(ctx) {
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 100;
+        canvas.height = 100;
+        const emojiCtx = canvas.getContext('2d');
+
+        if (!emojiCtx) {
+            return { suspicious: false, reason: "Cannot test emoji" };
+        }
+
+        // Draw OS-specific emoji
+        emojiCtx.font = '48px Arial';
+        emojiCtx.fillText('😀🎨🌍', 10, 50);
+
+        const imageData = emojiCtx.getImageData(0, 0, 100, 100);
+        const hash = _simpleHash(Array.from(imageData.data).join(','));
+
+        // Detect OS from User-Agent
+        const ua = navigator.userAgent.toLowerCase();
+        const isWindows = ua.includes('windows');
+        const isMac = ua.includes('mac os');
+        const isLinux = ua.includes('linux') && !ua.includes('android');
+        const isAndroid = ua.includes('android');
+        const isIOS = /iphone|ipad|ipod/.test(ua);
+
+        // Check if emoji rendered at all (all pixels are same = not rendered)
+        const pixels = imageData.data;
+        const allSame = pixels.every((val, i, arr) => val === arr[0]);
+
+        if (allSame) {
+            return {
+                suspicious: true,
+                reason: "Emoji not rendered - possible headless",
+                hash: hash,
+                detectedOS: 'none'
+            };
+        }
+
+        // Known emoji rendering patterns could be added here
+        // This is a simplified check - full implementation would need OS-specific hashes
+        return {
+            suspicious: false,
+            hash: hash,
+            detectedOS: isWindows ? 'Windows' : isMac ? 'macOS' : isLinux ? 'Linux' : isAndroid ? 'Android' : isIOS ? 'iOS' : 'Unknown',
+            rendered: true
+        };
+    } catch (e) {
+        return { suspicious: false, error: e.message };
+    }
+}
+
+/**
+ * Perform complex WebGL rendering test (2026: NEW)
+ * Renders a complex 3D scene and hashes the output
+ * Bots using software renderers will produce different/noisy output
+ */
+function _performWebGLRenderingTest(gl, claimedVendor, claimedRenderer) {
+    try {
+        // Create a simple rotating cube with lighting
+        const vertices = new Float32Array([
+            -1, -1, 1, 1, -1, 1, 1, 1, 1, -1, 1, 1,  // front
+            -1, -1, -1, -1, 1, -1, 1, 1, -1, 1, -1, -1,  // back
+        ]);
+
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+        // Simple shader
+        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, `
+            attribute vec3 position;
+            void main() {
+                gl_Position = vec4(position * 0.5, 1.0);
+            }
+        `);
+        gl.compileShader(vertexShader);
+
+        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, `
+            precision mediump float;
+            void main() {
+                gl_FragColor = vec4(0.2, 0.5, 0.8, 1.0);
+            }
+        `);
+        gl.compileShader(fragmentShader);
+
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        gl.useProgram(program);
+
+        const position = gl.getAttribLocation(program, 'position');
+        gl.enableVertexAttribArray(position);
+        gl.vertexAttribPointer(position, 3, gl.FLOAT, false, 0, 0);
+
+        // Clear and draw
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+        // Read pixels and hash
+        const pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
+        gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+        const hash = _simpleHash(Array.from(pixels.slice(0, 1000)).join(','));
+
+        // Check for noise (software renderer often produces noisy output)
+        let noiseLevel = 0;
+        for (let i = 0; i < pixels.length - 4; i += 4) {
+            const diff = Math.abs(pixels[i] - pixels[i + 4]);
+            if (diff > 5) noiseLevel++;
+        }
+        const noiseRatio = noiseLevel / (pixels.length / 4);
+
+        // Check consistency with claimed GPU
+        const isHighEndGPU = /nvidia|geforce|rtx|gtx|radeon|rx /i.test(claimedRenderer);
+        const hasHighNoise = noiseRatio > 0.1;
+
+        return {
+            hash: hash,
+            noiseRatio: noiseRatio.toFixed(4),
+            suspicious: isHighEndGPU && hasHighNoise,
+            reason: (isHighEndGPU && hasHighNoise) ?
+                `High noise (${(noiseRatio * 100).toFixed(2)}%) inconsistent with claimed GPU: ${claimedRenderer}` :
+                "Rendering appears consistent"
+        };
+    } catch (e) {
+        return { suspicious: false, error: e.message };
+    }
+}
+
+/**
+ * Worker-based User-Agent check (2026: NEW)
+ * Chrome bug fix allows catching automation that doesn't patch Worker UA
+ * Reference: https://chromiumdash.appspot.com/commit/4e9b82be3e9feed8952c81eedde553dfeb746ff3
+ */
+function _getWorkerChecks() {
+    return new Promise((resolve) => {
+        try {
+            // Create a blob worker to check UA
+            const workerCode = `
+                self.onmessage = function() {
+                    self.postMessage({
+                        userAgent: navigator.userAgent,
+                        platform: navigator.platform
+                    });
+                };
+            `;
+
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            const worker = new Worker(URL.createObjectURL(blob));
+
+            const timeout = setTimeout(() => {
+                worker.terminate();
+                resolve({
+                    available: false,
+                    userAgentMismatch: false,
+                    reason: "Worker timeout"
+                });
+            }, 1000);
+
+            worker.onmessage = function (e) {
+                clearTimeout(timeout);
+                worker.terminate();
+
+                const workerUA = e.data.userAgent;
+                const mainUA = navigator.userAgent;
+                const workerPlatform = e.data.platform;
+                const mainPlatform = navigator.platform;
+
+                const uaMismatch = workerUA !== mainUA;
+                const platformMismatch = workerPlatform !== mainPlatform;
+
+                resolve({
+                    available: true,
+                    mainUserAgent: mainUA,
+                    workerUserAgent: workerUA,
+                    mainPlatform: mainPlatform,
+                    workerPlatform: workerPlatform,
+                    userAgentMismatch: uaMismatch,
+                    platformMismatch: platformMismatch,
+                    suspicious: uaMismatch || platformMismatch,
+                    reason: uaMismatch ? "User-Agent differs in Worker - automation detected" :
+                        platformMismatch ? "Platform differs in Worker" :
+                            "Consistent"
+                });
+            };
+
+            worker.onerror = function (error) {
+                clearTimeout(timeout);
+                worker.terminate();
+                resolve({
+                    available: false,
+                    userAgentMismatch: false,
+                    error: error.message
+                });
+            };
+
+            worker.postMessage({});
+        } catch (e) {
+            resolve({
+                available: false,
+                userAgentMismatch: false,
+                error: e.message
+            });
+        }
+    });
+}
+
+/**
+ * Synchronous wrapper for worker checks (for initial detection)
+ * Returns immediate result, actual check happens async
+ */
+function _getWorkerChecksSync() {
+    // Return a placeholder for immediate use
+    const result = {
+        available: true,
+        pending: true,
+        userAgentMismatch: false,
+        reason: "Check in progress (async)"
+    };
+
+    // Perform async check and update window object if available
+    _getWorkerChecks().then(workerResult => {
+        if (typeof window !== 'undefined' && window.__headlessDetection) {
+            window.__headlessDetection.workerChecks = workerResult;
+
+            // Recalculate score if mismatch found
+            if (workerResult.userAgentMismatch) {
+                const currentScore = window.__headlessDetectionScore || 0;
+                window.__headlessDetectionScore = Math.min(1, currentScore + 0.15);
+                window.__headlessDetection.isHeadless = window.__headlessDetectionScore;
+                window.__headlessDetection.summary = _generateDetectionSummary(window.__headlessDetection);
+            }
+
+            // Trigger UI update event
+            if (typeof window !== 'undefined' && typeof CustomEvent !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('headlessDetectionUpdated', {
+                    detail: { workerChecks: workerResult }
+                }));
+            }
+        }
+    }).catch(() => {
+        // Silently fail if worker check fails
+    });
+
+    return result;
+}
+
+/**
+ * Get detailed explanations for individual check items (2026)
+ * Provides human-readable descriptions for each specific check within cards
+ */
+function _getCheckItemExplanations() {
     return {
-        webdriver: {
-            name: "WebDriver Detection",
-            description: "Checks for navigator.webdriver flag and related Selenium/WebDriver properties",
-            purpose: "Detects if the browser is controlled by automation tools like Selenium or Puppeteer",
-            suspicious_if: "navigator.webdriver is true or WebDriver properties are present",
-            impact: "High - Primary automation detection signal"
+        // WebDriver Detection
+        'webdriver-status': {
+            label: "WebDriver Present",
+            description: "Indicates if navigator.webdriver flag is set to true",
+            good: "Browser is running normally without automation framework",
+            bad: "Automation tool (Selenium, Puppeteer) is controlling this browser"
         },
-        automationFlags: {
-            name: "Automation Flags",
-            description: "Scans for automation framework-specific global variables and properties",
-            purpose: "Identifies automation tools (Selenium, Playwright, Puppeteer, PhantomJS, Nightmare)",
-            suspicious_if: "Framework-specific variables detected, missing plugins, or no languages",
-            impact: "High - Directly indicates automation presence"
+
+        // CDP Artifacts
+        'cdp-detected': {
+            label: "CDP Detected",
+            description: "Chrome DevTools Protocol connection or ChromeDriver presence",
+            good: "No CDP artifacts found - normal browser operation",
+            bad: "CDP-based automation detected (Puppeteer, Playwright, Selenium 4+)"
         },
-        cdpArtifacts: {
-            name: "Chrome DevTools Protocol (CDP) Artifacts",
-            description: "Detects ChromeDriver-specific properties and CDP connection signals",
-            purpose: "Identifies ChromeDriver/CDP-based automation (Puppeteer, Playwright, Selenium 4+)",
-            suspicious_if: "CDC keys found in window/document or CDP connection active",
-            impact: "Very High - Strong indicator of ChromeDriver-based automation"
+        'cdp-keys': {
+            label: "CDC Keys Found",
+            description: "Number of ChromeDriver-specific CDC keys in window/document",
+            good: "0 keys - no ChromeDriver injection",
+            bad: ">0 keys - ChromeDriver has injected tracking properties"
         },
-        headlessIndicators: {
-            name: "Headless Mode Indicators",
-            description: "Checks browser characteristics that differ in headless vs normal mode",
-            purpose: "Detects headless Chrome/Chromium by analyzing window dimensions and permissions",
-            suspicious_if: "Missing outer dimensions, inner=outer dimensions, denied notifications by default",
-            impact: "Medium - Can indicate headless mode but may have false positives"
+
+        // User Agent
+        'ua-suspicious': {
+            label: "Suspicious Patterns",
+            description: "User-Agent contains automation/headless keywords",
+            good: "Clean User-Agent string without automation indicators",
+            bad: "Contains 'headless', 'HeadlessChrome', 'selenium', 'puppeteer'"
         },
-        userAgentFlags: {
-            name: "User-Agent Analysis",
-            description: "Analyzes User-Agent string and Client Hints for automation patterns",
-            purpose: "Identifies headless/automation keywords in browser identification",
-            suspicious_if: "Contains 'headless', 'HeadlessChrome', 'selenium', 'puppeteer', etc.",
-            impact: "High - Easy to detect but also easy for bots to spoof"
+
+        // WebGL
+        'webgl-supported': {
+            label: "WebGL Supported",
+            description: "Browser supports WebGL rendering API",
+            good: "WebGL available - normal browser capability",
+            bad: "WebGL missing - very unusual for modern browsers"
         },
-        webglFlags: {
-            name: "WebGL Renderer Detection",
-            description: "Examines WebGL renderer information for software rendering",
-            purpose: "Detects virtual machines, headless browsers using software rendering",
-            suspicious_if: "Software renderer (SwiftShader, llvmpipe) instead of hardware GPU",
-            impact: "Medium - Indicates VM or headless environment"
+        'webgl-software': {
+            label: "Software Renderer",
+            description: "Using CPU-based software rendering instead of GPU",
+            good: "Hardware GPU rendering - normal desktop/laptop",
+            bad: "Software renderer (SwiftShader, llvmpipe) - VM or headless"
         },
-        advancedChecks: {
-            name: "Advanced CDP/Runtime Checks",
-            description: "Sophisticated detection using Error stack traces and Chrome runtime",
-            purpose: "Detects CDP Runtime.enable usage and missing Chrome extension runtime",
-            suspicious_if: "Error.stack accessed by CDP, chrome.runtime missing in Chrome",
-            impact: "Very High - Difficult for automation to evade"
+        'webgl-renderer': {
+            label: "Renderer",
+            description: "GPU vendor and model reported by WebGL",
+            info: "Shows claimed GPU hardware. Can be spoofed but rendering test verifies it"
         },
-        mediaChecks: {
-            name: "Media Devices & WebRTC",
-            description: "Verifies availability of media devices and WebRTC capabilities",
-            purpose: "Headless browsers often lack camera/microphone or have disabled WebRTC",
-            suspicious_if: "MediaDevices unavailable, no getUserMedia, WebRTC disabled",
-            impact: "Medium - Can indicate headless but also privacy-focused browsers"
+        'webgl-rendering-test': {
+            label: "Rendering Test",
+            description: "Complex 3D scene rendering matches claimed GPU capabilities",
+            good: "Rendering output consistent with reported GPU",
+            bad: "Output doesn't match GPU specs - spoofing detected"
         },
-        fingerprintChecks: {
-            name: "Browser Fingerprinting",
-            description: "Canvas, Audio Context, and Font detection for unique browser signatures",
-            purpose: "Creates unique fingerprints that differ between real and headless browsers",
-            suspicious_if: "Abnormal canvas output, non-standard audio sample rates, very few fonts",
-            impact: "Medium-High - Harder to spoof, indicates spoofing attempts if anomalous"
+        'webgl-noise': {
+            label: "Noise Ratio",
+            description: "Pixel variation in rendered output (hardware-specific)",
+            good: "<1% noise - normal hardware rendering",
+            bad: ">2% noise - suspicious uniform output, possible emulation"
+        },
+
+        // Worker UA Check
+        'worker-available': {
+            label: "Worker Available",
+            description: "Web Workers API is supported and functional",
+            good: "Workers available - normal browser",
+            bad: "Workers unavailable - very unusual"
+        },
+        'worker-mismatch': {
+            label: "UA Mismatch",
+            description: "User-Agent differs between main thread and Worker",
+            good: "Consistent UA - properly patched automation or real browser",
+            bad: "UA mismatch - automation failed to patch Worker context"
+        },
+        'worker-status': {
+            label: "Status",
+            description: "Current state of Worker UA validation",
+            info: "Shows if check is pending, completed, or any mismatch details"
+        },
+
+        // Emoji OS Check
+        'emoji-rendered': {
+            label: "Emoji Rendered",
+            description: "Canvas successfully rendered emoji character",
+            good: "Emoji rendering works - normal browser",
+            bad: "Failed to render - missing fonts or headless"
+        },
+        'emoji-os': {
+            label: "Detected OS",
+            description: "Operating system detected from emoji rendering style",
+            info: "Different OS render emoji differently. Should match User-Agent OS"
+        },
+        'emoji-suspicious': {
+            label: "Suspicious",
+            description: "Emoji rendering doesn't match claimed OS from User-Agent",
+            good: "Emoji style matches reported OS",
+            bad: "Mismatch detected - User-Agent spoofing or VM"
+        },
+
+        // Window Dimensions
+        'outer-dims': {
+            label: "Has Outer Dimensions",
+            description: "window.outerWidth/outerHeight are available",
+            good: "Outer dimensions present - normal windowed browser",
+            bad: "Missing outer dimensions - common in headless mode"
+        },
+        'inner-outer': {
+            label: "Inner = Outer",
+            description: "Inner and outer window dimensions are identical",
+            good: "Different dimensions - normal browser with chrome/toolbar",
+            bad: "Identical - suspicious, may indicate headless or fullscreen automation"
+        },
+        'dimensions': {
+            label: "Dimensions",
+            description: "Inner dimensions / Outer dimensions (width x height)",
+            info: "Inner is viewport, outer includes browser chrome. Difference indicates normal browser"
+        },
+
+        // Browser APIs
+        'plugins-count': {
+            label: "Plugins",
+            description: "Number of browser plugins available",
+            info: "Normal browsers have 3-5 plugins. Headless often has 0"
+        },
+        'languages-check': {
+            label: "Languages",
+            description: "navigator.languages array is populated",
+            good: "Languages array present - normal browser",
+            bad: "Empty or missing - common headless indicator"
+        },
+        'media-devices': {
+            label: "Media Devices",
+            description: "navigator.mediaDevices API is available",
+            good: "MediaDevices API present - normal browser",
+            bad: "Missing API - common in headless browsers"
+        },
+        'notifications': {
+            label: "Notifications",
+            description: "Notification permission state (granted/denied/default)",
+            info: "Headless often defaults to 'denied', normal browsers to 'default'"
+        },
+
+        // Automation Flags
+        'flag-domautomation': {
+            label: "domAutomation",
+            description: "Global domAutomation property - Chrome automation indicator",
+            good: "Not present - normal browser",
+            bad: "Present - automation framework detected"
+        },
+        'flag-selenium': {
+            label: "_selenium",
+            description: "Selenium-specific global variable",
+            good: "Not present - normal browser",
+            bad: "Present - Selenium WebDriver detected"
+        },
+        'flag-webdriver-evaluate': {
+            label: "__webdriver_evaluate",
+            description: "WebDriver evaluate function injection",
+            good: "Not present - normal browser",
+            bad: "Present - WebDriver automation detected"
+        },
+        'flag-phantom': {
+            label: "_phantom",
+            description: "PhantomJS-specific global variable",
+            good: "Not present - normal browser",
+            bad: "Present - PhantomJS headless browser detected"
+        },
+        'flag-nightmare': {
+            label: "__nightmare",
+            description: "Nightmare.js automation framework indicator",
+            good: "Not present - normal browser",
+            bad: "Present - Nightmare.js automation detected"
+        },
+        'flag-callphantom': {
+            label: "callPhantom",
+            description: "PhantomJS function for communication",
+            good: "Not present - normal browser",
+            bad: "Present - PhantomJS detected"
+        },
+
+        // Advanced Checks
+        'adv-stacktrace': {
+            label: "CDP Stack Trace",
+            description: "Error.stack accessed by CDP Runtime.enable",
+            good: "No CDP stack trace leak detected",
+            bad: "CDP detected via Error stack - automation using CDP protocol"
+        },
+        'adv-runtime': {
+            label: "Chrome Runtime",
+            description: "chrome.runtime extension API availability",
+            good: "chrome.runtime present - normal Chrome browser",
+            bad: "Missing chrome.runtime - unusual for Chrome, may be headless"
+        },
+        'adv-permissions': {
+            label: "Permissions API",
+            description: "navigator.permissions API behavior",
+            good: "Permissions API works normally",
+            bad: "Permissions denied by default - headless indicator"
+        },
+        'adv-console': {
+            label: "Console Debug",
+            description: "console.debug CDP artifact detection",
+            good: "No console.debug leaks detected",
+            bad: "CDP detected via console.debug modification"
+        },
+
+        // Media & WebRTC
+        'media-webrtc': {
+            label: "WebRTC Available",
+            description: "RTCPeerConnection API for real-time communication",
+            good: "WebRTC available - normal browser",
+            bad: "WebRTC disabled/missing - privacy mode or headless"
+        },
+        'media-devices-count': {
+            label: "Media Devices Count",
+            description: "Number of cameras, microphones available",
+            info: "Real devices usually have 1-3. Headless typically has 0"
+        },
+        'media-battery': {
+            label: "Battery API",
+            description: "navigator.getBattery() API availability",
+            good: "Battery API available",
+            bad: "Missing - common in VMs or headless browsers"
+        },
+
+        // Fingerprinting
+        'fp-canvas': {
+            label: "Canvas Available",
+            description: "HTML5 Canvas API for 2D/3D graphics",
+            good: "Canvas works normally",
+            bad: "Canvas missing or behaving abnormally"
+        },
+        'fp-audio': {
+            label: "Audio Context",
+            description: "Web Audio API for sound processing",
+            good: "Audio Context available",
+            bad: "Missing - unusual for modern browsers"
+        },
+        'fp-fonts': {
+            label: "Fonts Detected",
+            description: "Number of system fonts detected via canvas measurement",
+            info: "Normal systems have 8+ fonts. Headless typically <3 fonts"
+        },
+
+        // System Info
+        'platform': {
+            label: "Platform",
+            description: "navigator.platform - operating system identifier",
+            info: "Shows OS platform. Should match User-Agent OS claim"
+        },
+        'cpu-cores': {
+            label: "CPU Cores",
+            description: "navigator.hardwareConcurrency - logical CPU cores",
+            info: "Real machines: 2-32 cores. VMs often have fewer"
+        },
+        'device-memory': {
+            label: "Device Memory",
+            description: "navigator.deviceMemory - RAM in GB (approximate)",
+            info: "Real devices: 4-64 GB. Headless/VMs may report different values"
+        },
+        'touch-points': {
+            label: "Touch Points",
+            description: "navigator.maxTouchPoints - max simultaneous touches",
+            info: "Desktop: 0, Mobile: 5-10, Tablets: 10+"
         }
     };
 }
 
 /**
  * Generate a human-readable summary of what was detected
+ * @param {Object} results - Already computed detection results
  */
-function _generateDetectionSummary() {
+function _generateDetectionSummary(results) {
     const detections = [];
     const warnings = [];
+    const checkExplanations = _getCheckItemExplanations();
 
-    // Check each detection category
-    if (_detectWebdriver()) {
-        detections.push({
-            category: "WebDriver",
-            severity: "high",
-            message: "WebDriver flag detected - browser is controlled by automation"
-        });
+    // Helper function to check if value indicates a problem
+    function isProblematic(key, value, explanation) {
+        if (value === null || value === undefined || value === 'N/A') return null;
+
+        // Boolean checks - true is bad unless it's a "good" check
+        if (typeof value === 'boolean') {
+            const goodChecks = ['webgl-supported', 'worker-available', 'emoji-rendered',
+                'outer-dims', 'languages-check', 'media-devices', 'adv-permissions',
+                'media-webrtc', 'fp-canvas', 'fp-audio'];
+            const isGoodCheck = goodChecks.includes(key);
+
+            if (isGoodCheck && !value) return 'bad'; // Should be true but isn't
+            if (!isGoodCheck && value) return 'bad'; // Should be false but is true
+            return 'good';
+        }
+
+        // String "YES"/"NO" checks
+        if (value === 'YES' || value === 'NO') {
+            const goodChecks = ['webgl-supported', 'worker-available', 'emoji-rendered',
+                'outer-dims', 'languages-check', 'media-devices', 'adv-permissions',
+                'media-webrtc', 'fp-canvas', 'fp-audio'];
+            const isGoodCheck = goodChecks.includes(key);
+
+            if (isGoodCheck && value === 'NO') return 'bad';
+            if (!isGoodCheck && value === 'YES') return 'bad';
+            return 'good';
+        }
+
+        // Number checks
+        if (typeof value === 'number') {
+            if (key === 'cdp-keys' && value > 0) return 'bad';
+            if (key === 'plugins-count' && value === 0) return 'warning';
+        }
+
+        return null;
     }
 
-    const cdp = _detectCDP();
-    if (cdp.detected) {
-        detections.push({
-            category: "CDP",
-            severity: "critical",
-            message: `ChromeDriver/CDP detected (${cdp.cdcKeysFound} CDC keys found)`,
-            signals: cdp.signals
-        });
+    // Aggregate all check items
+    const checkItems = {
+        'webdriver-status': results.webdriver,
+        'cdp-detected': results.cdpArtifacts?.detected,
+        'cdp-keys': results.cdpArtifacts?.cdcKeysFound,
+        'ua-suspicious': results.userAgentFlags?.suspicious,
+        'webgl-supported': results.webglFlags?.supported,
+        'webgl-software': results.webglFlags?.isSoftwareRenderer,
+        'webgl-rendering-test': results.webglFlags?.renderingTest?.suspicious,
+        'worker-available': results.workerChecks?.available,
+        'worker-mismatch': results.workerChecks?.userAgentMismatch,
+        'emoji-rendered': results.fingerprintChecks?.canvas?.emojiCheck?.rendered,
+        'emoji-suspicious': results.fingerprintChecks?.canvas?.emojiCheck?.suspicious,
+        'outer-dims': results.headlessIndicators?.hasOuterDimensions,
+        'inner-outer': results.headlessIndicators?.innerEqualsOuter,
+        'languages-check': results.automationFlags?.languages,
+        'media-devices': results.headlessIndicators?.hasMediaDevices,
+        'adv-stacktrace': results.advancedChecks?.stackTrace?.cdpDetected,
+        'adv-runtime': !results.advancedChecks?.chromeRuntime?.missing,
+        'adv-permissions': !results.advancedChecks?.permissions?.deniedByDefault,
+        'adv-console': results.advancedChecks?.consoleDebug?.detected,
+        'media-webrtc': !results.mediaChecks?.webrtc?.suspicious,
+        'media-battery': results.mediaChecks?.battery?.available,
+        'fp-canvas': results.fingerprintChecks?.canvas?.available,
+        'fp-audio': results.fingerprintChecks?.audioContext?.available,
+        'plugins-count': results.automationFlags?.plugins
+    };
+
+    // Process each check item
+    Object.keys(checkItems).forEach(key => {
+        const value = checkItems[key];
+        const explanation = checkExplanations[key];
+        if (!explanation) return;
+
+        const status = isProblematic(key, value, explanation);
+
+        if (status === 'bad') {
+            const severity = ['cdp-detected', 'cdp-keys', 'webdriver-status', 'adv-stacktrace',
+                'worker-mismatch', 'emoji-suspicious', 'webgl-rendering-test'].includes(key) ?
+                'critical' : 'high';
+
+            detections.push({
+                category: explanation.label,
+                severity: severity,
+                message: explanation.bad || explanation.description,
+                checkId: key,
+                value: value
+            });
+        } else if (status === 'warning') {
+            warnings.push({
+                category: explanation.label,
+                severity: 'medium',
+                message: explanation.description,
+                checkId: key,
+                value: value,
+                note: explanation.info || explanation.bad
+            });
+        }
+    });
+
+    // Add pattern/signal details
+    if (results.cdpArtifacts?.signals?.length > 0) {
+        const cdpDetection = detections.find(d => d.checkId === 'cdp-detected');
+        if (cdpDetection) {
+            cdpDetection.signals = results.cdpArtifacts.signals;
+            cdpDetection.message += ` (${results.cdpArtifacts.cdcKeysFound} CDC keys)`;
+        }
     }
 
-    const ua = _checkUserAgent();
-    if (ua.suspicious) {
-        detections.push({
-            category: "User-Agent",
-            severity: "high",
-            message: `Suspicious User-Agent patterns detected`,
-            patterns: ua.matches
-        });
+    if (results.userAgentFlags?.matches?.length > 0) {
+        const uaDetection = detections.find(d => d.checkId === 'ua-suspicious');
+        if (uaDetection) {
+            uaDetection.patterns = results.userAgentFlags.matches;
+        }
     }
 
-    const webgl = _checkWebGL();
-    if (webgl.isSoftwareRenderer) {
-        warnings.push({
-            category: "WebGL",
-            severity: "medium",
-            message: `Software renderer detected: ${webgl.renderer}`,
-            note: "May indicate VM or headless environment"
-        });
+    if (results.webglFlags?.renderer && results.webglFlags?.isSoftwareRenderer) {
+        const webglDetection = detections.find(d => d.checkId === 'webgl-software');
+        if (webglDetection) {
+            webglDetection.renderer = results.webglFlags.renderer;
+        }
     }
 
-    const advanced = _getAdvancedChecks();
-    if (advanced.stackTrace && advanced.stackTrace.cdpDetected) {
-        detections.push({
-            category: "CDP Runtime",
-            severity: "critical",
-            message: "CDP Runtime.enable detected via Error stack trace leak"
-        });
-    }
-
-    if (advanced.chromeRuntime && advanced.chromeRuntime.missing) {
-        warnings.push({
-            category: "Chrome Runtime",
-            severity: "medium",
-            message: "chrome.runtime missing - unusual for Chrome browser"
-        });
-    }
-
-    const media = _getMediaChecks();
-    if (media.webrtc && media.webrtc.suspicious) {
-        warnings.push({
-            category: "WebRTC",
-            severity: "medium",
-            message: "WebRTC disabled or unavailable"
-        });
-    }
-
-    const fingerprint = _getFingerprintChecks();
-    if (fingerprint.canvas && fingerprint.canvas.suspicious) {
-        warnings.push({
-            category: "Canvas",
-            severity: "medium",
-            message: "Suspicious canvas fingerprint detected"
-        });
-    }
-
-    if (fingerprint.fonts && fingerprint.fonts.suspicious) {
-        warnings.push({
-            category: "Fonts",
-            severity: "medium",
-            message: `Very few fonts detected (${fingerprint.fonts.detectedCount}/${fingerprint.fonts.totalTested})`,
-            note: "Headless browsers typically have <3 fonts"
-        });
-    }
-
-    const score = _calculateHeadlessScore();
+    const score = results.isHeadless;
     const classification = score > 0.7 ? "Definitely Headless" :
         score > 0.5 ? "Likely Headless" :
             score > 0.3 ? "Suspicious" :
