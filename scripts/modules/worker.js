@@ -28,6 +28,7 @@ function getWorkerChecks() {
     });
 
     return new Promise((resolve) => {
+        let blobUrl = null;
         try {
             // Create a blob worker to check UA
             const workerCode = `
@@ -40,7 +41,7 @@ function getWorkerChecks() {
             `;
 
             const blob = new Blob([workerCode], { type: 'application/javascript' });
-            const blobUrl = URL.createObjectURL(blob);
+            blobUrl = URL.createObjectURL(blob);
             const worker = new Worker(blobUrl);
 
             const timeout = setTimeout(() => {
@@ -91,6 +92,9 @@ function getWorkerChecks() {
 
             worker.postMessage({});
         } catch (e) {
+            if (blobUrl) {
+                URL.revokeObjectURL(blobUrl);
+            }
             resolve(createResult({
                 error: e.message,
                 reason: "Worker creation failed"

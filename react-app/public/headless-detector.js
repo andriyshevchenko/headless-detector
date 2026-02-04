@@ -732,14 +732,11 @@ function _checkWebRTC() {
         const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 
         // Check if WebRTC is artificially disabled (common in headless)
-        // Only attempt instantiation when API is available
         let rtcDisabled = false;
-        if (hasRTC) {
-            try {
-                new RTCPeerConnection();
-            } catch (e) {
-                rtcDisabled = true;
-            }
+        try {
+            new RTCPeerConnection();
+        } catch (e) {
+            rtcDisabled = true;
         }
 
         return {
@@ -939,7 +936,7 @@ function _checkEmojiRendering() {
         const emojiCtx = canvas.getContext('2d');
 
         if (!emojiCtx) {
-            return { suspicious: false, rendered: false, reason: "Cannot test emoji" };
+            return { suspicious: false, reason: "Cannot test emoji" };
         }
 
         // Draw OS-specific emoji
@@ -964,7 +961,6 @@ function _checkEmojiRendering() {
         if (allSame) {
             return {
                 suspicious: true,
-                rendered: false,
                 reason: "Emoji not rendered - possible headless",
                 hash: hash,
                 detectedOS: 'none'
@@ -980,7 +976,7 @@ function _checkEmojiRendering() {
             rendered: true
         };
     } catch (e) {
-        return { suspicious: false, error: e.message, rendered: false };
+        return { suspicious: false, error: e.message };
     }
 }
 
@@ -1253,14 +1249,14 @@ function _getCheckItemExplanations() {
         },
         'emoji-os': {
             label: "Detected OS",
-            description: "Operating system detected from User-Agent",
-            info: "Shows the detected OS for reference"
+            description: "Operating system detected from emoji rendering style",
+            info: "Different OS render emoji differently. Should match User-Agent OS"
         },
         'emoji-suspicious': {
             label: "Suspicious",
-            description: "Emoji failed to render on canvas",
-            good: "Emoji rendered successfully",
-            bad: "Emoji not rendered - possible headless browser"
+            description: "Emoji rendering doesn't match claimed OS from User-Agent",
+            good: "Emoji style matches reported OS",
+            bad: "Mismatch detected - User-Agent spoofing or VM"
         },
 
         // Window Dimensions

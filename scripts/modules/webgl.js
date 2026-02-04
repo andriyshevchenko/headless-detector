@@ -60,7 +60,7 @@ function checkWebGL() {
             rendererLower.includes('mesa');
 
         // 2026: Perform complex rendering test to validate GPU consistency
-        const renderingTest = performWebGLRenderingTest(gl, vendor, renderer);
+        const renderingTest = performWebGLRenderingTest(gl, canvas, vendor, renderer);
 
         return {
             supported: true,
@@ -70,7 +70,7 @@ function checkWebGL() {
             shadingVersion: gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
             isSoftwareRenderer,
             renderingTest: renderingTest,
-            suspicious: isSoftwareRenderer || Boolean(renderingTest && renderingTest.suspicious)
+            suspicious: isSoftwareRenderer || (renderingTest && renderingTest.suspicious)
         };
     } catch (e) {
         return { supported: false, error: true };
@@ -82,14 +82,17 @@ function checkWebGL() {
  * Renders a complex 3D scene and hashes the output
  * Bots using software renderers will produce different/noisy output
  * @param {WebGLRenderingContext} gl - WebGL context
+ * @param {HTMLCanvasElement} canvas - Canvas element for setting dimensions
  * @param {string} claimedVendor - Claimed GPU vendor
  * @param {string} claimedRenderer - Claimed GPU renderer
  * @returns {Object} Rendering test results
  */
-function performWebGLRenderingTest(gl, claimedVendor, claimedRenderer) {
+function performWebGLRenderingTest(gl, canvas, claimedVendor, claimedRenderer) {
     try {
         // Use a fixed small canvas size for consistent, fast testing
         const testSize = 64;
+        canvas.width = testSize;
+        canvas.height = testSize;
         
         // Create a simple rotating cube with lighting
         const vertices = new Float32Array([
