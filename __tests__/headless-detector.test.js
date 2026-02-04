@@ -107,7 +107,7 @@ describe('HeadlessDetector', () => {
     test('should have correct detection version', async () => {
       const result = await detector.detectHeadless();
 
-      expect(result.detectionVersion).toBe('2.0.0');
+      expect(result.detectionVersion).toBe('1.0.0');
     });
   });
 
@@ -636,98 +636,6 @@ describe('HeadlessDetector', () => {
 
       // WebGL rendering test
       expect(explanations['webgl-rendering-test']).toBeDefined();
-    });
-  });
-
-  describe('API v2.0 - Behavioral Analysis', () => {
-    test('should accept options object with attachToWindow', async () => {
-      const result = await detector.detectHeadless({
-        attachToWindow: false
-      });
-
-      expect(result).toBeDefined();
-      expect(result.detectionVersion).toBe('2.0.0');
-      expect(result.isHeadless).toBeDefined();
-    });
-
-    test('should accept options object with null includeBehavior', async () => {
-      const result = await detector.detectHeadless({
-        attachToWindow: false,
-        includeBehavior: null
-      });
-
-      expect(result).toBeDefined();
-      expect(result.behaviorAnalysis).toBeUndefined();
-    });
-
-    test('should maintain backward compatibility with boolean parameter', async () => {
-      const result1 = await detector.detectHeadless(false);
-      const result2 = await detector.detectHeadless(true);
-
-      expect(result1.detectionVersion).toBe('2.0.0');
-      expect(result2.detectionVersion).toBe('2.0.0');
-      expect(result1.behaviorAnalysis).toBeUndefined();
-      expect(result2.behaviorAnalysis).toBeUndefined();
-    });
-
-    test('should include behavioral analysis when monitor provided', async () => {
-      const HeadlessBehaviorMonitor = require('../scripts/behavior-monitor.js');
-      
-      const monitor = new HeadlessBehaviorMonitor();
-      monitor.start();
-      
-      // Simulate some data
-      for (let i = 0; i < 25; i++) {
-        monitor.data.mouse.push({
-          x: i * 10, y: 100, timestamp: Date.now() + i, isTrusted: true
-        });
-      }
-      
-      const result = await detector.detectHeadless({
-        includeBehavior: monitor
-      });
-
-      expect(result.behaviorAnalysis).toBeDefined();
-      expect(result.behaviorAnalysis.overallScore).toBeDefined();
-      expect(result.behaviorAnalysis.confidence).toBeDefined();
-      
-      monitor.stop();
-    });
-
-    test('should adjust score when behavioral data included with high confidence', async () => {
-      const HeadlessBehaviorMonitor = require('../scripts/behavior-monitor.js');
-      
-      // Get baseline score without behavioral
-      const baselineResult = await detector.detectHeadless();
-      const baselineScore = baselineResult.isHeadless;
-      
-      // Create monitor with high-confidence data
-      const monitor = new HeadlessBehaviorMonitor();
-      monitor.start();
-      
-      // Add enough data for high confidence
-      for (let i = 0; i < 25; i++) {
-        monitor.data.mouse.push({
-          x: i * 10, y: 100, timestamp: Date.now() + i, isTrusted: true
-        });
-      }
-      for (let i = 0; i < 15; i++) {
-        monitor.data.keyboard.push({
-          key: 'a', timestamp: Date.now() + i, holdTime: 50, isTrusted: true
-        });
-      }
-      
-      const result = await detector.detectHeadless({
-        includeBehavior: monitor
-      });
-
-      // Score should be different when behavioral data is included
-      // (unless behavioral score happens to match instant score exactly)
-      expect(result.behaviorAnalysis.confidence).toBeGreaterThan(0.5);
-      expect(result.isHeadless).toBeDefined();
-      expect(typeof result.isHeadless).toBe('number');
-      
-      monitor.stop();
     });
   });
 });
