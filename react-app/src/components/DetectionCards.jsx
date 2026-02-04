@@ -407,13 +407,13 @@ export function AdvancedChecksCard({ advancedChecks }) {
             />
             <CheckItem 
                 label="Chrome Runtime"
-                value={formatCheckValue(!advancedChecks.chromeRuntime?.missing)}
-                status={getCheckStatus(!advancedChecks.chromeRuntime?.missing, true)}
+                value={advancedChecks.chromeRuntime?.missing === undefined ? 'N/A' : formatCheckValue(!advancedChecks.chromeRuntime.missing)}
+                status={advancedChecks.chromeRuntime?.missing === undefined ? 'info' : getCheckStatus(!advancedChecks.chromeRuntime.missing, true)}
             />
             <CheckItem 
                 label="Permissions API"
-                value={formatCheckValue(!advancedChecks.permissions?.deniedByDefault)}
-                status={getCheckStatus(!advancedChecks.permissions?.deniedByDefault, true)}
+                value={advancedChecks.permissions?.deniedByDefault === undefined ? 'N/A' : formatCheckValue(!advancedChecks.permissions.deniedByDefault)}
+                status={advancedChecks.permissions?.deniedByDefault === undefined ? 'info' : getCheckStatus(!advancedChecks.permissions.deniedByDefault, true)}
             />
             <CheckItem 
                 label="Console Debug"
@@ -434,12 +434,14 @@ AdvancedChecksCard.propTypes = {
 export function MediaCard({ mediaChecks }) {
     if (!mediaChecks) return null;
     
+    const webrtcSuspicious = mediaChecks.webrtc?.suspicious;
+    
     return (
         <DetectionCard title="Media & WebRTC" icon="🎥">
             <CheckItem 
                 label="WebRTC Available"
-                value={formatCheckValue(!mediaChecks.webrtc?.suspicious)}
-                status={getCheckStatus(!mediaChecks.webrtc?.suspicious, true)}
+                value={webrtcSuspicious === undefined ? 'N/A' : formatCheckValue(!webrtcSuspicious)}
+                status={webrtcSuspicious === undefined ? 'info' : getCheckStatus(!webrtcSuspicious, true)}
             />
             <CheckItem 
                 label="Media Devices API"

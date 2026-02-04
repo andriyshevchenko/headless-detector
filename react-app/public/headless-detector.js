@@ -547,7 +547,7 @@ function _checkWebGL() {
             shadingVersion: gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
             isSoftwareRenderer,
             renderingTest: renderingTest,
-            suspicious: isSoftwareRenderer || Boolean(renderingTest && renderingTest.suspicious)
+            suspicious: isSoftwareRenderer || Boolean(renderingTest?.suspicious)
         };
     } catch (e) {
         return { supported: false, error: true };
@@ -1449,7 +1449,8 @@ function _getCheckItemExplanations() {
 function _generateDetectionSummary(results) {
     const detections = [];
     const warnings = [];
-    const checkExplanations = _getCheckItemExplanations();
+    // Use the explanations already attached to results to ensure consistency
+    const checkExplanations = results.checkItemExplanations || _getCheckItemExplanations();
 
     // Helper function to check if value indicates a problem
     function isProblematic(key, value, explanation) {
