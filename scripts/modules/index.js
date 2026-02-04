@@ -60,9 +60,15 @@ if (typeof window !== 'undefined' && window.HeadlessDetectorModules) {
  * @returns {Promise<Object>} Comprehensive headless detection results with explanations
  */
 async function detectHeadless(attachToWindow = false) {
-    // Validate that required module functions are available
-    if (!modules.detectWebdriver || !modules.getWorkerChecks || !modules.getCheckItemExplanations) {
-        throw new Error('HeadlessDetector modules not loaded. Ensure detection script is loaded or window.HeadlessDetectorModules is set.');
+    // Validate that all required module functions are available
+    const requiredFunctions = [
+        'detectWebdriver', 'detectCDP', 'checkUserAgent', 'checkWebGL',
+        'getAutomationFlags', 'getHeadlessIndicators', 'getMediaChecks',
+        'getFingerprintChecks', 'getWorkerChecks', 'getCheckItemExplanations'
+    ];
+    const missingFunctions = requiredFunctions.filter(fn => !modules[fn]);
+    if (missingFunctions.length > 0) {
+        throw new Error(`HeadlessDetector modules not loaded. Missing: ${missingFunctions.join(', ')}. Ensure detection script is loaded or window.HeadlessDetectorModules is set.`);
     }
 
     // Get module functions (from imports or window)
@@ -239,10 +245,10 @@ async function calculateHeadlessScore(workerChecks = null) {
  * @returns {Object} Detection summary
  */
 function generateDetectionSummary(results) {
-    const { getCheckItemExplanations } = modules;
     const detections = [];
     const warnings = [];
-    const checkExplanations = getCheckItemExplanations();
+    // Use explanations already attached to results for consistency
+    const checkExplanations = results.checkItemExplanations || modules.getCheckItemExplanations();
 
     // Helper function to check if value indicates a problem
     function isProblematic(key, value, explanation) {
@@ -250,9 +256,10 @@ function generateDetectionSummary(results) {
 
         // Boolean checks - true is bad unless it's a "good" check
         if (typeof value === 'boolean') {
+            // Note: adv-permissions and media-webrtc are NOT in goodChecks because their 
+            // checkItems values (deniedByDefault, suspicious) are true when problematic
             const goodChecks = ['webgl-supported', 'worker-available', 'emoji-rendered',
-                'outer-dims', 'languages-check', 'media-devices', 'adv-permissions',
-                'media-webrtc', 'fp-canvas', 'fp-audio'];
+                'outer-dims', 'languages-check', 'media-devices', 'fp-canvas', 'fp-audio'];
             const isGoodCheck = goodChecks.includes(key);
 
             if (isGoodCheck && !value) return 'bad'; // Should be true but isn't
@@ -262,9 +269,10 @@ function generateDetectionSummary(results) {
 
         // String "YES"/"NO" checks
         if (value === 'YES' || value === 'NO') {
+            // Note: adv-permissions and media-webrtc are NOT in goodChecks because their 
+            // checkItems values (deniedByDefault, suspicious) are true when problematic
             const goodChecks = ['webgl-supported', 'worker-available', 'emoji-rendered',
-                'outer-dims', 'languages-check', 'media-devices', 'adv-permissions',
-                'media-webrtc', 'fp-canvas', 'fp-audio'];
+                'outer-dims', 'languages-check', 'media-devices', 'fp-canvas', 'fp-audio'];
             const isGoodCheck = goodChecks.includes(key);
 
             if (isGoodCheck && value === 'NO') return 'bad';

@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "sync": "cp ../scripts/headless-detector.js public/headless-detector.js",
+    "predev": "npm run sync",
     "dev": "vite",
+    "prebuild": "npm run sync",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

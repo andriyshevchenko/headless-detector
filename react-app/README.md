@@ -17,6 +17,8 @@ npm run dev
 
 The app will be available at `http://localhost:5173`.
 
+**Note:** The `dev` script automatically syncs the detection script from `scripts/headless-detector.js` before starting the development server.
+
 ## Build
 
 ```bash
@@ -25,20 +27,21 @@ npm run build
 
 Build output goes to `react-app/dist/`.
 
+**Note:** The `build` script automatically syncs the detection script before building.
+
 ## How It Works
 
-The React app loads `public/headless-detector.js` which contains the detection logic. This file is a copy of `scripts/headless-detector.js` from the root project.
+The React app loads `public/headless-detector.js` which contains the detection logic. This file is automatically synced from `scripts/headless-detector.js` via npm scripts.
 
-### Keeping Detection Logic in Sync
+### Automated Sync
 
-When updating the detection logic, ensure both files stay synchronized:
+The detection logic is kept in sync automatically:
 
-1. Make changes to `scripts/headless-detector.js` (source of truth)
-2. Copy the updated file to `react-app/public/headless-detector.js`
+- **`npm run sync`** - Manually sync the detection script
+- **`npm run dev`** - Automatically syncs before starting dev server
+- **`npm run build`** - Automatically syncs before building
 
-```bash
-cp scripts/headless-detector.js react-app/public/headless-detector.js
-```
+This ensures `public/headless-detector.js` always matches the source of truth in `scripts/headless-detector.js`.
 
 ### Accessing Detection Results
 
@@ -54,7 +57,7 @@ The detection results are exposed globally for automation testing:
 ```
 react-app/
 ├── public/
-│   └── headless-detector.js  # Detection script (copy from scripts/)
+│   └── headless-detector.js  # Detection script (auto-synced from scripts/)
 ├── src/
 │   ├── components/           # React components
 │   │   ├── DetectionCards.jsx

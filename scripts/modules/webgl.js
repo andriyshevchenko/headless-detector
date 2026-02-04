@@ -88,6 +88,9 @@ function checkWebGL() {
  */
 function performWebGLRenderingTest(gl, claimedVendor, claimedRenderer) {
     try {
+        // Use a fixed small canvas size for consistent, fast testing
+        const testSize = 64;
+        
         // Create a simple rotating cube with lighting
         const vertices = new Float32Array([
             -1, -1, 1, 1, -1, 1, 1, 1, 1, -1, 1, 1,  // front
@@ -127,24 +130,30 @@ function performWebGLRenderingTest(gl, claimedVendor, claimedRenderer) {
         gl.enableVertexAttribArray(position);
         gl.vertexAttribPointer(position, 3, gl.FLOAT, false, 0, 0);
 
+        // Set viewport to fixed size for consistent results
+        gl.viewport(0, 0, testSize, testSize);
+        
         // Clear and draw
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-        // Read pixels and hash
-        const pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
-        gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        // Read only the fixed test area (64x64 = 4096 pixels * 4 channels)
+        const pixels = new Uint8Array(testSize * testSize * 4);
+        gl.readPixels(0, 0, testSize, testSize, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
         const hash = simpleHash(Array.from(pixels.slice(0, 1000)).join(','));
 
-        // Check for noise (software renderer often produces noisy output)
+        // Check for noise using sampling (check every 16th pixel for speed)
         let noiseLevel = 0;
-        for (let i = 0; i < pixels.length - 4; i += 4) {
-            const diff = Math.abs(pixels[i] - pixels[i + 4]);
+        let sampleCount = 0;
+        const sampleInterval = 16;
+        for (let i = 0; i < pixels.length - sampleInterval * 4; i += sampleInterval * 4) {
+            const diff = Math.abs(pixels[i] - pixels[i + sampleInterval * 4]);
             if (diff > 5) noiseLevel++;
+            sampleCount++;
         }
-        const noiseRatio = noiseLevel / (pixels.length / 4);
+        const noiseRatio = sampleCount > 0 ? noiseLevel / sampleCount : 0;
 
         // Check consistency with claimed GPU
         const isHighEndGPU = /nvidia|geforce|rtx|gtx|radeon|rx /i.test(claimedRenderer);

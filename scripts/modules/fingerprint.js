@@ -70,6 +70,7 @@ function checkEmojiRendering() {
         if (allSame) {
             return {
                 suspicious: true,
+                rendered: false,
                 reason: "Emoji not rendered - possible headless",
                 hash: hash,
                 detectedOS: 'none'
@@ -80,12 +81,12 @@ function checkEmojiRendering() {
         // This is a simplified check - full implementation would need OS-specific hashes
         return {
             suspicious: false,
+            rendered: true,
             hash: hash,
-            detectedOS: isWindows ? 'Windows' : isMac ? 'macOS' : isLinux ? 'Linux' : isAndroid ? 'Android' : isIOS ? 'iOS' : 'Unknown',
-            rendered: true
+            detectedOS: isWindows ? 'Windows' : isMac ? 'macOS' : isLinux ? 'Linux' : isAndroid ? 'Android' : isIOS ? 'iOS' : 'Unknown'
         };
     } catch (e) {
-        return { suspicious: false, error: e.message };
+        return { suspicious: false, rendered: false, error: e.message };
     }
 }
 

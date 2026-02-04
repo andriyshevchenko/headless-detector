@@ -1458,9 +1458,10 @@ function _generateDetectionSummary(results) {
 
         // Boolean checks - true is bad unless it's a "good" check
         if (typeof value === 'boolean') {
+            // Note: adv-permissions and media-webrtc are NOT in goodChecks because their 
+            // checkItems values (deniedByDefault, suspicious) are true when problematic
             const goodChecks = ['webgl-supported', 'worker-available', 'emoji-rendered',
-                'outer-dims', 'languages-check', 'media-devices', 'adv-permissions',
-                'media-webrtc', 'fp-canvas', 'fp-audio'];
+                'outer-dims', 'languages-check', 'media-devices', 'fp-canvas', 'fp-audio'];
             const isGoodCheck = goodChecks.includes(key);
 
             if (isGoodCheck && !value) return 'bad'; // Should be true but isn't
@@ -1470,9 +1471,10 @@ function _generateDetectionSummary(results) {
 
         // String "YES"/"NO" checks
         if (value === 'YES' || value === 'NO') {
+            // Note: adv-permissions and media-webrtc are NOT in goodChecks because their 
+            // checkItems values (deniedByDefault, suspicious) are true when problematic
             const goodChecks = ['webgl-supported', 'worker-available', 'emoji-rendered',
-                'outer-dims', 'languages-check', 'media-devices', 'adv-permissions',
-                'media-webrtc', 'fp-canvas', 'fp-audio'];
+                'outer-dims', 'languages-check', 'media-devices', 'fp-canvas', 'fp-audio'];
             const isGoodCheck = goodChecks.includes(key);
 
             if (isGoodCheck && value === 'NO') return 'bad';

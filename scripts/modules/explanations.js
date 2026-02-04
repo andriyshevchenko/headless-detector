@@ -100,14 +100,14 @@ function getCheckItemExplanations() {
         },
         'emoji-os': {
             label: "Detected OS",
-            description: "Operating system detected from emoji rendering style",
-            info: "Different OS render emoji differently. Should match User-Agent OS"
+            description: "Operating system detected from User-Agent",
+            info: "Shows the detected OS for reference"
         },
         'emoji-suspicious': {
             label: "Suspicious",
-            description: "Emoji rendering doesn't match claimed OS from User-Agent",
-            good: "Emoji style matches reported OS",
-            bad: "Mismatch detected - User-Agent spoofing or VM"
+            description: "Emoji failed to render on canvas",
+            good: "Emoji rendered successfully",
+            bad: "Emoji not rendered - possible headless browser"
         },
 
         // Window Dimensions
