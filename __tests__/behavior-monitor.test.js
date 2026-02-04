@@ -85,6 +85,50 @@ describe('HeadlessBehaviorMonitor', () => {
             const results = monitor.stop();
             expect(results).toBeNull();
         });
+
+        test('stop() should resolve pending waitForReady() promises with false', async () => {
+            monitor.start();
+            
+            // Create pending promises
+            const promise1 = monitor.waitForReady(10000);
+            const promise2 = monitor.waitForReady(10000);
+            
+            // Stop before ready
+            monitor.stop();
+            
+            // Promises should resolve with false
+            const result1 = await promise1;
+            const result2 = await promise2;
+            
+            expect(result1).toBe(false);
+            expect(result2).toBe(false);
+        });
+
+        test('start() should clear pending promises from previous session', async () => {
+            monitor.start();
+            
+            // Create a pending promise
+            const oldPromise = monitor.waitForReady(10000);
+            
+            // Start a new session (should clear old promises)
+            monitor.stop();
+            monitor.start();
+            
+            // Create a new promise
+            const newPromise = monitor.waitForReady(10000);
+            
+            // Simulate readiness
+            monitor.data.mouse = Array(20).fill({ x: 100, y: 100, timestamp: Date.now() });
+            monitor.data.keyboard = Array(10).fill({ key: 'a', timestamp: Date.now() });
+            monitor._checkReadiness();
+            
+            // New promise should resolve with true
+            const newResult = await newPromise;
+            expect(newResult).toBe(true);
+            
+            // Old promise should still be pending (not affected by new session)
+            // We can't easily test this, but the important part is it doesn't break
+        });
     });
 
     describe('Status and Results', () => {

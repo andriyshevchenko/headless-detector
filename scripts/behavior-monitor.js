@@ -87,6 +87,7 @@ class HeadlessBehaviorMonitor {
         this.isRunning = true;
         this.startTime = Date.now();
         this.readyFired = false;
+        this.readyResolvers = [];
         
         // Attach event listeners
         if (typeof window !== 'undefined' && typeof document !== 'undefined') {
@@ -175,6 +176,18 @@ class HeadlessBehaviorMonitor {
         if (this.sensorTimeoutId) {
             clearTimeout(this.sensorTimeoutId);
             this.sensorTimeoutId = null;
+        }
+        
+        // Resolve any pending waitForReady() promises as not ready
+        if (Array.isArray(this.readyResolvers) && this.readyResolvers.length > 0) {
+            for (const resolve of this.readyResolvers) {
+                try {
+                    resolve(false);
+                } catch (e) {
+                    // Ignore errors thrown by user-provided resolvers
+                }
+            }
+            this.readyResolvers = [];
         }
         
         return this.getResults();
