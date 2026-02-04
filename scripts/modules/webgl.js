@@ -60,7 +60,7 @@ function checkWebGL() {
             rendererLower.includes('mesa');
 
         // 2026: Perform complex rendering test to validate GPU consistency
-        const renderingTest = performWebGLRenderingTest(gl, canvas, vendor, renderer);
+        const renderingTest = performWebGLRenderingTest(gl, canvas, renderer);
 
         return {
             supported: true,
@@ -83,11 +83,10 @@ function checkWebGL() {
  * Bots using software renderers will produce different/noisy output
  * @param {WebGLRenderingContext} gl - WebGL context
  * @param {HTMLCanvasElement} canvas - Canvas element for setting dimensions
- * @param {string} claimedVendor - Claimed GPU vendor
  * @param {string} claimedRenderer - Claimed GPU renderer
  * @returns {Object} Rendering test results
  */
-function performWebGLRenderingTest(gl, canvas, claimedVendor, claimedRenderer) {
+function performWebGLRenderingTest(gl, canvas, claimedRenderer) {
     try {
         // Use a fixed small canvas size for consistent, fast testing
         const testSize = 64;
