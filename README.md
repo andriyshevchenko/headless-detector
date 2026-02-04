@@ -1,7 +1,7 @@
 # Headless Browser Detector
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/andriyshevchenko/headless-detector)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/andriyshevchenko/headless-detector)
 [![CI Tests](https://github.com/andriyshevchenko/headless-detector/actions/workflows/test.yml/badge.svg)](https://github.com/andriyshevchenko/headless-detector/actions/workflows/test.yml)
 [![npm version](https://img.shields.io/npm/v/headless-detector.svg)](https://www.npmjs.com/package/headless-detector)
 
@@ -229,6 +229,36 @@ Open `client/detectors/index.html` in your browser to see the interactive demo w
 | 0.5 - 0.7 | Likely Headless | High | Strong automation signals |
 | 0.7 - 1.0 | Definitely Headless | High | Confirmed automation/headless |
 
+## Project Structure
+
+```
+headless-detector/
+├── scripts/
+│   ├── headless-detector.js    # Main entry point (backward compatible)
+│   ├── modules/
+│   │   ├── index.js            # Module aggregator
+│   │   ├── webdriver.js        # WebDriver detection
+│   │   ├── cdp.js              # CDP artifacts detection
+│   │   ├── userAgent.js        # User-Agent analysis
+│   │   ├── webgl.js            # WebGL renderer checks
+│   │   ├── automation.js       # Automation flags
+│   │   ├── media.js            # Media/WebRTC checks
+│   │   ├── fingerprint.js      # Canvas/audio/font fingerprinting
+│   │   ├── worker.js           # Worker UA mismatch
+│   │   └── explanations.js     # Check descriptions
+│   └── utils/
+│       └── hash.js             # Hashing utility
+├── react-app/                  # React demo UI
+│   ├── src/
+│   │   ├── components/         # UI components
+│   │   └── hooks/              # React hooks (useHeadlessDetection)
+│   └── public/
+│       └── headless-detector.js
+└── __tests__/
+    ├── headless-detector.test.js
+    └── modules/                # Per-module unit tests
+```
+
 ## Browser Support
 
 - Chrome/Chromium 90+
@@ -261,6 +291,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - W3C specifications and guidance
 
 ## Version History
+
+### 2.0.0 (2026-02-04)
+- 🏗️ **Modular Architecture** - Refactored into separate detection modules
+- ⚛️ **React Demo App** - Modern React-based UI with Vite and modular components
+- 🧪 **Modular Tests** - Split tests by detection module (115+ tests)
+- Optimized WebGL rendering with fixed canvas size and pixel sampling
+- Fixed emoji check schema consistency
+- Fixed React hook mount state tracking
 
 ### 1.2.0 (2026-02-04)
 - 🎭 **Playwright Detection** - Detects `__playwright__binding__`, `__pwInitScripts` and exposed functions
