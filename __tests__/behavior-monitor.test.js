@@ -107,10 +107,10 @@ describe('HeadlessBehaviorMonitor', () => {
         test('start() should clear pending promises from previous session', async () => {
             monitor.start();
             
-            // Create a pending promise
-            const oldPromise = monitor.waitForReady(10000);
+            // Create a pending promise (will be resolved by stop())
+            monitor.waitForReady(10000);
             
-            // Start a new session (should clear old promises)
+            // Start a new session (stop() resolves old promise, start() clears resolvers)
             monitor.stop();
             monitor.start();
             
@@ -126,8 +126,8 @@ describe('HeadlessBehaviorMonitor', () => {
             const newResult = await newPromise;
             expect(newResult).toBe(true);
             
-            // Old promise should still be pending (not affected by new session)
-            // We can't easily test this, but the important part is it doesn't break
+            // The old promise was already resolved with false by stop()
+            // start() then clears the resolvers array for a fresh session
         });
     });
 

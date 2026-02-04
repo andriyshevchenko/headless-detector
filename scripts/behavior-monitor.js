@@ -75,6 +75,10 @@ class HeadlessBehaviorMonitor {
      * This method is synchronous and returns immediately after attaching event listeners.
      * Use waitForReady() to wait for enough samples to be collected.
      * 
+     * Starting a new session clears any pending promise resolvers from a previous session.
+     * Note: If you had pending waitForReady() promises from a previous session that was
+     * stopped, those were already resolved with false by stop().
+     * 
      * @returns {void}
      * 
      * @example
@@ -134,6 +138,8 @@ class HeadlessBehaviorMonitor {
      * 
      * This method is synchronous. It removes all event listeners and returns
      * the final analysis results immediately.
+     * 
+     * Note: Any pending waitForReady() promises will be resolved with false.
      * 
      * @returns {Object|null} Final analysis results, or null if not running
      * 
