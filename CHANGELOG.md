@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-02-04
+
+### Added
+- 🧪 **Behavior Monitor Test UI** - New interactive test page (`behavior-monitor.html`) for HeadlessBehaviorMonitor
+  - Start/End Session buttons for controlling monitoring sessions
+  - Real-time live sample counters (mouse, keyboard, scroll, touch, events)
+  - Session status indicator with elapsed time display
+  - Comprehensive analysis results display with per-category scores and metrics
+  - Session metadata display (duration, total samples, timestamp)
+  - Programmatic API access via `window.__behaviorMonitor`
+- 🔗 **Navigation Link** - Added "Try Behavior Monitor" link in main index.html header
+- ♿ **Accessibility Improvements**
+  - Added `aria-label` attributes to buttons and navigation links
+  - Added `role="status"` and `aria-live="polite"` to session status indicator
+  - Added `aria-live="polite"` region for live sample counters
+  - Added keyboard `:focus` styles for buttons
+- 🛡️ **Error Handling** - Added defensive checks and try-catch for monitor initialization
+
+### Changed
+- Improved code quality with named constants for update intervals
+- Changed initialization from `load` to `DOMContentLoaded` for faster page load
+- Added interval cleanup to prevent memory leaks
+
 ## [2.0.0] - 2026-02-04
 
 ### Added
@@ -98,6 +121,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Browser compatibility information
 - Research references from industry leaders (Castle.io, DataDome, FingerprintJS)
 
+[2.1.0]: https://github.com/andriyshevchenko/headless-detector/releases/tag/v2.1.0
 [2.0.0]: https://github.com/andriyshevchenko/headless-detector/releases/tag/v2.0.0
 [1.2.0]: https://github.com/andriyshevchenko/headless-detector/releases/tag/v1.2.0
 [1.0.1]: https://github.com/andriyshevchenko/headless-detector/releases/tag/v1.0.1
