@@ -166,7 +166,7 @@ async function _calculateHeadlessScore(workerChecks = null) {
     // Advanced checks (2025)
     const advanced = _getAdvancedChecks();
     if (advanced.permissions && advanced.permissions.deniedByDefault) score += 0.06;
-    if (advanced.chromeRuntime && advanced.chromeRuntime.missing) score += 0.05;
+    if (advanced.chromeRuntime && advanced.chromeRuntime.suspicious) score += 0.05;
     if (advanced.stackTrace && advanced.stackTrace.cdpDetected) score += 0.12;
 
     // Media checks (2026: NEW)
