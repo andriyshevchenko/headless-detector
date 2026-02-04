@@ -682,14 +682,11 @@ class HeadlessBehaviorMonitor {
             const distance = Math.sqrt(dx * dx + dy * dy);
             const timeDiff = curr.timestamp - prev.timestamp;
             
+            totalDistance += distance;
+            
             if (timeDiff > 0) {
                 const velocity = distance / timeDiff;
                 velocities.push(velocity);
-                
-                // Check for perfectly straight lines (bot-like)
-                if (Math.abs(dx) < 0.01 || Math.abs(dy) < 0.01) {
-                    straightLineSegments++;
-                }
                 
                 // Calculate angle
                 if (i > 1) {
@@ -700,7 +697,11 @@ class HeadlessBehaviorMonitor {
                 }
             }
             
-            totalDistance += distance;
+            // Check for perfectly straight lines (bot-like) with actual movement
+            // Only count horizontal or vertical lines, not stationary points
+            if (distance > 0.01 && (Math.abs(dx) < 0.01 || Math.abs(dy) < 0.01)) {
+                straightLineSegments++;
+            }
             
             if (!curr.isTrusted) {
                 untrustedCount++;
