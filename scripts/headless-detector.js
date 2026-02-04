@@ -246,10 +246,11 @@ function _detectPlaywrightExposedFunctions() {
             if (key === 'HeadlessDetector') return;
 
             if (typeof value === 'function') {
+                let isSuspicious = false;
+                
                 // Check for __installed property (Playwright-specific)
                 if (typeof value['__installed'] === 'boolean') {
-                    matchedCount++;
-                    suspiciousFunctions.push(key);
+                    isSuspicious = true;
                 }
                 // Check for Playwright-specific toString pattern
                 try {
@@ -260,13 +261,16 @@ function _detectPlaywrightExposedFunctions() {
                         funcStr.includes('globalThis[bindingName]') ||
                         funcStr.includes('me["callbacks"]') ||
                         funcStr.includes('me["lastSeq"]')) {
-                        matchedCount++;
-                        if (!suspiciousFunctions.includes(key)) {
-                            suspiciousFunctions.push(key);
-                        }
+                        isSuspicious = true;
                     }
                 } catch (e) {
                     // toString may throw
+                }
+                
+                // Only count each function once
+                if (isSuspicious && !suspiciousFunctions.includes(key)) {
+                    matchedCount++;
+                    suspiciousFunctions.push(key);
                 }
             }
         });

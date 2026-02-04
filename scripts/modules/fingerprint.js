@@ -45,7 +45,7 @@ function checkEmojiRendering() {
         const emojiCtx = canvas.getContext('2d');
 
         if (!emojiCtx) {
-            return { suspicious: false, reason: "Cannot test emoji" };
+            return { suspicious: false, rendered: false, reason: "Cannot test emoji" };
         }
 
         // Draw OS-specific emoji

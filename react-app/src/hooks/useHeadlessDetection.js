@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * Custom hook for headless browser detection
@@ -8,8 +8,11 @@ export function useHeadlessDetection() {
     const [results, setResults] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const isMountedRef = useRef(true);
 
     const runDetection = useCallback(async () => {
+        if (!isMountedRef.current) return;
+        
         setLoading(true);
         setError(null);
         
@@ -17,19 +20,28 @@ export function useHeadlessDetection() {
             // Import and run detection
             if (window.detectHeadless) {
                 const detectionResults = await window.detectHeadless(true);
-                setResults(detectionResults);
+                if (isMountedRef.current) {
+                    setResults(detectionResults);
+                }
             } else {
                 throw new Error('Detection script not loaded');
             }
         } catch (err) {
-            setError(err.message);
-            console.error('Detection failed:', err);
+            if (isMountedRef.current) {
+                setError(err.message);
+                console.error('Detection failed:', err);
+            }
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     }, []);
 
     useEffect(() => {
+        // Reset mount state
+        isMountedRef.current = true;
+        
         // Run detection when component mounts, waiting for script readiness
         let cancelled = false;
         let timeoutId = null;
@@ -38,7 +50,7 @@ export function useHeadlessDetection() {
         const startTime = Date.now();
 
         const tryRunDetection = () => {
-            if (cancelled) {
+            if (cancelled || !isMountedRef.current) {
                 return;
             }
 
@@ -49,8 +61,10 @@ export function useHeadlessDetection() {
 
             if (Date.now() - startTime >= maxWaitMs) {
                 // Give up after max wait time
-                setError('Detection script not loaded');
-                setLoading(false);
+                if (isMountedRef.current) {
+                    setError('Detection script not loaded');
+                    setLoading(false);
+                }
                 return;
             }
 
@@ -58,7 +72,7 @@ export function useHeadlessDetection() {
         };
 
         const onDomReady = () => {
-            if (cancelled) {
+            if (cancelled || !isMountedRef.current) {
                 return;
             }
             tryRunDetection();
@@ -72,6 +86,7 @@ export function useHeadlessDetection() {
         
         return () => {
             cancelled = true;
+            isMountedRef.current = false;
             if (timeoutId !== null) {
                 clearTimeout(timeoutId);
             }

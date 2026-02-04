@@ -246,10 +246,11 @@ function _detectPlaywrightExposedFunctions() {
             if (key === 'HeadlessDetector') return;
 
             if (typeof value === 'function') {
+                let isSuspicious = false;
+                
                 // Check for __installed property (Playwright-specific)
                 if (typeof value['__installed'] === 'boolean') {
-                    matchedCount++;
-                    suspiciousFunctions.push(key);
+                    isSuspicious = true;
                 }
                 // Check for Playwright-specific toString pattern
                 try {
@@ -260,13 +261,16 @@ function _detectPlaywrightExposedFunctions() {
                         funcStr.includes('globalThis[bindingName]') ||
                         funcStr.includes('me["callbacks"]') ||
                         funcStr.includes('me["lastSeq"]')) {
-                        matchedCount++;
-                        if (!suspiciousFunctions.includes(key)) {
-                            suspiciousFunctions.push(key);
-                        }
+                        isSuspicious = true;
                     }
                 } catch (e) {
                     // toString may throw
+                }
+                
+                // Only count each function once
+                if (isSuspicious && !suspiciousFunctions.includes(key)) {
+                    matchedCount++;
+                    suspiciousFunctions.push(key);
                 }
             }
         });
@@ -935,7 +939,7 @@ function _checkEmojiRendering() {
         const emojiCtx = canvas.getContext('2d');
 
         if (!emojiCtx) {
-            return { suspicious: false, reason: "Cannot test emoji" };
+            return { suspicious: false, rendered: false, reason: "Cannot test emoji" };
         }
 
         // Draw OS-specific emoji
@@ -960,6 +964,7 @@ function _checkEmojiRendering() {
         if (allSame) {
             return {
                 suspicious: true,
+                rendered: false,
                 reason: "Emoji not rendered - possible headless",
                 hash: hash,
                 detectedOS: 'none'
@@ -975,7 +980,7 @@ function _checkEmojiRendering() {
             rendered: true
         };
     } catch (e) {
-        return { suspicious: false, error: e.message };
+        return { suspicious: false, error: e.message, rendered: false };
     }
 }
 
