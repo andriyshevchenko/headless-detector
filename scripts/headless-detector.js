@@ -16,16 +16,30 @@
  * Detects headless browsers and automation frameworks by aggregating
  * multiple signals from the current browser session.
  * 
- * @param {boolean} attachToWindow - If true, attaches results to window object for easy access
+ * @param {boolean|Object} attachToWindowOrOptions - If boolean, attaches results to window. If object, options including:
+ *   - attachToWindow: boolean - If true, attaches results to window object
+ *   - includeBehavior: HeadlessBehaviorMonitor - Behavioral monitor instance to include in analysis
  * @returns {Promise<Object>} Comprehensive headless detection results with explanations
  */
-async function detectHeadless(attachToWindow = false) {
+async function detectHeadless(attachToWindowOrOptions = false) {
+    // Handle backward compatibility - support both boolean and options object
+    let options = {};
+    if (typeof attachToWindowOrOptions === 'boolean') {
+        options.attachToWindow = attachToWindowOrOptions;
+        options.includeBehavior = null;
+    } else if (typeof attachToWindowOrOptions === 'object' && attachToWindowOrOptions !== null) {
+        options = attachToWindowOrOptions;
+    }
+    
+    const attachToWindow = options.attachToWindow || false;
+    const behaviorMonitor = options.includeBehavior || null;
+    
     // Await worker checks first
     const workerChecks = await _getWorkerChecks();
 
     const results = {
         // Core detection results
-        isHeadless: await _calculateHeadlessScore(workerChecks),
+        isHeadless: await _calculateHeadlessScore(workerChecks, behaviorMonitor),
 
         // Individual signal groups
         webdriver: _detectWebdriver(),
@@ -48,8 +62,13 @@ async function detectHeadless(attachToWindow = false) {
         // Metadata
         timestamp: Date.now(),
         userAgent: navigator.userAgent,
-        detectionVersion: '1.0.0'
+        detectionVersion: '2.0.0'
     };
+    
+    // Include behavioral analysis if monitor provided
+    if (behaviorMonitor) {
+        results.behaviorAnalysis = behaviorMonitor.getResults();
+    }
 
     // Generate summary with results to avoid re-running all checks
     results.summary = _generateDetectionSummary(results);
@@ -71,9 +90,73 @@ async function detectHeadless(attachToWindow = false) {
 }
 
 /**
- * Calculate overall headless score (0-1, higher = more likely headless)
+ * Convenience function that handles the behavioral monitor lifecycle automatically.
+ * Creates a monitor, waits for sufficient samples, and returns combined results.
+ * 
+ * @param {Object} options - Configuration options:
+ *   - timeout: number - Time to wait for samples (default: 10000ms)
+ *   - minConfidence: number - Minimum confidence threshold (default: 0.7)
+ *   - attachToWindow: boolean - Attach results to window (default: false)
+ *   - behaviorOptions: Object - Options to pass to HeadlessBehaviorMonitor
+ * @returns {Promise<Object>} Combined detection results with behavioral analysis
  */
-async function _calculateHeadlessScore(workerChecks = null) {
+async function detectHeadlessFull(options = {}) {
+    const timeout = options.timeout || 10000;
+    const minConfidence = options.minConfidence || 0.7;
+    const attachToWindow = options.attachToWindow || false;
+    const behaviorOptions = options.behaviorOptions || {};
+    
+    // Load HeadlessBehaviorMonitor if not already available
+    let HeadlessBehaviorMonitor;
+    if (typeof window !== 'undefined' && window.HeadlessBehaviorMonitor) {
+        HeadlessBehaviorMonitor = window.HeadlessBehaviorMonitor;
+    } else if (typeof require !== 'undefined') {
+        try {
+            HeadlessBehaviorMonitor = require('./behavior-monitor.js');
+        } catch (e) {
+            // If we can't load the module, just return regular detection
+            return await detectHeadless(attachToWindow);
+        }
+    } else {
+        // Can't load behavioral monitor, return regular detection
+        return await detectHeadless(attachToWindow);
+    }
+    
+    // Create and start behavioral monitor
+    const monitor = new HeadlessBehaviorMonitor({
+        ...behaviorOptions,
+        timeout: timeout
+    });
+    
+    monitor.start();
+    
+    // Wait for sufficient samples (with timeout)
+    await monitor.waitForReady(timeout);
+    
+    // Get behavioral results
+    const behaviorResults = monitor.getResults();
+    
+    // If confidence is too low, don't include behavioral data
+    const includeBehavior = behaviorResults.confidence >= minConfidence ? monitor : null;
+    
+    // Run headless detection with behavioral data
+    const results = await detectHeadless({
+        attachToWindow: attachToWindow,
+        includeBehavior: includeBehavior
+    });
+    
+    // Stop monitoring
+    monitor.stop();
+    
+    return results;
+}
+
+/**
+ * Calculate overall headless score (0-1, higher = more likely headless)
+ * @param {Object} workerChecks - Worker check results
+ * @param {Object} behaviorMonitor - Optional behavioral monitor instance
+ */
+async function _calculateHeadlessScore(workerChecks = null, behaviorMonitor = null) {
     let score = 0;
 
     // WebDriver is a strong signal (2025: still primary detection)
@@ -131,6 +214,21 @@ async function _calculateHeadlessScore(workerChecks = null) {
     // Use provided worker checks or fetch them
     const worker = workerChecks || await _getWorkerChecks();
     if (worker.userAgentMismatch) score += 0.15;
+    
+    // Behavioral analysis (2026: NEW - hard to spoof)
+    // When behavioral data is included, combine scores: 60% instant checks, 40% behavioral
+    if (behaviorMonitor) {
+        const behaviorResults = behaviorMonitor.getResults();
+        
+        // Only apply behavioral weight when confidence > 0.5
+        if (behaviorResults.confidence > 0.5) {
+            const instantScore = score;
+            const behaviorScore = behaviorResults.overallScore;
+            
+            // Weighted combination: 60% instant, 40% behavioral
+            score = (instantScore * 0.6) + (behaviorScore * 0.4);
+        }
+    }
 
     return Math.min(1, score);
 }
@@ -1534,6 +1632,7 @@ function _generateDetectionSummary(results) {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         detectHeadless,
+        detectHeadlessFull,
         // Export individual detection functions for granular testing
         getHeadlessScore: _calculateHeadlessScore,
         checkWebdriver: _detectWebdriver,
@@ -1547,11 +1646,13 @@ if (typeof module !== 'undefined' && module.exports) {
 if (typeof window !== 'undefined') {
     // Main detection function
     window.detectHeadless = detectHeadless;
+    window.detectHeadlessFull = detectHeadlessFull;
     window.getWorkerChecks = _getWorkerChecks;
 
     // Expose individual checkers for automation testing
     window.HeadlessDetector = {
         detect: detectHeadless,
+        detectFull: detectHeadlessFull,
         getScore: _calculateHeadlessScore,
         getWorkerChecks: _getWorkerChecks,
         checks: {

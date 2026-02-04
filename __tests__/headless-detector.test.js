@@ -107,7 +107,7 @@ describe('HeadlessDetector', () => {
     test('should have correct detection version', async () => {
       const result = await detector.detectHeadless();
 
-      expect(result.detectionVersion).toBe('1.0.0');
+      expect(result.detectionVersion).toBe('2.0.0');
     });
   });
 
