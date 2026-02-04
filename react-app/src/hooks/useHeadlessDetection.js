@@ -68,23 +68,4 @@ export function useDetectionStatus(results) {
     return { status, label, score };
 }
 
-/**
- * Hook for extracting check item value and status
- */
-export function useCheckItem(value, invertLogic = false) {
-    if (value === undefined || value === null) {
-        return { text: 'N/A', status: 'info' };
-    }
-
-    if (typeof value === 'boolean') {
-        const isGood = invertLogic ? value : !value;
-        return {
-            text: value ? 'YES' : 'NO',
-            status: isGood ? 'pass' : 'fail'
-        };
-    }
-
-    return { text: String(value), status: 'info' };
-}
-
 export default useHeadlessDetection;

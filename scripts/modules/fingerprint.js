@@ -117,12 +117,8 @@ function checkCanvas() {
 
         const dataUrl = canvas.toDataURL();
 
-        // Generate simple hash
-        let hash = 0;
-        for (let i = 0; i < dataUrl.length; i++) {
-            hash = ((hash << 5) - hash) + dataUrl.charCodeAt(i);
-            hash = hash & hash;
-        }
+        // Use shared simpleHash for consistency
+        const hash = simpleHash(dataUrl);
 
         // Check for canvas noise/blocking extensions
         let hasNoise = false;
@@ -137,7 +133,7 @@ function checkCanvas() {
 
         return {
             available: true,
-            hash: hash.toString(16),
+            hash: hash,
             dataLength: dataUrl.length,
             hasNoise,
             emojiCheck: emojiResult,

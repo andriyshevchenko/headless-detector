@@ -70,7 +70,7 @@ function checkWebGL() {
             shadingVersion: gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
             isSoftwareRenderer,
             renderingTest: renderingTest,
-            suspicious: isSoftwareRenderer || (renderingTest && renderingTest.suspicious)
+            suspicious: isSoftwareRenderer || Boolean(renderingTest && renderingTest.suspicious)
         };
     } catch (e) {
         return { supported: false, error: true };

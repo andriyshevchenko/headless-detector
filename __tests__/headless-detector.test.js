@@ -35,7 +35,8 @@ global.Worker = class MockWorker {
 };
 
 global.URL = {
-  createObjectURL: () => 'blob:mock'
+  createObjectURL: () => 'blob:mock',
+  revokeObjectURL: () => {}
 };
 
 global.Blob = class MockBlob {

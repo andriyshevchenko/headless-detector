@@ -9,9 +9,24 @@
  * Worker-based User-Agent check (2026: NEW)
  * Chrome bug fix allows catching automation that doesn't patch Worker UA
  * Reference: https://chromiumdash.appspot.com/commit/4e9b82be3e9feed8952c81eedde553dfeb746ff3
- * @returns {Promise<Object>} Worker check results
+ * @returns {Promise<Object>} Worker check results with consistent schema
  */
 function getWorkerChecks() {
+    // Consistent result schema
+    const createResult = (overrides = {}) => ({
+        available: false,
+        userAgentMismatch: false,
+        platformMismatch: false,
+        suspicious: false,
+        reason: '',
+        mainUserAgent: null,
+        workerUserAgent: null,
+        mainPlatform: null,
+        workerPlatform: null,
+        error: null,
+        ...overrides
+    });
+
     return new Promise((resolve) => {
         try {
             // Create a blob worker to check UA
@@ -25,20 +40,21 @@ function getWorkerChecks() {
             `;
 
             const blob = new Blob([workerCode], { type: 'application/javascript' });
-            const worker = new Worker(URL.createObjectURL(blob));
+            const blobUrl = URL.createObjectURL(blob);
+            const worker = new Worker(blobUrl);
 
             const timeout = setTimeout(() => {
                 worker.terminate();
-                resolve({
-                    available: false,
-                    userAgentMismatch: false,
+                URL.revokeObjectURL(blobUrl);
+                resolve(createResult({
                     reason: "Worker timeout"
-                });
+                }));
             }, 1000);
 
             worker.onmessage = function (e) {
                 clearTimeout(timeout);
                 worker.terminate();
+                URL.revokeObjectURL(blobUrl);
 
                 const workerUA = e.data.userAgent;
                 const mainUA = navigator.userAgent;
@@ -48,7 +64,7 @@ function getWorkerChecks() {
                 const uaMismatch = workerUA !== mainUA;
                 const platformMismatch = workerPlatform !== mainPlatform;
 
-                resolve({
+                resolve(createResult({
                     available: true,
                     mainUserAgent: mainUA,
                     workerUserAgent: workerUA,
@@ -60,26 +76,25 @@ function getWorkerChecks() {
                     reason: uaMismatch ? "User-Agent differs in Worker - automation detected" :
                         platformMismatch ? "Platform differs in Worker" :
                             "Consistent"
-                });
+                }));
             };
 
             worker.onerror = function (error) {
                 clearTimeout(timeout);
                 worker.terminate();
-                resolve({
-                    available: false,
-                    userAgentMismatch: false,
-                    error: error.message
-                });
+                URL.revokeObjectURL(blobUrl);
+                resolve(createResult({
+                    error: error.message,
+                    reason: "Worker error"
+                }));
             };
 
             worker.postMessage({});
         } catch (e) {
-            resolve({
-                available: false,
-                userAgentMismatch: false,
-                error: e.message
-            });
+            resolve(createResult({
+                error: e.message,
+                reason: "Worker creation failed"
+            }));
         }
     });
 }

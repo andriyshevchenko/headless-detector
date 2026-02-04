@@ -442,11 +442,9 @@ export function MediaCard({ mediaChecks }) {
                 status={getCheckStatus(!mediaChecks.webrtc?.suspicious, true)}
             />
             <CheckItem 
-                label="Media Devices Count"
-                value={mediaChecks.mediaDevices?.deviceCount !== undefined 
-                    ? mediaChecks.mediaDevices.deviceCount 
-                    : 'N/A'}
-                status="info"
+                label="Media Devices API"
+                value={formatCheckValue(mediaChecks.mediaDevices?.available)}
+                status={getCheckStatus(mediaChecks.mediaDevices?.available, true)}
             />
             <CheckItem 
                 label="Battery API"

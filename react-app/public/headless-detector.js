@@ -243,7 +243,7 @@ function _detectPlaywrightExposedFunctions() {
             if (key.startsWith('_') && key.includes('Headless')) return;
             if (key === 'HeadlessDetector') return;
 
-            if (typeof value === 'function' && value !== null) {
+            if (typeof value === 'function') {
                 // Check for __installed property (Playwright-specific)
                 if (typeof value['__installed'] === 'boolean') {
                     matchedCount++;
@@ -547,7 +547,7 @@ function _checkWebGL() {
             shadingVersion: gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
             isSoftwareRenderer,
             renderingTest: renderingTest,
-            suspicious: isSoftwareRenderer || (renderingTest && renderingTest.suspicious)
+            suspicious: isSoftwareRenderer || Boolean(renderingTest && renderingTest.suspicious)
         };
     } catch (e) {
         return { supported: false, error: true };

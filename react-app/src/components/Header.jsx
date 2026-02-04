@@ -1,5 +1,3 @@
-import PropTypes from 'prop-types';
-
 /**
  * Header component displaying the title and description
  */
@@ -22,7 +20,5 @@ export function Loading() {
         </div>
     );
 }
-
-Loading.propTypes = {};
 
 export default Header;

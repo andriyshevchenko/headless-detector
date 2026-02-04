@@ -16,15 +16,15 @@
 let modules = {};
 if (typeof require !== 'undefined') {
     try {
-        const webdriver = require('./modules/webdriver.js');
-        const cdp = require('./modules/cdp.js');
-        const userAgent = require('./modules/userAgent.js');
-        const webgl = require('./modules/webgl.js');
-        const automation = require('./modules/automation.js');
-        const media = require('./modules/media.js');
-        const fingerprint = require('./modules/fingerprint.js');
-        const worker = require('./modules/worker.js');
-        const explanations = require('./modules/explanations.js');
+        const webdriver = require('./webdriver.js');
+        const cdp = require('./cdp.js');
+        const userAgent = require('./userAgent.js');
+        const webgl = require('./webgl.js');
+        const automation = require('./automation.js');
+        const media = require('./media.js');
+        const fingerprint = require('./fingerprint.js');
+        const worker = require('./worker.js');
+        const explanations = require('./explanations.js');
 
         modules = {
             detectWebdriver: webdriver.detectWebdriver,
@@ -60,18 +60,19 @@ if (typeof window !== 'undefined' && window.HeadlessDetectorModules) {
  * @returns {Promise<Object>} Comprehensive headless detection results with explanations
  */
 async function detectHeadless(attachToWindow = false) {
+    // Validate that required module functions are available
+    if (!modules.detectWebdriver || !modules.getWorkerChecks || !modules.getCheckItemExplanations) {
+        throw new Error('HeadlessDetector modules not loaded. Ensure modules are properly imported or HeadlessDetectorModules is set on window.');
+    }
+
     // Get module functions (from imports or window)
     const {
         detectWebdriver,
         detectCDP,
-        detectCDPStackTrace,
-        detectConsoleDebugLeak,
         checkUserAgent,
         checkWebGL,
         getAutomationFlags,
         getHeadlessIndicators,
-        checkChromeRuntime,
-        checkPermissions,
         getMediaChecks,
         getFingerprintChecks,
         getWorkerChecks,
