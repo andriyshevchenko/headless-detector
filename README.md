@@ -7,6 +7,8 @@
 
 A comprehensive JavaScript library for detecting headless browsers, automation frameworks, and bot activity. Built with the latest 2025/2026 detection techniques from industry leaders like Castle.io, DataDome, and FingerprintJS.
 
+**NEW:** Includes standalone behavioral analysis module for advanced bot detection through user interaction patterns.
+
 ## Features
 
 - 🎯 **15+ Detection Vectors** - Multi-layered approach using various detection methods
@@ -14,6 +16,7 @@ A comprehensive JavaScript library for detecting headless browsers, automation f
 - 🔧 **Worker UA Check** - Compares User-Agent between main thread and Worker (NEW 2026)
 - 😀 **Emoji OS Consistency** - Verifies emoji rendering matches OS (NEW 2026)
 - 🎨 **WebGL Rendering Test** - Complex 3D rendering to detect software renderers (NEW 2026)
+- 🖱️ **Behavioral Analysis Module** - Separate API to monitor user interactions for bot-like patterns (NEW 2026)
 - 🔍 **Advanced CDP Detection** - Identifies Chrome DevTools Protocol usage
 - 🖌️ **Fingerprinting** - Canvas, Audio Context, and Font detection
 - 📱 **Media Checks** - WebRTC and MediaDevices availability
@@ -39,6 +42,8 @@ A comprehensive JavaScript library for detecting headless browsers, automation f
 | Browser Fingerprinting | Medium-High | Canvas, Audio Context, and Font detection |
 | Automation Flags | High | Scans for framework-specific global variables |
 | Headless Indicators | Medium | Checks window dimensions and permissions |
+
+**Note:** Behavioral analysis is available as a separate module (`HeadlessBehaviorMonitor`) that can be used independently or combined with headless detection.
 
 ## Installation
 
@@ -103,11 +108,11 @@ cd headless-detector
 
 ## Usage
 
-### Basic Usage
+### Basic Headless Detection
 
 ```javascript
 // Run detection
-const results = detectHeadless();
+const results = await detectHeadless();
 
 console.log('Headless Score:', results.isHeadless); // 0.0 - 1.0
 console.log('Classification:', results.summary.classification);
@@ -118,12 +123,219 @@ console.log('Risk Level:', results.summary.riskLevel);
 
 ```javascript
 // Attach results to window for easy access
-const results = detectHeadless(true);
+const results = await detectHeadless(true);
 
 // Access from window object
 console.log(window.__headlessDetectionScore); // Quick score access
 console.log(window.__headlessDetection.summary); // Full summary
 ```
+
+---
+
+## Behavioral Analysis Module (Separate API)
+
+The `HeadlessBehaviorMonitor` is a standalone module that analyzes user interactions over time to detect bot-like patterns. These checks are fundamentally harder to spoof than fingerprint checks because they require genuine human interaction patterns.
+
+**Key Concept:** The behavioral module is completely independent and can be used:
+- **Standalone** - For pure behavioral analysis
+- **Combined with headless detection** - Use both results in your application logic
+
+### Using Behavioral Monitor Standalone
+
+```javascript
+// Import the module
+const HeadlessBehaviorMonitor = require('headless-detector/scripts/behavior-monitor.js');
+// Or in browser: window.HeadlessBehaviorMonitor
+
+// Create and start monitor
+const monitor = new HeadlessBehaviorMonitor({
+    mouse: true,
+    keyboard: true,
+    scroll: true,
+    timeout: 10000
+});
+
+monitor.start();
+
+// Wait for enough user interaction data
+await monitor.waitForReady(10000);
+
+// Get behavioral analysis results
+const behaviorResults = monitor.getResults();
+console.log('Behavioral Score:', behaviorResults.overallScore);
+console.log('Confidence:', behaviorResults.confidence);
+console.log('Mouse Efficiency:', behaviorResults.mouse.metrics.mouseEfficiency);
+
+monitor.stop();
+```
+
+### Combining Both APIs
+
+```javascript
+// Run both detections independently
+const headlessResults = await detectHeadless();
+
+const monitor = new HeadlessBehaviorMonitor({ timeout: 10000 });
+monitor.start();
+await monitor.waitForReady();
+const behaviorResults = monitor.getResults();
+monitor.stop();
+
+// Combine results in your application logic
+const combinedScore = (headlessResults.isHeadless * 0.6) + (behaviorResults.overallScore * 0.4);
+console.log('Headless Score:', headlessResults.isHeadless);
+console.log('Behavioral Score:', behaviorResults.overallScore);
+console.log('Combined Score:', combinedScore);
+```
+
+### Behavioral Monitor - Full API
+
+#### API Design Philosophy
+
+The `HeadlessBehaviorMonitor` follows JavaScript best practices for async/sync methods:
+
+- **Synchronous methods** (`start()`, `stop()`, `getStatus()`, `getResults()`)
+  - Return immediately
+  - No I/O or waiting involved
+  - Predictable, deterministic behavior
+
+- **Asynchronous method** (`waitForReady()`)
+  - Returns a Promise
+  - Waits for user interactions to be collected
+  - Use with `await` or `.then()`
+
+**Why this design?**
+- Don't make methods async unless they need to be
+- Keeps the API simple and predictable
+- Avoids unnecessary Promise overhead for simple operations
+
+#### Lifecycle Patterns
+
+**Pattern 1: Basic Usage (with timeout)**
+```javascript
+const monitor = new HeadlessBehaviorMonitor({ timeout: 10000 });
+monitor.start();
+
+try {
+    const ready = await monitor.waitForReady();
+    if (ready) {
+        const results = monitor.getResults();
+        console.log('Analysis complete:', results.overallScore);
+    } else {
+        console.log('Timeout reached, not enough samples');
+    }
+} catch (error) {
+    console.error('Monitoring error:', error);
+} finally {
+    monitor.stop();
+}
+```
+
+**Pattern 2: With Callbacks**
+```javascript
+const monitor = new HeadlessBehaviorMonitor({
+    timeout: 10000,
+    onReady: (results) => {
+        console.log('Ready! Score:', results.overallScore);
+    },
+    onSample: (sample) => {
+        console.log('Sample collected:', sample.type);
+    }
+});
+
+monitor.start();
+// Callbacks will fire automatically
+```
+
+**Pattern 3: Manual Control (no timeout)**
+```javascript
+const monitor = new HeadlessBehaviorMonitor({ timeout: 0 });
+monitor.start();
+
+// Check status periodically
+const checkInterval = setInterval(() => {
+    const status = monitor.getStatus();
+    console.log('Samples:', status.samples);
+    
+    if (status.ready) {
+        clearInterval(checkInterval);
+        const results = monitor.getResults();
+        monitor.stop();
+        console.log('Done:', results);
+    }
+}, 1000);
+```
+
+#### Configuration Options
+
+```javascript
+// Import or access the class
+const HeadlessBehaviorMonitor = window.HeadlessBehaviorMonitor;
+// Or: require('headless-detector/scripts/behavior-monitor.js')
+
+// Create monitor with options
+const monitor = new HeadlessBehaviorMonitor({
+    mouse: true,           // Monitor mouse movements
+    keyboard: true,        // Monitor keyboard timing
+    scroll: true,          // Monitor scroll behavior
+    touch: true,           // Monitor touch events
+    events: true,          // Monitor general events
+    sensors: true,         // Monitor device sensors
+    webglTiming: true,     // Measure WebGL shader timing
+    
+    minSamples: {          // Minimum samples needed per category
+        mouse: 20,
+        keyboard: 10,
+        scroll: 5,
+        touch: 5,
+        events: 10
+    },
+    
+    timeout: 30000,        // Timeout for waitForReady() (default: 30000ms)
+    
+    // Optional callbacks
+    onReady: (results) => {
+        console.log('Enough samples collected:', results);
+    },
+    onSample: (info) => {
+        console.log('Sample collected:', info);
+    }
+});
+
+// Start monitoring
+monitor.start();
+
+// Check status
+const status = monitor.getStatus();
+console.log('Running:', status.isRunning);
+console.log('Samples collected:', status.samples);
+
+// Wait for enough samples
+await monitor.waitForReady(30000);
+
+// Get current results
+const results = monitor.getResults();
+console.log('Behavioral Score:', results.overallScore);
+console.log('Confidence:', results.confidence);
+
+// Stop monitoring and get final results
+const finalResults = monitor.stop();
+```
+
+#### Behavioral Checks Explained
+
+| Check | Description | Why Hard to Spoof |
+|-------|-------------|-------------------|
+| **Mouse Movement Entropy** | Analyzes velocity variance, angle variance, acceleration, straight-line ratio | Human movement is chaotic & unpredictable; bots tend to move in straight lines or consistent patterns |
+| **Mouse Efficiency** | Calculates ratio of straight distance vs actual path (straightDistance / pathDistance) | Bots move very directly (efficiency > 0.95); humans wander and curve (efficiency 0.3-0.8) |
+| **Keyboard Biometrics** | Measures key hold times, inter-key timing variance | Typing rhythm is unique per person; automated scripts have too-consistent timing |
+| **Scroll Behavior** | Checks delta variance, interval variance, unique delta counts | Real scrolling has inertia & variance; automated scrolling is too regular |
+| **Touch Analysis** | Measures force variance, radius variance | Real touch has physical properties that vary; simulated touch is too consistent |
+| **Event Timing** | Checks `isTrusted` flag, interval variance | Synthetic events lack the `isTrusted` flag and have suspicious timing patterns |
+| **Sensor Entropy** | Analyzes accelerometer/gyroscope noise | Real hardware sensors have physical noise; simulated sensors are too stable |
+| **WebGL Shader Timing** | Measures shader compilation time | GPU-specific compilation patterns are hard to fake consistently |
+
+---
 
 ### Accessing Individual Checks
 
@@ -167,14 +379,26 @@ summary.detections.forEach(d => {
 
 ## API Reference
 
-### `detectHeadless(attachToWindow)`
+### Headless Detection API
 
-Main detection function.
+#### `detectHeadless(attachToWindow)`
+
+Main detection function for instant headless browser detection.
 
 **Parameters:**
 - `attachToWindow` (boolean, optional) - If true, attaches results to `window.__headlessDetection`
 
-**Returns:** Object with detection results
+**Returns:** Promise<Object> with detection results
+
+```javascript
+// Basic usage
+const results = await detectHeadless();
+
+// With window attachment
+const results = await detectHeadless(true);
+```
+
+**Result Object:**
 
 ```javascript
 {
@@ -188,13 +412,168 @@ Main detection function.
   advancedChecks: {...},               // Advanced detection methods
   mediaChecks: {...},                  // Media/WebRTC checks
   fingerprintChecks: {...},            // Fingerprinting results
-  explanations: {...},                 // Method explanations
+  checkItemExplanations: {...},        // Method explanations
   summary: {...},                      // Detection summary
   timestamp: 1738584000000,
   userAgent: "Mozilla/5.0...",
-  detectionVersion: "2.1.0"
+  detectionVersion: "1.0.0"
 }
 ```
+
+---
+
+### Behavioral Analysis API
+
+#### `HeadlessBehaviorMonitor`
+
+Class for monitoring user interactions over time to detect bot-like behavioral patterns.
+
+**Constructor Options:**
+
+```javascript
+new HeadlessBehaviorMonitor({
+    // Feature flags
+    mouse: true,           // Monitor mouse movements (default: true)
+    keyboard: true,        // Monitor keyboard timing (default: true)
+    scroll: true,          // Monitor scroll behavior (default: true)
+    touch: true,           // Monitor touch events (default: true)
+    events: true,          // Monitor general events (default: true)
+    sensors: true,         // Monitor device sensors (default: true)
+    webglTiming: true,     // Measure WebGL timing (default: true)
+    
+    // Minimum samples needed
+    minSamples: {
+        mouse: 20,         // Default: 20
+        keyboard: 10,      // Default: 10
+        scroll: 5,         // Default: 5
+        touch: 5,          // Default: 5
+        events: 10         // Default: 10
+    },
+    
+    // Timeout and callbacks
+    timeout: 30000,        // Default timeout for waitForReady() (default: 30000ms)
+    onReady: (results) => {},      // Called when enough samples collected (or on timeout)
+    onSample: (info) => {}         // Called on each sample collected
+});
+```
+
+**Methods:**
+
+**`start()` - Synchronous**
+- Starts monitoring user interactions
+- Attaches event listeners
+- Returns immediately
+- Can be called multiple times (idempotent - won't restart if already running)
+
+```javascript
+monitor.start();
+// Monitoring is now active
+```
+
+**`stop()` - Synchronous**
+- Stops monitoring and cleans up event listeners
+- Returns final analysis results or `null` if not running
+- Returns: `Object | null`
+
+```javascript
+const finalResults = monitor.stop();
+if (finalResults) {
+    console.log('Final score:', finalResults.overallScore);
+}
+```
+
+**`getStatus()` - Synchronous**
+- Gets current monitoring status
+- Returns: `Object` with `isRunning`, `elapsedTime`, `samples`, `ready`
+
+```javascript
+const status = monitor.getStatus();
+console.log('Running:', status.isRunning);
+console.log('Samples collected:', status.samples);
+console.log('Ready for analysis:', status.ready);
+```
+
+**`getResults()` - Synchronous**
+- Computes and returns current analysis results
+- Can be called multiple times while monitoring
+- Returns: `Object` with analysis data
+
+```javascript
+const results = monitor.getResults();
+console.log('Current score:', results.overallScore);
+console.log('Confidence:', results.confidence);
+```
+
+**`waitForReady(timeout)` - Asynchronous**
+- Waits for enough samples to be collected
+- `timeout` parameter: maximum time to wait in milliseconds (uses constructor timeout if not provided)
+- Returns: `Promise<boolean>` - `true` if enough samples collected, `false` if timeout reached or monitor not running
+- Important: Must call `start()` before `waitForReady()`. Returns `false` immediately if the monitor is not running.
+- Use with `await` or `.then()`
+
+```javascript
+// With await
+const isReady = await monitor.waitForReady(10000);
+if (isReady) {
+    const results = monitor.getResults();
+    // Results have high confidence
+} else {
+    // Timeout - may have low confidence
+    const results = monitor.getResults();
+}
+
+// With .then()
+monitor.waitForReady(10000).then(ready => {
+    if (ready) {
+        const results = monitor.getResults();
+    }
+});
+```
+
+**API Design Note:**
+- Only `waitForReady()` is async because it waits for events
+- All other methods are synchronous for immediate, predictable behavior
+- This follows JavaScript best practices: don't make methods async unless necessary
+
+**Results Object:**
+
+```javascript
+{
+    mouse: {
+        available: true,
+        score: 0.3,           // Suspiciousness score 0-1
+        confidence: 0.85,     // Confidence in the score
+        metrics: {
+            sampleCount: 25,
+            velocityVariance: 0.042,
+            angleVariance: 0.13,
+            straightLineRatio: 0.12,
+            untrustedRatio: 0,
+            mouseEfficiency: 0.67,      // straightDistance / pathDistance
+            straightDistance: 150.5,    // Direct distance from start to end
+            pathDistance: 224.8         // Total distance traveled
+        }
+    },
+    keyboard: {...},
+    scroll: {...},
+    touch: {...},
+    events: {...},
+    sensors: {...},
+    webglTiming: {...},
+    overallScore: 0.28,      // Combined score 0-1
+    confidence: 0.82,         // Overall confidence
+    metadata: {
+        samplesCollected: {...},
+        duration: 15234
+    }
+}
+```
+
+**Mouse Efficiency Metric:**
+- **mouseEfficiency** = straightDistance / pathDistance
+- Bot movements: efficiency > 0.95 (very direct, straight lines)
+- Human movements: efficiency typically 0.3-0.8 (curved, wandering paths)
+- Lower efficiency indicates more human-like behavior
 
 ### Window Access
 
@@ -212,7 +591,7 @@ window.HeadlessDetector.checks   // Individual check functions
 ```javascript
 document.documentElement.getAttribute('data-headless-score')     // "0.170"
 document.documentElement.getAttribute('data-headless-detected')  // "false"
-document.documentElement.getAttribute('data-detection-version')  // "2.1.0"
+document.documentElement.getAttribute('data-detection-version')  // "1.0.0"
 ```
 
 ## Demo
