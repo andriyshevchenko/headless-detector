@@ -248,7 +248,8 @@ function generateDetectionSummary(results) {
     const detections = [];
     const warnings = [];
     // Use explanations already attached to results for consistency
-    const checkExplanations = results.checkItemExplanations || modules.getCheckItemExplanations();
+    // results.checkItemExplanations is set by detectHeadless() before calling this function
+    const checkExplanations = results.checkItemExplanations;
 
     // Helper function to check if value indicates a problem
     function isProblematic(key, value, explanation) {

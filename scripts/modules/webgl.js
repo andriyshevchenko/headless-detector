@@ -148,8 +148,9 @@ function performWebGLRenderingTest(gl, claimedVendor, claimedRenderer) {
         let noiseLevel = 0;
         let sampleCount = 0;
         const sampleInterval = 16;
-        for (let i = 0; i < pixels.length - sampleInterval * 4; i += sampleInterval * 4) {
-            const diff = Math.abs(pixels[i] - pixels[i + sampleInterval * 4]);
+        const sampleOffset = sampleInterval * 4;
+        for (let i = 0; i + sampleOffset < pixels.length; i += sampleOffset) {
+            const diff = Math.abs(pixels[i] - pixels[i + sampleOffset]);
             if (diff > 5) noiseLevel++;
             sampleCount++;
         }
