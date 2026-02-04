@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-02-04
+
+### Fixed
+- Fixed `chrome.runtime` false positive in real browsers - `chrome.runtime` is only available to Chrome extensions, not regular web pages, so its absence should not be marked as suspicious
+
 ## [2.0.0] - 2026-02-04
 
 ### Added
@@ -98,6 +103,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Browser compatibility information
 - Research references from industry leaders (Castle.io, DataDome, FingerprintJS)
 
+[2.0.1]: https://github.com/andriyshevchenko/headless-detector/releases/tag/v2.0.1
 [2.0.0]: https://github.com/andriyshevchenko/headless-detector/releases/tag/v2.0.0
 [1.2.0]: https://github.com/andriyshevchenko/headless-detector/releases/tag/v1.2.0
 [1.0.1]: https://github.com/andriyshevchenko/headless-detector/releases/tag/v1.0.1

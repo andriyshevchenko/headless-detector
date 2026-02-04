@@ -171,6 +171,16 @@ describe('Automation Module', () => {
             expect(result.hasRuntime).toBe(false);
             expect(result.missing).toBe(true);
         });
+
+        test('should not mark missing chrome.runtime as suspicious since it is normal for web pages', () => {
+            global.window.chrome = {};
+            jest.resetModules();
+            const freshModule = require('../../scripts/modules/automation.js');
+            const result = freshModule.checkChromeRuntime();
+            // chrome.runtime is only available in extensions, not regular web pages
+            // so missing chrome.runtime should NOT be marked as suspicious
+            expect(result.suspicious).toBe(false);
+        });
     });
 
     describe('checkPermissions', () => {

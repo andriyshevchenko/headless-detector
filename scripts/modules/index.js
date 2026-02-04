@@ -219,7 +219,7 @@ async function calculateHeadlessScore(workerChecks = null) {
     const permissions = checkPermissions();
     
     if (permissions && permissions.deniedByDefault) score += 0.06;
-    if (chromeRuntime && chromeRuntime.missing) score += 0.05;
+    if (chromeRuntime && chromeRuntime.suspicious) score += 0.05;
     if (stackTrace && stackTrace.cdpDetected) score += 0.12;
 
     // Media checks (2026: NEW)
