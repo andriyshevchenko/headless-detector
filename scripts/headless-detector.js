@@ -8,9 +8,48 @@
  * - FingerprintJS BotD
  * - W3C Fingerprinting Guidance
  * 
+ * This file serves as the main entry point and aggregates all detection modules.
+ * For modular usage, see scripts/modules/ directory.
+ * 
  * @module HeadlessDetector
  * @version 1.0.0
  */
+
+// Import modules for Node.js environment
+let _modules = {};
+if (typeof require !== 'undefined') {
+    try {
+        const webdriver = require('./modules/webdriver.js');
+        const cdp = require('./modules/cdp.js');
+        const userAgent = require('./modules/userAgent.js');
+        const webgl = require('./modules/webgl.js');
+        const automation = require('./modules/automation.js');
+        const media = require('./modules/media.js');
+        const fingerprint = require('./modules/fingerprint.js');
+        const worker = require('./modules/worker.js');
+        const explanations = require('./modules/explanations.js');
+
+        _modules = {
+            detectWebdriver: webdriver.detectWebdriver,
+            detectCDP: cdp.detectCDP,
+            detectCDPStackTrace: cdp.detectCDPStackTrace,
+            detectConsoleDebugLeak: cdp.detectConsoleDebugLeak,
+            checkUserAgent: userAgent.checkUserAgent,
+            checkWebGL: webgl.checkWebGL,
+            getAutomationFlags: automation.getAutomationFlags,
+            getHeadlessIndicators: automation.getHeadlessIndicators,
+            checkChromeRuntime: automation.checkChromeRuntime,
+            checkPermissions: automation.checkPermissions,
+            getMediaChecks: media.getMediaChecks,
+            getFingerprintChecks: fingerprint.getFingerprintChecks,
+            getWorkerChecks: worker.getWorkerChecks,
+            getCheckItemExplanations: explanations.getCheckItemExplanations
+        };
+    } catch (e) {
+        // Fallback to inline functions (for backward compatibility)
+        _modules = null;
+    }
+}
 
 /**
  * Detects headless browsers and automation frameworks by aggregating
@@ -20,27 +59,39 @@
  * @returns {Promise<Object>} Comprehensive headless detection results with explanations
  */
 async function detectHeadless(attachToWindow = false) {
+    // Use modular functions if available, otherwise use inline functions
+    const detectWebdriver = _modules?.detectWebdriver || _detectWebdriver;
+    const detectCDP = _modules?.detectCDP || _detectCDP;
+    const checkUserAgent = _modules?.checkUserAgent || _checkUserAgent;
+    const checkWebGL = _modules?.checkWebGL || _checkWebGL;
+    const getAutomationFlags = _modules?.getAutomationFlags || _getAutomationFlags;
+    const getHeadlessIndicators = _modules?.getHeadlessIndicators || _getHeadlessIndicators;
+    const getMediaChecks = _modules?.getMediaChecks || _getMediaChecks;
+    const getFingerprintChecks = _modules?.getFingerprintChecks || _getFingerprintChecks;
+    const getWorkerChecks = _modules?.getWorkerChecks || _getWorkerChecks;
+    const getCheckItemExplanations = _modules?.getCheckItemExplanations || _getCheckItemExplanations;
+
     // Await worker checks first
-    const workerChecks = await _getWorkerChecks();
+    const workerChecks = await getWorkerChecks();
 
     const results = {
         // Core detection results
         isHeadless: await _calculateHeadlessScore(workerChecks),
 
         // Individual signal groups
-        webdriver: _detectWebdriver(),
-        automationFlags: _getAutomationFlags(),
-        cdpArtifacts: _detectCDP(),
-        headlessIndicators: _getHeadlessIndicators(),
-        userAgentFlags: _checkUserAgent(),
-        webglFlags: _checkWebGL(),
+        webdriver: detectWebdriver(),
+        automationFlags: getAutomationFlags(),
+        cdpArtifacts: detectCDP(),
+        headlessIndicators: getHeadlessIndicators(),
+        userAgentFlags: checkUserAgent(),
+        webglFlags: checkWebGL(),
         advancedChecks: _getAdvancedChecks(),
-        mediaChecks: _getMediaChecks(),
-        fingerprintChecks: _getFingerprintChecks(),
+        mediaChecks: getMediaChecks(),
+        fingerprintChecks: getFingerprintChecks(),
         workerChecks: workerChecks,
 
         // Check item explanations (NEW 2026)
-        checkItemExplanations: _getCheckItemExplanations(),
+        checkItemExplanations: getCheckItemExplanations(),
 
         // Summary of what was detected
         summary: null, // Will be set after
