@@ -333,15 +333,14 @@
 
     <script src="scripts/headless-detector.js"></script>
     <script>
-        function runDetection() {
+        async function runDetection() {
             // Show loading
             document.getElementById('loading').style.display = 'block';
             document.getElementById('results').style.display = 'none';
 
-            // Run detection after short delay for effect
-            setTimeout(() => {
-                // Run detection and attach to window for automation access
-                const results = detectHeadless(true);
+            try {
+                // Run async detection and attach to window for automation access
+                const results = await detectHeadless(true);
                 displayResults(results);
                 
                 // Log for automation testing
@@ -349,14 +348,16 @@
                 console.log('  window.__headlessDetection');
                 console.log('  window.__headlessDetectionScore =', window.__headlessDetectionScore);
                 console.log('  HTML attribute:', document.documentElement.getAttribute('data-headless-score'));
-                
-                // Hide loading, show results
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('results').style.display = 'block';
-                
-                // Initialize tooltips
-                setTimeout(initializeTooltips, 100);
-            }, 500);
+            } catch (error) {
+                console.error('Detection failed:', error);
+            }
+            
+            // Hide loading, show results
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('results').style.display = 'block';
+            
+            // Initialize tooltips
+            setTimeout(initializeTooltips, 100);
         }
 
         function displayResults(results) {

@@ -17,12 +17,15 @@
  * multiple signals from the current browser session.
  * 
  * @param {boolean} attachToWindow - If true, attaches results to window object for easy access
- * @returns {Object} Comprehensive headless detection results with explanations
+ * @returns {Promise<Object>} Comprehensive headless detection results with explanations
  */
-function detectHeadless(attachToWindow = false) {
+async function detectHeadless(attachToWindow = false) {
+    // Await worker checks first
+    const workerChecks = await _getWorkerChecks();
+
     const results = {
         // Core detection results
-        isHeadless: _calculateHeadlessScore(),
+        isHeadless: await _calculateHeadlessScore(workerChecks),
 
         // Individual signal groups
         webdriver: _detectWebdriver(),
@@ -34,7 +37,7 @@ function detectHeadless(attachToWindow = false) {
         advancedChecks: _getAdvancedChecks(),
         mediaChecks: _getMediaChecks(),
         fingerprintChecks: _getFingerprintChecks(),
-        workerChecks: _getWorkerChecksSync(),
+        workerChecks: workerChecks,
 
         // Check item explanations (NEW 2026)
         checkItemExplanations: _getCheckItemExplanations(),
@@ -70,7 +73,7 @@ function detectHeadless(attachToWindow = false) {
 /**
  * Calculate overall headless score (0-1, higher = more likely headless)
  */
-function _calculateHeadlessScore() {
+async function _calculateHeadlessScore(workerChecks = null) {
     let score = 0;
 
     // WebDriver is a strong signal (2025: still primary detection)
@@ -120,9 +123,12 @@ function _calculateHeadlessScore() {
     if (fingerprint.canvas && fingerprint.canvas.suspicious) score += 0.07;
     if (fingerprint.audioContext && fingerprint.audioContext.suspicious) score += 0.05;
     if (fingerprint.fonts && fingerprint.fonts.suspicious) score += 0.08;
+
     // Worker checks (2026: NEW - Chrome bug detection)
-    const worker = _getWorkerChecksSync();
+    // Use provided worker checks or fetch them
+    const worker = workerChecks || await _getWorkerChecks();
     if (worker.userAgentMismatch) score += 0.15;
+
     return Math.min(1, score);
 }
 
@@ -683,7 +689,7 @@ function _checkCanvas() {
         }
 
         // 2026: Emoji OS consistency check
-        const emojiResult = _checkEmojiRendering(ctx);
+        const emojiResult = _checkEmojiRendering();
 
         return {
             available: true,
@@ -789,7 +795,7 @@ function _simpleHash(str) {
  * Check emoji rendering consistency with claimed OS (2026: NEW)
  * Different OS render emoji differently - this should match User-Agent
  */
-function _checkEmojiRendering(ctx) {
+function _checkEmojiRendering() {
     try {
         const canvas = document.createElement('canvas');
         canvas.width = 100;
@@ -1001,45 +1007,7 @@ function _getWorkerChecks() {
     });
 }
 
-/**
- * Synchronous wrapper for worker checks (for initial detection)
- * Returns immediate result, actual check happens async
- */
-function _getWorkerChecksSync() {
-    // Return a placeholder for immediate use
-    const result = {
-        available: true,
-        pending: true,
-        userAgentMismatch: false,
-        reason: "Check in progress (async)"
-    };
 
-    // Perform async check and update window object if available
-    _getWorkerChecks().then(workerResult => {
-        if (typeof window !== 'undefined' && window.__headlessDetection) {
-            window.__headlessDetection.workerChecks = workerResult;
-
-            // Recalculate score if mismatch found
-            if (workerResult.userAgentMismatch) {
-                const currentScore = window.__headlessDetectionScore || 0;
-                window.__headlessDetectionScore = Math.min(1, currentScore + 0.15);
-                window.__headlessDetection.isHeadless = window.__headlessDetectionScore;
-                window.__headlessDetection.summary = _generateDetectionSummary(window.__headlessDetection);
-            }
-
-            // Trigger UI update event
-            if (typeof window !== 'undefined' && typeof CustomEvent !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('headlessDetectionUpdated', {
-                    detail: { workerChecks: workerResult }
-                }));
-            }
-        }
-    }).catch(() => {
-        // Silently fail if worker check fails
-    });
-
-    return result;
-}
 
 /**
  * Get detailed explanations for individual check items (2026)
@@ -1475,18 +1443,21 @@ if (typeof module !== 'undefined' && module.exports) {
         checkWebdriver: _detectWebdriver,
         checkCDP: _detectCDP,
         checkUserAgent: _checkUserAgent,
-        checkWebGL: _checkWebGL
+        checkWebGL: _checkWebGL,
+        getWorkerChecks: _getWorkerChecks
     };
 }
 
 if (typeof window !== 'undefined') {
     // Main detection function
     window.detectHeadless = detectHeadless;
+    window.getWorkerChecks = _getWorkerChecks;
 
     // Expose individual checkers for automation testing
     window.HeadlessDetector = {
         detect: detectHeadless,
         getScore: _calculateHeadlessScore,
+        getWorkerChecks: _getWorkerChecks,
         checks: {
             webdriver: _detectWebdriver,
             cdp: _detectCDP,
