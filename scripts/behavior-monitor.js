@@ -721,14 +721,14 @@ class HeadlessBehaviorMonitor {
         // Calculate entropy/variance metrics
         const velocityVariance = this._calculateVariance(velocities);
         const angleVariance = this._calculateVariance(angles);
-        const straightLineRatio = straightLineSegments / movements.length;
+        const segmentCount = movements.length - 1;
+        const straightLineRatio = segmentCount > 0 ? straightLineSegments / segmentCount : 0;
         const untrustedRatio = untrustedCount / movements.length;
         
         // Suspicious indicators:
         // - Very low velocity variance (too consistent)
         // - Very low angle variance (too straight)
-        // - High straight line ratio (Note: with minimum 2 movements, max ratio is 0.5,
-        //   so this check requires 3+ movements to be meaningful)
+        // - High straight line ratio (> 0.5 means more than half of segments are straight)
         // - High untrusted event ratio
         // - Very high mouse efficiency (too direct, bot-like)
         let suspiciousScore = 0;
