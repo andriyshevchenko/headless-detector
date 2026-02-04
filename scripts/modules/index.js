@@ -62,7 +62,7 @@ if (typeof window !== 'undefined' && window.HeadlessDetectorModules) {
 async function detectHeadless(attachToWindow = false) {
     // Validate that required module functions are available
     if (!modules.detectWebdriver || !modules.getWorkerChecks || !modules.getCheckItemExplanations) {
-        throw new Error('HeadlessDetector modules not loaded. Ensure modules are properly imported or HeadlessDetectorModules is set on window.');
+        throw new Error('HeadlessDetector modules not loaded. Ensure detection script is loaded or window.HeadlessDetectorModules is set.');
     }
 
     // Get module functions (from imports or window)
