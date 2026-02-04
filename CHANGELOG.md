@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-02-04
+
+### Added
+- 🏗️ **Modular Architecture** - Refactored monolithic codebase into separate modules
+  - `scripts/modules/webdriver.js` - WebDriver/Selenium/Playwright detection
+  - `scripts/modules/cdp.js` - CDP artifacts & stack trace detection
+  - `scripts/modules/userAgent.js` - User-Agent pattern analysis & client hints
+  - `scripts/modules/webgl.js` - WebGL renderer checks & GPU consistency tests
+  - `scripts/modules/automation.js` - Automation flags & headless indicators
+  - `scripts/modules/media.js` - MediaDevices & WebRTC checks
+  - `scripts/modules/fingerprint.js` - Canvas, audio, font fingerprinting
+  - `scripts/modules/worker.js` - Worker User-Agent mismatch detection
+  - `scripts/modules/explanations.js` - Human-readable check descriptions
+  - `scripts/utils/hash.js` - Shared hashing utility
+- ⚛️ **React Demo App** - Modern React-based UI with Vite
+  - Modular component structure (`components/`, `hooks/`)
+  - Separated UI logic (`useHeadlessDetection` hook) from view components
+  - Cross-platform sync scripts for keeping detection script in sync
+- 🧪 **Modular Tests** - Split tests by detection module
+  - `webdriver.test.js`, `cdp.test.js`, `userAgent.test.js`, `worker.test.js`
+  - `automation.test.js`, `media.test.js`, `fingerprint.test.js`
+  - Integration tests remain in main test file
+  - 115+ tests total
+
+### Changed
+- Optimized WebGL rendering test with fixed 64x64 canvas and pixel sampling
+- Canvas hash now uses base-16 (hex) format for legacy compatibility
+- WebRTC check only instantiates RTCPeerConnection when API is available
+- Expanded module validation to cover all required functions
+- Fixed automation function counting to avoid double-counting
+
+### Fixed
+- Fixed `rendered` property missing in emoji check failure paths
+- Fixed mount state tracking in React hook to prevent state updates after unmount
+- Fixed timeout cleanup in useHeadlessDetection hook
+- Updated emoji explanations to accurately describe current behavior
+
 ## [1.2.0] - 2026-02-04
 
 ### Added
@@ -61,5 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Browser compatibility information
 - Research references from industry leaders (Castle.io, DataDome, FingerprintJS)
 
+[2.0.0]: https://github.com/andriyshevchenko/headless-detector/releases/tag/v2.0.0
+[1.2.0]: https://github.com/andriyshevchenko/headless-detector/releases/tag/v1.2.0
 [1.0.1]: https://github.com/andriyshevchenko/headless-detector/releases/tag/v1.0.1
 [1.0.0]: https://github.com/andriyshevchenko/headless-detector/releases/tag/v1.0.0
