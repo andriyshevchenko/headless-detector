@@ -1430,8 +1430,8 @@ function _getCheckItemExplanations() {
         'adv-runtime': {
             label: "Chrome Runtime",
             description: "chrome.runtime extension API availability (extensions only)",
-            good: "chrome.runtime check passed - normal browser behavior",
-            bad: "chrome.runtime check passed - normal browser behavior"
+            good: "chrome.runtime available (running as extension)",
+            bad: "chrome.runtime not available (normal for regular web pages)"
         },
         'adv-permissions': {
             label: "Permissions API",
