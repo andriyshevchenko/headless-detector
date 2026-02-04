@@ -100,8 +100,8 @@ function getCheckItemExplanations() {
         },
         'emoji-os': {
             label: "Detected OS",
-            description: "Operating system extracted from User-Agent string",
-            info: "OS parsed from User-Agent for reference (not from emoji rendering)"
+            description: "Operating system parsed from User-Agent string (not from emoji rendering)",
+            info: "OS information extracted from User-Agent for reference only"
         },
         'emoji-suspicious': {
             label: "Suspicious",

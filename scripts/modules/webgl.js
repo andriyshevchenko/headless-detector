@@ -76,7 +76,7 @@ function checkWebGL() {
             shadingVersion: gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
             isSoftwareRenderer,
             renderingTest: renderingTest,
-            suspicious: isSoftwareRenderer || (renderingTest && renderingTest.suspicious)
+            suspicious: isSoftwareRenderer || renderingTest.suspicious
         };
     } catch (e) {
         return { supported: false, error: true };
@@ -93,6 +93,7 @@ function checkWebGL() {
  * @returns {Object} Rendering test results
  */
 function performWebGLRenderingTest(gl, testSize, claimedRenderer) {
+    let buffer, vertexShader, fragmentShader, program;
     try {
         
         // Create a simple rotating cube with lighting
@@ -101,12 +102,12 @@ function performWebGLRenderingTest(gl, testSize, claimedRenderer) {
             -1, -1, -1, -1, 1, -1, 1, 1, -1, 1, -1, -1,  // back
         ]);
 
-        const buffer = gl.createBuffer();
+        buffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
         // Simple shader
-        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        vertexShader = gl.createShader(gl.VERTEX_SHADER);
         gl.shaderSource(vertexShader, `
             attribute vec3 position;
             void main() {
@@ -121,7 +122,7 @@ function performWebGLRenderingTest(gl, testSize, claimedRenderer) {
             throw new Error(`Vertex shader compilation failed: ${error}`);
         }
 
-        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
         gl.shaderSource(fragmentShader, `
             precision mediump float;
             void main() {
@@ -136,7 +137,7 @@ function performWebGLRenderingTest(gl, testSize, claimedRenderer) {
             throw new Error(`Fragment shader compilation failed: ${error}`);
         }
 
-        const program = gl.createProgram();
+        program = gl.createProgram();
         gl.attachShader(program, vertexShader);
         gl.attachShader(program, fragmentShader);
         gl.linkProgram(program);
@@ -167,13 +168,17 @@ function performWebGLRenderingTest(gl, testSize, claimedRenderer) {
 
         const hash = simpleHash(Array.from(pixels.slice(0, 1000)).join(','));
 
-        // Check for noise using sampling (check every 16th pixel for speed)
+        // Check for noise by comparing adjacent pixels at sampled positions
         let noiseLevel = 0;
         let sampleCount = 0;
-        const sampleInterval = 16;
-        const sampleOffset = sampleInterval * 4;
-        for (let i = 0; i + sampleOffset < pixels.length; i += sampleOffset) {
-            const diff = Math.abs(pixels[i] - pixels[i + sampleOffset]);
+        const sampleInterval = 16; // Sample every 16th pixel (pixels 0, 16, 32, 48, ...)
+        const sampleOffsetBytes = sampleInterval * 4; // 16 pixels × 4 bytes/pixel = 64 bytes
+        
+        // At each sampled position, compare it with the immediately adjacent pixel
+        // (e.g., compare pixel 0 with pixel 1, pixel 16 with pixel 17, etc.)
+        for (let i = 0; i + 4 < pixels.length; i += sampleOffsetBytes) {
+            // Compare R channel of sampled pixel (i) with R channel of adjacent pixel (i+4)
+            const diff = Math.abs(pixels[i] - pixels[i + 4]);
             if (diff > 5) noiseLevel++;
             sampleCount++;
         }
@@ -193,6 +198,18 @@ function performWebGLRenderingTest(gl, testSize, claimedRenderer) {
         };
     } catch (e) {
         return { suspicious: false, error: e.message };
+    } finally {
+        // Clean up WebGL resources to prevent GPU memory leaks
+        if (gl) {
+            try {
+                if (buffer) gl.deleteBuffer(buffer);
+                if (vertexShader) gl.deleteShader(vertexShader);
+                if (fragmentShader) gl.deleteShader(fragmentShader);
+                if (program) gl.deleteProgram(program);
+            } catch (cleanupError) {
+                // Ignore cleanup errors
+            }
+        }
     }
 }
 
