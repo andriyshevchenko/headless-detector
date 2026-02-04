@@ -252,6 +252,12 @@ function generateDetectionSummary(results) {
     // Use explanations already attached to results for consistency
     // results.checkItemExplanations is set by detectHeadless() before calling this function
     const checkExplanations = results.checkItemExplanations;
+    
+    // Checks where true/YES is good (should be present in normal browsers)
+    // Note: adv-permissions and media-webrtc are NOT in goodChecks because their 
+    // checkItems values (deniedByDefault, suspicious) are true when problematic
+    const goodChecks = ['webgl-supported', 'worker-available', 'emoji-rendered',
+        'outer-dims', 'languages-check', 'media-devices', 'fp-canvas', 'fp-audio'];
 
     // Helper function to check if value indicates a problem
     function isProblematic(key, value, explanation) {
@@ -259,10 +265,6 @@ function generateDetectionSummary(results) {
 
         // Boolean checks - true is bad unless it's a "good" check
         if (typeof value === 'boolean') {
-            // Note: adv-permissions and media-webrtc are NOT in goodChecks because their 
-            // checkItems values (deniedByDefault, suspicious) are true when problematic
-            const goodChecks = ['webgl-supported', 'worker-available', 'emoji-rendered',
-                'outer-dims', 'languages-check', 'media-devices', 'fp-canvas', 'fp-audio'];
             const isGoodCheck = goodChecks.includes(key);
 
             if (isGoodCheck && !value) return 'bad'; // Should be true but isn't
@@ -272,10 +274,6 @@ function generateDetectionSummary(results) {
 
         // String "YES"/"NO" checks
         if (value === 'YES' || value === 'NO') {
-            // Note: adv-permissions and media-webrtc are NOT in goodChecks because their 
-            // checkItems values (deniedByDefault, suspicious) are true when problematic
-            const goodChecks = ['webgl-supported', 'worker-available', 'emoji-rendered',
-                'outer-dims', 'languages-check', 'media-devices', 'fp-canvas', 'fp-audio'];
             const isGoodCheck = goodChecks.includes(key);
 
             if (isGoodCheck && value === 'NO') return 'bad';
