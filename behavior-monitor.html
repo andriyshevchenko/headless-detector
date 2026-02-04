@@ -254,7 +254,7 @@
         <div class="header">
             <h1>🧠 Headless Behavior Monitor</h1>
             <p>Real-time behavioral analysis to detect bot-like interaction patterns</p>
-            <a href="index.html" class="nav-link">← Back to Headless Detector</a>
+            <a href="index.html" class="nav-link" aria-label="Navigate back to Headless Browser Detector">← Back to Headless Detector</a>
         </div>
 
         <!-- Session Controls -->
@@ -295,7 +295,7 @@
                 <span class="card-icon" aria-hidden="true">📊</span>
                 Live Sample Counters
             </div>
-            <div class="samples-grid" role="region" aria-live="polite" aria-label="Live sample counts">
+            <div class="samples-grid" role="region" aria-live="off" aria-label="Live sample counts">
                 <div class="sample-counter">
                     <div class="sample-value" id="mouse-count">0</div>
                     <div class="sample-label"><span aria-hidden="true">🖱️</span> Mouse</div>
@@ -324,7 +324,7 @@
             <!-- Overall Score Card -->
             <div class="card">
                 <div class="card-title">
-                    <span class="card-icon">🎯</span>
+                    <span class="card-icon" aria-hidden="true">🎯</span>
                     Overall Analysis
                 </div>
                 <div style="text-align: center; padding: 20px 0;">
@@ -341,7 +341,7 @@
             <!-- Mouse Analysis -->
             <div class="card">
                 <div class="card-title">
-                    <span class="card-icon">🖱️</span>
+                    <span class="card-icon" aria-hidden="true">🖱️</span>
                     Mouse Movement Analysis
                 </div>
                 <div class="analysis-section">
@@ -373,7 +373,7 @@
             <!-- Keyboard Analysis -->
             <div class="card">
                 <div class="card-title">
-                    <span class="card-icon">⌨️</span>
+                    <span class="card-icon" aria-hidden="true">⌨️</span>
                     Keyboard Analysis
                 </div>
                 <div class="analysis-section">
@@ -405,7 +405,7 @@
             <!-- Scroll Analysis -->
             <div class="card">
                 <div class="card-title">
-                    <span class="card-icon">📜</span>
+                    <span class="card-icon" aria-hidden="true">📜</span>
                     Scroll Analysis
                 </div>
                 <div class="analysis-section">
@@ -433,7 +433,7 @@
             <!-- Touch Analysis -->
             <div class="card">
                 <div class="card-title">
-                    <span class="card-icon">👆</span>
+                    <span class="card-icon" aria-hidden="true">👆</span>
                     Touch Analysis
                 </div>
                 <div class="analysis-section">
@@ -461,7 +461,7 @@
             <!-- Events Analysis -->
             <div class="card">
                 <div class="card-title">
-                    <span class="card-icon">🎯</span>
+                    <span class="card-icon" aria-hidden="true">🎯</span>
                     Events Analysis
                 </div>
                 <div class="analysis-section">
@@ -489,7 +489,7 @@
             <!-- Sensor Analysis -->
             <div class="card">
                 <div class="card-title">
-                    <span class="card-icon">📡</span>
+                    <span class="card-icon" aria-hidden="true">📡</span>
                     Sensor Analysis
                 </div>
                 <div class="analysis-section">
@@ -592,6 +592,13 @@
             
             monitor.start();
             
+            // Reset counter displays to 0 for new session
+            document.getElementById('mouse-count').textContent = '0';
+            document.getElementById('keyboard-count').textContent = '0';
+            document.getElementById('scroll-count').textContent = '0';
+            document.getElementById('touch-count').textContent = '0';
+            document.getElementById('events-count').textContent = '0';
+            
             // Update UI
             document.getElementById('start-btn').disabled = true;
             document.getElementById('stop-btn').disabled = false;
@@ -609,8 +616,7 @@
             updateElapsedTime();
             elapsedInterval = setInterval(updateElapsedTime, ELAPSED_TIME_UPDATE_MS);
             
-            // Start periodic counter updates
-            updateInterval = setInterval(updateCounters, UPDATE_INTERVAL_MS);
+            // Note: updateCounters is called via onSample callback, no need for setInterval
         }
 
         function stopSession() {
@@ -749,8 +755,9 @@
             // Sensor Analysis
             const sensorScore = document.getElementById('sensor-score');
             if (results.sensors && results.sensors.available) {
-                sensorScore.textContent = results.sensors.score.toFixed(2);
-                sensorScore.className = 'analysis-score ' + getScoreClass(results.sensors.score);
+                const score = results.sensors.score;
+                sensorScore.textContent = score != null ? score.toFixed(2) : 'N/A';
+                sensorScore.className = 'analysis-score ' + (score != null ? getScoreClass(score) : '');
                 document.getElementById('sensor-available').textContent = 'YES';
                 document.getElementById('sensor-available').className = 'check-value pass';
             } else {
@@ -786,9 +793,11 @@
             if (!scoreEl || !confidenceEl || !samplesEl) return;
             
             if (analysis.available) {
-                scoreEl.textContent = analysis.score.toFixed(2);
-                scoreEl.className = 'analysis-score ' + getScoreClass(analysis.score);
-                confidenceEl.style.width = (analysis.confidence * 100) + '%';
+                const score = analysis.score;
+                const hasScore = typeof score === 'number';
+                scoreEl.textContent = hasScore ? score.toFixed(2) : 'N/A';
+                scoreEl.className = 'analysis-score ' + getScoreClass(hasScore ? score : 0);
+                confidenceEl.style.width = ((analysis.confidence || 0) * 100) + '%';
                 samplesEl.textContent = analysis.metrics?.sampleCount || '0';
             } else {
                 scoreEl.textContent = 'N/A';
@@ -799,13 +808,19 @@
         }
 
         function getScoreClass(score) {
+            if (typeof score !== 'number' || score === null) return '';
             if (score < 0.3) return 'score-low';
             if (score < 0.6) return 'score-medium';
             return 'score-high';
         }
 
         // Initialize on DOM ready (faster than 'load' event)
-        document.addEventListener('DOMContentLoaded', initMonitor);
+        // Check readyState in case script loads after DOMContentLoaded has fired
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initMonitor);
+        } else {
+            initMonitor();
+        }
     </script>
 </body>
 </html>
