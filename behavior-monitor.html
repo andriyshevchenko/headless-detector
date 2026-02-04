@@ -65,6 +65,11 @@
             cursor: not-allowed;
         }
         
+        .session-btn:focus {
+            outline: 3px solid #667eea;
+            outline-offset: 2px;
+        }
+        
         .session-btn.primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -257,20 +262,20 @@
             <div class="score-label">Session Controls</div>
             
             <div class="btn-group">
-                <button id="start-btn" class="session-btn primary" onclick="startSession()">
+                <button id="start-btn" class="session-btn primary" onclick="startSession()" aria-label="Start behavior monitoring session">
                     ▶️ Start Session
                 </button>
-                <button id="stop-btn" class="session-btn danger" onclick="stopSession()" disabled>
+                <button id="stop-btn" class="session-btn danger" onclick="stopSession()" disabled aria-label="End behavior monitoring session">
                     ⏹️ End Session
                 </button>
             </div>
             
             <div class="session-status">
-                <div id="status-indicator" class="status-indicator stopped">
-                    <span id="status-dot" class="static-dot"></span>
+                <div id="status-indicator" class="status-indicator stopped" role="status" aria-live="polite">
+                    <span id="status-dot" class="static-dot" aria-hidden="true"></span>
                     <span id="status-text">Session Stopped</span>
                 </div>
-                <div id="elapsed-time" class="elapsed-time"></div>
+                <div id="elapsed-time" class="elapsed-time" aria-live="off"></div>
             </div>
             
             <div class="instruction-box">
@@ -287,29 +292,29 @@
         <!-- Live Sample Counters -->
         <div class="card">
             <div class="card-title">
-                <span class="card-icon">📊</span>
+                <span class="card-icon" aria-hidden="true">📊</span>
                 Live Sample Counters
             </div>
-            <div class="samples-grid">
+            <div class="samples-grid" role="region" aria-live="polite" aria-label="Live sample counts">
                 <div class="sample-counter">
                     <div class="sample-value" id="mouse-count">0</div>
-                    <div class="sample-label">🖱️ Mouse</div>
+                    <div class="sample-label"><span aria-hidden="true">🖱️</span> Mouse</div>
                 </div>
                 <div class="sample-counter">
                     <div class="sample-value" id="keyboard-count">0</div>
-                    <div class="sample-label">⌨️ Keyboard</div>
+                    <div class="sample-label"><span aria-hidden="true">⌨️</span> Keyboard</div>
                 </div>
                 <div class="sample-counter">
                     <div class="sample-value" id="scroll-count">0</div>
-                    <div class="sample-label">📜 Scroll</div>
+                    <div class="sample-label"><span aria-hidden="true">📜</span> Scroll</div>
                 </div>
                 <div class="sample-counter">
                     <div class="sample-value" id="touch-count">0</div>
-                    <div class="sample-label">👆 Touch</div>
+                    <div class="sample-label"><span aria-hidden="true">👆</span> Touch</div>
                 </div>
                 <div class="sample-counter">
                     <div class="sample-value" id="events-count">0</div>
-                    <div class="sample-label">🎯 Events</div>
+                    <div class="sample-label"><span aria-hidden="true">🎯</span> Events</div>
                 </div>
             </div>
         </div>
@@ -541,23 +546,48 @@
 
     <script src="scripts/behavior-monitor.js"></script>
     <script>
+        // Configuration constants
+        const UPDATE_INTERVAL_MS = 500;  // Counter update interval
+        const ELAPSED_TIME_UPDATE_MS = 1000;  // Elapsed time update interval (1 second)
+        
         // Global monitor instance for automation access
         let monitor = null;
         let updateInterval = null;
         let elapsedInterval = null;
 
-        // Initialize monitor
+        // Initialize monitor with error handling
         function initMonitor() {
-            monitor = new HeadlessBehaviorMonitor({
-                onSample: updateCounters
-            });
-            window.__behaviorMonitor = monitor;
-            console.log('Behavior Monitor initialized. Access via window.__behaviorMonitor');
+            try {
+                if (typeof HeadlessBehaviorMonitor === 'undefined') {
+                    console.error('HeadlessBehaviorMonitor class not found. Ensure behavior-monitor.js is loaded.');
+                    return false;
+                }
+                monitor = new HeadlessBehaviorMonitor({
+                    onSample: updateCounters
+                });
+                window.__behaviorMonitor = monitor;
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize HeadlessBehaviorMonitor:', error);
+                return false;
+            }
         }
 
         function startSession() {
+            // Clear any existing intervals to prevent memory leaks
+            if (updateInterval !== null) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+            if (elapsedInterval !== null) {
+                clearInterval(elapsedInterval);
+                elapsedInterval = null;
+            }
+            
             if (!monitor) {
-                initMonitor();
+                if (!initMonitor()) {
+                    return; // Initialization failed
+                }
             }
             
             monitor.start();
@@ -577,12 +607,10 @@
             
             // Start elapsed time counter
             updateElapsedTime();
-            elapsedInterval = setInterval(updateElapsedTime, 1000);
+            elapsedInterval = setInterval(updateElapsedTime, ELAPSED_TIME_UPDATE_MS);
             
             // Start periodic counter updates
-            updateInterval = setInterval(updateCounters, 500);
-            
-            console.log('Session started');
+            updateInterval = setInterval(updateCounters, UPDATE_INTERVAL_MS);
         }
 
         function stopSession() {
@@ -613,27 +641,28 @@
             if (results) {
                 displayResults(results);
             }
-            
-            console.log('Session stopped. Results:', results);
         }
 
         function updateCounters() {
-            if (!monitor) return;
+            if (!monitor || typeof monitor.getStatus !== 'function') return;
             
             const status = monitor.getStatus();
+            if (!status || !status.samples) return;
             
-            document.getElementById('mouse-count').textContent = status.samples.mouse;
-            document.getElementById('keyboard-count').textContent = status.samples.keyboard;
-            document.getElementById('scroll-count').textContent = status.samples.scroll;
-            document.getElementById('touch-count').textContent = status.samples.touch;
-            document.getElementById('events-count').textContent = status.samples.events;
+            document.getElementById('mouse-count').textContent = status.samples.mouse || 0;
+            document.getElementById('keyboard-count').textContent = status.samples.keyboard || 0;
+            document.getElementById('scroll-count').textContent = status.samples.scroll || 0;
+            document.getElementById('touch-count').textContent = status.samples.touch || 0;
+            document.getElementById('events-count').textContent = status.samples.events || 0;
         }
 
         function updateElapsedTime() {
-            if (!monitor) return;
+            if (!monitor || typeof monitor.getStatus !== 'function') return;
             
             const status = monitor.getStatus();
-            const elapsed = Math.floor(status.elapsedTime / 1000);
+            if (!status) return;
+            
+            const elapsed = Math.floor((status.elapsedTime || 0) / 1000);
             const minutes = Math.floor(elapsed / 60);
             const seconds = elapsed % 60;
             
@@ -642,15 +671,18 @@
         }
 
         function displayResults(results) {
+            // Defensive check for results object
+            if (!results) return;
+            
             // Show results grid
             document.getElementById('results-grid').style.display = 'grid';
             document.getElementById('session-metadata').style.display = 'block';
             
             // Overall Score
-            const overallScore = results.overallScore;
+            const overallScore = results.overallScore || 0;
             document.getElementById('overall-score').textContent = overallScore.toFixed(2);
             document.getElementById('overall-confidence').textContent = 
-                (results.confidence * 100).toFixed(0) + '%';
+                ((results.confidence || 0) * 100).toFixed(0) + '%';
             
             const overallBadge = document.getElementById('overall-badge');
             if (overallScore < 0.3) {
@@ -665,47 +697,58 @@
             }
             
             // Mouse Analysis
-            displayAnalysisCard('mouse', results.mouse);
-            if (results.mouse.metrics) {
-                document.getElementById('mouse-velocity').textContent = 
-                    results.mouse.metrics.velocityVariance?.toFixed(2) || '-';
-                document.getElementById('mouse-angle').textContent = 
-                    results.mouse.metrics.angleVariance?.toFixed(2) || '-';
+            if (results.mouse) {
+                displayAnalysisCard('mouse', results.mouse);
+                if (results.mouse.metrics) {
+                    document.getElementById('mouse-velocity').textContent = 
+                        results.mouse.metrics.velocityVariance?.toFixed(2) || '-';
+                    document.getElementById('mouse-angle').textContent = 
+                        results.mouse.metrics.angleVariance?.toFixed(2) || '-';
+                }
             }
             
             // Keyboard Analysis
-            displayAnalysisCard('keyboard', results.keyboard);
-            if (results.keyboard.metrics) {
-                document.getElementById('keyboard-holdtime').textContent = 
-                    results.keyboard.metrics.holdTimeVariance?.toFixed(2) || '-';
-                document.getElementById('keyboard-interkey').textContent = 
-                    results.keyboard.metrics.interKeyVariance?.toFixed(2) || '-';
+            if (results.keyboard) {
+                displayAnalysisCard('keyboard', results.keyboard);
+                if (results.keyboard.metrics) {
+                    document.getElementById('keyboard-holdtime').textContent = 
+                        results.keyboard.metrics.holdTimeVariance?.toFixed(2) || '-';
+                    document.getElementById('keyboard-interkey').textContent = 
+                        results.keyboard.metrics.interKeyVariance?.toFixed(2) || '-';
+                }
             }
             
             // Scroll Analysis
-            displayAnalysisCard('scroll', results.scroll);
-            if (results.scroll.metrics) {
-                document.getElementById('scroll-delta').textContent = 
-                    results.scroll.metrics.deltaVariance?.toFixed(2) || '-';
+            if (results.scroll) {
+                displayAnalysisCard('scroll', results.scroll);
+                if (results.scroll.metrics) {
+                    document.getElementById('scroll-delta').textContent = 
+                        results.scroll.metrics.deltaVariance?.toFixed(2) || '-';
+                }
             }
             
             // Touch Analysis
-            displayAnalysisCard('touch', results.touch);
-            if (results.touch.metrics) {
-                document.getElementById('touch-force').textContent = 
-                    results.touch.metrics.forceVariance?.toFixed(4) || '-';
+            if (results.touch) {
+                displayAnalysisCard('touch', results.touch);
+                if (results.touch.metrics) {
+                    document.getElementById('touch-force').textContent = 
+                        results.touch.metrics.forceVariance?.toFixed(4) || '-';
+                }
             }
             
             // Events Analysis
-            displayAnalysisCard('events', results.events);
-            if (results.events.metrics) {
-                document.getElementById('events-untrusted').textContent = 
-                    (results.events.metrics.untrustedRatio * 100).toFixed(1) + '%' || '-';
+            if (results.events) {
+                displayAnalysisCard('events', results.events);
+                if (results.events.metrics) {
+                    const untrustedRatio = results.events.metrics.untrustedRatio;
+                    document.getElementById('events-untrusted').textContent = 
+                        untrustedRatio != null ? (untrustedRatio * 100).toFixed(1) + '%' : '-';
+                }
             }
             
             // Sensor Analysis
             const sensorScore = document.getElementById('sensor-score');
-            if (results.sensors.available) {
+            if (results.sensors && results.sensors.available) {
                 sensorScore.textContent = results.sensors.score.toFixed(2);
                 sensorScore.className = 'analysis-score ' + getScoreClass(results.sensors.score);
                 document.getElementById('sensor-available').textContent = 'YES';
@@ -718,22 +761,29 @@
             }
             
             // Session Metadata
-            const duration = results.metadata.duration;
-            const minutes = Math.floor(duration / 60000);
-            const seconds = Math.floor((duration % 60000) / 1000);
-            document.getElementById('session-duration').textContent = 
-                `${minutes}:${seconds.toString().padStart(2, '0')}`;
-            
-            const totalSamples = Object.values(results.metadata.samplesCollected)
-                .reduce((a, b) => a + b, 0);
-            document.getElementById('total-samples').textContent = totalSamples;
+            if (results.metadata) {
+                const duration = results.metadata.duration || 0;
+                const minutes = Math.floor(duration / 60000);
+                const seconds = Math.floor((duration % 60000) / 1000);
+                document.getElementById('session-duration').textContent = 
+                    `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                const samplesCollected = results.metadata.samplesCollected || {};
+                const totalSamples = Object.values(samplesCollected)
+                    .reduce((a, b) => a + b, 0);
+                document.getElementById('total-samples').textContent = totalSamples;
+            }
             document.getElementById('session-timestamp').textContent = new Date().toLocaleString();
         }
 
         function displayAnalysisCard(type, analysis) {
+            if (!analysis) return;
+            
             const scoreEl = document.getElementById(`${type}-score`);
             const confidenceEl = document.getElementById(`${type}-confidence`);
             const samplesEl = document.getElementById(`${type}-samples`);
+            
+            if (!scoreEl || !confidenceEl || !samplesEl) return;
             
             if (analysis.available) {
                 scoreEl.textContent = analysis.score.toFixed(2);
@@ -754,8 +804,8 @@
             return 'score-high';
         }
 
-        // Initialize on page load
-        window.addEventListener('load', initMonitor);
+        // Initialize on DOM ready (faster than 'load' event)
+        document.addEventListener('DOMContentLoaded', initMonitor);
     </script>
 </body>
 </html>
