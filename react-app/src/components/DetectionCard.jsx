@@ -49,8 +49,8 @@ export function SignalList({ signals }) {
     
     return (
         <div className="signal-list">
-            {signals.map((signal, index) => (
-                <span key={index} className="signal-item">{signal}</span>
+            {signals.map((signal) => (
+                <span key={signal} className="signal-item">{signal}</span>
             ))}
         </div>
     );

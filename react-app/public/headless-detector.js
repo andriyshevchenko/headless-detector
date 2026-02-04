@@ -70,7 +70,8 @@ async function detectHeadless(attachToWindow = false) {
     const getFingerprintChecks = _modules?.getFingerprintChecks || _getFingerprintChecks;
     const getWorkerChecks = _modules?.getWorkerChecks || _getWorkerChecks;
     const getCheckItemExplanations = _modules?.getCheckItemExplanations || _getCheckItemExplanations;
-    const getAdvancedChecks = _modules?.getAdvancedChecks || _getAdvancedChecks;
+    // Note: getAdvancedChecks is always inline since it depends on inline primitive functions
+    const getAdvancedChecks = _getAdvancedChecks;
 
     // Await worker checks first
     const workerChecks = await getWorkerChecks();
@@ -727,11 +728,14 @@ function _checkWebRTC() {
         const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 
         // Check if WebRTC is artificially disabled (common in headless)
+        // Only attempt instantiation when API is available
         let rtcDisabled = false;
-        try {
-            new RTCPeerConnection();
-        } catch (e) {
-            rtcDisabled = true;
+        if (hasRTC) {
+            try {
+                new RTCPeerConnection();
+            } catch (e) {
+                rtcDisabled = true;
+            }
         }
 
         return {
@@ -1244,14 +1248,14 @@ function _getCheckItemExplanations() {
         },
         'emoji-os': {
             label: "Detected OS",
-            description: "Operating system detected from emoji rendering style",
-            info: "Different OS render emoji differently. Should match User-Agent OS"
+            description: "Operating system detected from User-Agent",
+            info: "Shows the detected OS for reference"
         },
         'emoji-suspicious': {
             label: "Suspicious",
-            description: "Emoji rendering doesn't match claimed OS from User-Agent",
-            good: "Emoji style matches reported OS",
-            bad: "Mismatch detected - User-Agent spoofing or VM"
+            description: "Emoji failed to render on canvas",
+            good: "Emoji rendered successfully",
+            bad: "Emoji not rendered - possible headless browser"
         },
 
         // Window Dimensions

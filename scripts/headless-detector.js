@@ -70,7 +70,8 @@ async function detectHeadless(attachToWindow = false) {
     const getFingerprintChecks = _modules?.getFingerprintChecks || _getFingerprintChecks;
     const getWorkerChecks = _modules?.getWorkerChecks || _getWorkerChecks;
     const getCheckItemExplanations = _modules?.getCheckItemExplanations || _getCheckItemExplanations;
-    const getAdvancedChecks = _modules?.getAdvancedChecks || _getAdvancedChecks;
+    // Note: getAdvancedChecks is always inline since it depends on inline primitive functions
+    const getAdvancedChecks = _getAdvancedChecks;
 
     // Await worker checks first
     const workerChecks = await getWorkerChecks();
