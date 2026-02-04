@@ -284,7 +284,7 @@ class HeadlessBehaviorMonitor {
      * when enough samples have been collected or when the timeout is reached.
      * 
      * IMPORTANT: You must call start() before calling waitForReady(). If the monitor
-     * is not running, the promise will resolve with false immediately (or after timeout).
+     * is not running, the promise will resolve with false immediately.
      * 
      * @param {number} timeout - Maximum time to wait in milliseconds
      * @returns {Promise<boolean>} Resolves to true if ready, false if timeout or not running
@@ -727,7 +727,8 @@ class HeadlessBehaviorMonitor {
         // Suspicious indicators:
         // - Very low velocity variance (too consistent)
         // - Very low angle variance (too straight)
-        // - High straight line ratio
+        // - High straight line ratio (Note: with minimum 2 movements, max ratio is 0.5,
+        //   so this check requires 3+ movements to be meaningful)
         // - High untrusted event ratio
         // - Very high mouse efficiency (too direct, bot-like)
         let suspiciousScore = 0;
