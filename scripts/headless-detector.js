@@ -612,7 +612,8 @@ function _detectCDPStackTrace() {
 
 /**
  * Check Chrome Runtime availability (2025 method)
- * Headless Chrome often lacks chrome.runtime
+ * Note: chrome.runtime is only available in Chrome extensions, not regular web pages.
+ * Regular Chrome browsers (desktop and mobile) do NOT expose chrome.runtime to normal web pages.
  */
 function _checkChromeRuntime() {
     try {
@@ -620,7 +621,8 @@ function _checkChromeRuntime() {
         const hasRuntime = !!(window.chrome && window.chrome.runtime);
         const hasRuntimeId = !!(window.chrome && window.chrome.runtime && window.chrome.runtime.id);
 
-        // Normal Chrome should have chrome.runtime, headless often doesn't
+        // chrome.runtime is only available in extensions, not regular web pages
+        // Missing chrome.runtime is normal behavior for non-extension contexts
         const missing = hasChrome && !hasRuntime;
 
         return {
@@ -628,7 +630,8 @@ function _checkChromeRuntime() {
             hasRuntime,
             hasRuntimeId,
             missing,
-            suspicious: missing
+            // Not suspicious - chrome.runtime is unavailable on regular web pages
+            suspicious: false
         };
     } catch (e) {
         return { error: true };
@@ -1369,9 +1372,9 @@ function _getCheckItemExplanations() {
         },
         'adv-runtime': {
             label: "Chrome Runtime",
-            description: "chrome.runtime extension API availability",
-            good: "chrome.runtime present - normal Chrome browser",
-            bad: "Missing chrome.runtime - unusual for Chrome, may be headless"
+            description: "chrome.runtime extension API availability (extensions only)",
+            good: "chrome.runtime check passed - normal browser behavior",
+            bad: "chrome.runtime check passed - normal browser behavior"
         },
         'adv-permissions': {
             label: "Permissions API",

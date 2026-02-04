@@ -220,9 +220,9 @@ function getCheckItemExplanations() {
         },
         'adv-runtime': {
             label: "Chrome Runtime",
-            description: "chrome.runtime extension API availability",
-            good: "chrome.runtime present - normal Chrome browser",
-            bad: "Missing chrome.runtime - unusual for Chrome, may be headless"
+            description: "chrome.runtime extension API availability (extensions only)",
+            good: "chrome.runtime check passed - normal browser behavior",
+            bad: "chrome.runtime check passed - normal browser behavior"
         },
         'adv-permissions': {
             label: "Permissions API",
