@@ -8,6 +8,26 @@ export function Metadata({ results }) {
     
     const hi = results.headlessIndicators || {};
     
+    // Helper function to safely format timezone
+    const formatTimezone = () => {
+        if (!hi.timezone || typeof hi.timezoneOffset !== 'number' || !isFinite(hi.timezoneOffset)) {
+            return 'N/A';
+        }
+        return `${hi.timezone} (UTC${hi.timezoneOffset > 0 ? '-' : '+'}${Math.abs(hi.timezoneOffset/60)})`;
+    };
+
+    // Helper function to safely format screen resolution
+    const formatScreenResolution = () => {
+        if (typeof hi.screenWidth !== 'number' || typeof hi.screenHeight !== 'number' || 
+            !isFinite(hi.screenWidth) || !isFinite(hi.screenHeight)) {
+            return 'N/A';
+        }
+        const dpr = typeof hi.devicePixelRatio === 'number' && isFinite(hi.devicePixelRatio) 
+            ? hi.devicePixelRatio 
+            : 1;
+        return `${hi.screenWidth}x${hi.screenHeight} @ ${dpr}x`;
+    };
+    
     return (
         <div className="metadata">
             <div className="metadata-title">📋 Session Metadata</div>
@@ -18,10 +38,10 @@ export function Metadata({ results }) {
                 {results.userAgent}
             </MetadataItem>
             <MetadataItem label="Timezone">
-                {`${hi.timezone} (UTC${hi.timezoneOffset > 0 ? '-' : '+'}${Math.abs(hi.timezoneOffset/60)})`}
+                {formatTimezone()}
             </MetadataItem>
             <MetadataItem label="Screen Resolution">
-                {`${hi.screenWidth}x${hi.screenHeight} @ ${hi.devicePixelRatio}x`}
+                {formatScreenResolution()}
             </MetadataItem>
         </div>
     );

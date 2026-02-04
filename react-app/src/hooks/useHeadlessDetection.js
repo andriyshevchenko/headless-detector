@@ -30,12 +30,48 @@ export function useHeadlessDetection() {
     }, []);
 
     useEffect(() => {
-        // Run detection when component mounts
-        const timer = setTimeout(() => {
-            runDetection();
-        }, 100); // Small delay to ensure script is loaded
+        // Run detection when component mounts, waiting for script readiness
+        let cancelled = false;
+        const maxWaitMs = 2000;
+        const pollIntervalMs = 50;
+        const startTime = Date.now();
+
+        const tryRunDetection = () => {
+            if (cancelled) {
+                return;
+            }
+
+            if (window.detectHeadless) {
+                runDetection();
+                return;
+            }
+
+            if (Date.now() - startTime >= maxWaitMs) {
+                // Give up after max wait time
+                setError('Detection script not loaded');
+                setLoading(false);
+                return;
+            }
+
+            setTimeout(tryRunDetection, pollIntervalMs);
+        };
+
+        const onDomReady = () => {
+            if (cancelled) {
+                return;
+            }
+            tryRunDetection();
+        };
+
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            onDomReady();
+        } else {
+            document.addEventListener('DOMContentLoaded', onDomReady, { once: true });
+        }
         
-        return () => clearTimeout(timer);
+        return () => {
+            cancelled = true;
+        };
     }, [runDetection]);
 
     return {

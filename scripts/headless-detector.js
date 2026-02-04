@@ -1075,13 +1075,17 @@ function _getWorkerChecks() {
             `;
 
             const blob = new Blob([workerCode], { type: 'application/javascript' });
-            const worker = new Worker(URL.createObjectURL(blob));
+            const blobUrl = URL.createObjectURL(blob);
+            const worker = new Worker(blobUrl);
 
             const timeout = setTimeout(() => {
                 worker.terminate();
+                URL.revokeObjectURL(blobUrl);
                 resolve({
                     available: false,
                     userAgentMismatch: false,
+                    platformMismatch: false,
+                    suspicious: false,
                     reason: "Worker timeout"
                 });
             }, 1000);
@@ -1089,6 +1093,7 @@ function _getWorkerChecks() {
             worker.onmessage = function (e) {
                 clearTimeout(timeout);
                 worker.terminate();
+                URL.revokeObjectURL(blobUrl);
 
                 const workerUA = e.data.userAgent;
                 const mainUA = navigator.userAgent;
@@ -1116,10 +1121,14 @@ function _getWorkerChecks() {
             worker.onerror = function (error) {
                 clearTimeout(timeout);
                 worker.terminate();
+                URL.revokeObjectURL(blobUrl);
                 resolve({
                     available: false,
                     userAgentMismatch: false,
-                    error: error.message
+                    platformMismatch: false,
+                    suspicious: false,
+                    error: error.message,
+                    reason: "Worker error"
                 });
             };
 
@@ -1128,7 +1137,10 @@ function _getWorkerChecks() {
             resolve({
                 available: false,
                 userAgentMismatch: false,
-                error: e.message
+                platformMismatch: false,
+                suspicious: false,
+                error: e.message,
+                reason: "Worker creation failed"
             });
         }
     });
@@ -1494,11 +1506,11 @@ function _generateDetectionSummary(results) {
         'languages-check': results.automationFlags?.languages,
         'media-devices': results.headlessIndicators?.hasMediaDevices,
         'adv-stacktrace': results.advancedChecks?.stackTrace?.cdpDetected,
-        'adv-runtime': !results.advancedChecks?.chromeRuntime?.missing,
-        'adv-permissions': !results.advancedChecks?.permissions?.deniedByDefault,
+        'adv-runtime': results.advancedChecks?.chromeRuntime?.missing,
+        'adv-permissions': results.advancedChecks?.permissions?.deniedByDefault,
         'adv-console': results.advancedChecks?.consoleDebug?.detected,
-        'media-webrtc': !results.mediaChecks?.webrtc?.suspicious,
-        'media-battery': results.mediaChecks?.battery?.available,
+        'media-webrtc': results.mediaChecks?.webrtc?.suspicious,
+        'media-battery': !results.mediaChecks?.battery?.available,
         'fp-canvas': results.fingerprintChecks?.canvas?.available,
         'fp-audio': results.fingerprintChecks?.audioContext?.available,
         'plugins-count': results.automationFlags?.plugins

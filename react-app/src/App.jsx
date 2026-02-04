@@ -20,7 +20,7 @@ import {
 import { Metadata, AutomationTestingInfo } from './components/Metadata';
 
 function App() {
-    const { results, loading, runDetection } = useHeadlessDetection();
+    const { results, loading, error, runDetection } = useHeadlessDetection();
     const status = useDetectionStatus(results);
 
     return (
@@ -29,7 +29,33 @@ function App() {
             
             {loading && <Loading />}
             
-            {!loading && results && (
+            {!loading && error && (
+                <div className="error-container" style={{
+                    background: '#fee2e2',
+                    border: '2px solid #ef4444',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    margin: '20px 0',
+                    textAlign: 'center'
+                }}>
+                    <div style={{ fontSize: '24px', marginBottom: '10px' }}>❌</div>
+                    <div style={{ color: '#dc2626', fontWeight: 'bold', marginBottom: '10px' }}>
+                        Detection Failed
+                    </div>
+                    <div style={{ color: '#7f1d1d', marginBottom: '15px' }}>
+                        {error}
+                    </div>
+                    <button 
+                        className="refresh-btn" 
+                        onClick={runDetection}
+                        style={{ margin: '0 auto' }}
+                    >
+                        🔄 Retry Detection
+                    </button>
+                </div>
+            )}
+            
+            {!loading && !error && results && (
                 <div id="results">
                     <ScoreCard 
                         score={status.score} 
