@@ -507,7 +507,8 @@ console.log('Confidence:', results.confidence);
 **`waitForReady(timeout)` - Asynchronous**
 - Waits for enough samples to be collected
 - `timeout` parameter: maximum time to wait in milliseconds (uses constructor timeout if not provided)
-- Returns: `Promise<boolean>` - `true` if enough samples collected, `false` if timeout reached
+- Returns: `Promise<boolean>` - `true` if enough samples collected, `false` if timeout reached or monitor not running
+- Important: Must call `start()` before `waitForReady()`. Returns `false` immediately if the monitor is not running.
 - Use with `await` or `.then()`
 
 ```javascript
