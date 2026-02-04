@@ -434,6 +434,38 @@ describe('HeadlessBehaviorMonitor', () => {
             expect(monitor._isReady()).toBe(true);
         });
 
+        test('_isReady() should return true with single enabled channel', () => {
+            // Create monitor with only mouse enabled
+            const singleChannelMonitor = new HeadlessBehaviorMonitor({
+                mouse: true,
+                keyboard: false,
+                scroll: false,
+                touch: false,
+                events: false
+            });
+
+            // Add enough mouse samples
+            for (let i = 0; i < 20; i++) {
+                singleChannelMonitor.data.mouse.push({
+                    x: i, y: i, timestamp: Date.now(), isTrusted: true
+                });
+            }
+
+            expect(singleChannelMonitor._isReady()).toBe(true);
+        });
+
+        test('_isReady() should return false with no enabled channels', () => {
+            const noChannelMonitor = new HeadlessBehaviorMonitor({
+                mouse: false,
+                keyboard: false,
+                scroll: false,
+                touch: false,
+                events: false
+            });
+
+            expect(noChannelMonitor._isReady()).toBe(false);
+        });
+
         test('waitForReady() should resolve when ready', async () => {
             monitor.start();
 
@@ -487,6 +519,43 @@ describe('HeadlessBehaviorMonitor', () => {
 
             setTimeout(() => {
                 expect(onReadySpy).toHaveBeenCalled();
+                done();
+            }, 10);
+        });
+
+        test('_checkReadiness(true) should resolve waiters with false when not ready', async () => {
+            monitor.start();
+
+            // Start waiting (no samples, so not ready)
+            const waitPromise = monitor.waitForReady(5000);
+
+            // Force timeout before actual timeout
+            setTimeout(() => {
+                monitor._checkReadiness(true);
+            }, 50);
+
+            const result = await waitPromise;
+            expect(result).toBe(false);
+        });
+
+        test('_checkReadiness(true) should trigger onReady even on timeout', (done) => {
+            const onReadySpy = jest.fn();
+            const monitorWithCallback = new HeadlessBehaviorMonitor({
+                onReady: onReadySpy,
+                timeout: 100
+            });
+
+            monitorWithCallback.start();
+
+            // Don't add enough samples - will timeout
+
+            // Force timeout
+            monitorWithCallback._checkReadiness(true);
+
+            setTimeout(() => {
+                expect(onReadySpy).toHaveBeenCalled();
+                const results = onReadySpy.mock.calls[0][0];
+                expect(results).toHaveProperty('overallScore');
                 done();
             }, 10);
         });

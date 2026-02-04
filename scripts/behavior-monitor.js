@@ -64,6 +64,8 @@ class HeadlessBehaviorMonitor {
         };
         
         this.lastKeyDownTime = null;
+        this.sensorHandler = null;
+        this.sensorTimeoutId = null;
     }
     
     /**
@@ -153,12 +155,24 @@ class HeadlessBehaviorMonitor {
             document.removeEventListener('touchmove', this.handlers.touchmove);
             document.removeEventListener('click', this.handlers.click);
             window.removeEventListener('focus', this.handlers.focus);
+            
+            // Remove sensor handler if active
+            if (this.sensorHandler) {
+                window.removeEventListener('devicemotion', this.sensorHandler);
+                this.sensorHandler = null;
+            }
         }
         
         // Clear timeout
         if (this.timeoutId) {
             clearTimeout(this.timeoutId);
             this.timeoutId = null;
+        }
+        
+        // Clear sensor timeout
+        if (this.sensorTimeoutId) {
+            clearTimeout(this.sensorTimeoutId);
+            this.sensorTimeoutId = null;
         }
         
         return this.getResults();
@@ -270,11 +284,26 @@ class HeadlessBehaviorMonitor {
         }
         
         return new Promise((resolve) => {
-            this.readyResolvers.push(resolve);
+            let timeoutId = null;
+            
+            const done = (value) => {
+                if (timeoutId !== null) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+                resolve(value);
+            };
+            
+            this.readyResolvers.push(done);
             
             if (timeoutMs > 0) {
-                setTimeout(() => {
-                    resolve(false);
+                timeoutId = setTimeout(() => {
+                    // Remove this resolver from the list since we're handling it
+                    const index = this.readyResolvers.indexOf(done);
+                    if (index > -1) {
+                        this.readyResolvers.splice(index, 1);
+                    }
+                    done(false);
                 }, timeoutMs);
             }
         });
@@ -411,7 +440,7 @@ class HeadlessBehaviorMonitor {
     _startSensorMonitoring() {
         // Try to access device motion/orientation
         if (typeof window !== 'undefined' && window.DeviceMotionEvent) {
-            const handler = (event) => {
+            this.sensorHandler = (event) => {
                 if (event.acceleration) {
                     this.data.sensors.push({
                         type: 'motion',
@@ -423,11 +452,15 @@ class HeadlessBehaviorMonitor {
                 }
             };
             
-            window.addEventListener('devicemotion', handler, { passive: true });
+            window.addEventListener('devicemotion', this.sensorHandler, { passive: true });
             
             // Stop after collecting a few samples
-            setTimeout(() => {
-                window.removeEventListener('devicemotion', handler);
+            this.sensorTimeoutId = setTimeout(() => {
+                if (this.sensorHandler) {
+                    window.removeEventListener('devicemotion', this.sensorHandler);
+                    this.sensorHandler = null;
+                }
+                this.sensorTimeoutId = null;
             }, 5000);
         }
     }
@@ -480,17 +513,39 @@ class HeadlessBehaviorMonitor {
     }
     
     _isReady() {
-        const samples = {
-            mouse: this.data.mouse.length >= this.options.minSamples.mouse,
-            keyboard: this.data.keyboard.length >= this.options.minSamples.keyboard,
-            scroll: this.data.scroll.length >= this.options.minSamples.scroll,
-            touch: this.data.touch.length >= this.options.minSamples.touch,
-            events: this.data.events.length >= this.options.minSamples.events
-        };
+        // Only consider input types that are actually enabled via options
+        const samples = {};
         
-        // Ready if at least 2 different input types have enough samples
+        if (this.options.mouse) {
+            samples.mouse = this.data.mouse.length >= this.options.minSamples.mouse;
+        }
+        
+        if (this.options.keyboard) {
+            samples.keyboard = this.data.keyboard.length >= this.options.minSamples.keyboard;
+        }
+        
+        if (this.options.scroll) {
+            samples.scroll = this.data.scroll.length >= this.options.minSamples.scroll;
+        }
+        
+        if (this.options.touch) {
+            samples.touch = this.data.touch.length >= this.options.minSamples.touch;
+        }
+        
+        if (this.options.events) {
+            samples.events = this.data.events.length >= this.options.minSamples.events;
+        }
+        
+        const enabledCount = Object.keys(samples).length;
+        if (enabledCount === 0) {
+            // No enabled input types; cannot become ready
+            return false;
+        }
+        
         const readyCount = Object.values(samples).filter(v => v).length;
-        return readyCount >= 2;
+        // Require at least two ready input types when possible; otherwise one is enough
+        const requiredReady = Math.min(2, enabledCount);
+        return readyCount >= requiredReady;
     }
     
     _checkReadiness(forceTimeout = false) {
