@@ -1,11 +1,13 @@
 # Headless Browser Detector
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/andriyshevchenko/headless-detector)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/andriyshevchenko/headless-detector)
 [![CI Tests](https://github.com/andriyshevchenko/headless-detector/actions/workflows/test.yml/badge.svg)](https://github.com/andriyshevchenko/headless-detector/actions/workflows/test.yml)
 [![npm version](https://img.shields.io/npm/v/headless-detector.svg)](https://www.npmjs.com/package/headless-detector)
 
 A comprehensive JavaScript library for detecting headless browsers, automation frameworks, and bot activity. Built with the latest 2025/2026 detection techniques from industry leaders like Castle.io, DataDome, and FingerprintJS.
+
+**NEW:** Includes standalone behavioral analysis module for advanced bot detection through user interaction patterns.
 
 ## Features
 
@@ -14,7 +16,7 @@ A comprehensive JavaScript library for detecting headless browsers, automation f
 - 🔧 **Worker UA Check** - Compares User-Agent between main thread and Worker (NEW 2026)
 - 😀 **Emoji OS Consistency** - Verifies emoji rendering matches OS (NEW 2026)
 - 🎨 **WebGL Rendering Test** - Complex 3D rendering to detect software renderers (NEW 2026)
-- 🖱️ **Behavioral Analysis** - Monitor user interactions over time for bot-like patterns (NEW 2026)
+- 🖱️ **Behavioral Analysis Module** - Separate API to monitor user interactions for bot-like patterns (NEW 2026)
 - 🔍 **Advanced CDP Detection** - Identifies Chrome DevTools Protocol usage
 - 🖌️ **Fingerprinting** - Canvas, Audio Context, and Font detection
 - 📱 **Media Checks** - WebRTC and MediaDevices availability
@@ -30,7 +32,6 @@ A comprehensive JavaScript library for detecting headless browsers, automation f
 | CDP Artifacts | Very High | Detects ChromeDriver and CDP connection signals |
 | **Playwright Bindings** | Very High | Detects `__playwright__binding__`, `__pwInitScripts` (NEW 2026) |
 | **Playwright Exposed Functions** | Very High | Detects functions with `__installed` property (NEW 2026) |
-| **Behavioral Analysis** | Very High | Monitors mouse, keyboard, scroll, touch patterns over time (NEW 2026) |
 | **Worker UA Check** | High | Compares User-Agent in main thread vs Worker (NEW 2026) |
 | **Emoji OS Consistency** | Medium | Verifies emoji rendering matches declared OS (NEW 2026) |
 | **WebGL Rendering Test** | Medium | Complex 3D scene rendering test (NEW 2026) |
@@ -41,6 +42,8 @@ A comprehensive JavaScript library for detecting headless browsers, automation f
 | Browser Fingerprinting | Medium-High | Canvas, Audio Context, and Font detection |
 | Automation Flags | High | Scans for framework-specific global variables |
 | Headless Indicators | Medium | Checks window dimensions and permissions |
+
+**Note:** Behavioral analysis is available as a separate module (`HeadlessBehaviorMonitor`) that can be used independently or combined with headless detection.
 
 ## Installation
 
@@ -105,11 +108,11 @@ cd headless-detector
 
 ## Usage
 
-### Basic Usage
+### Basic Headless Detection
 
 ```javascript
 // Run detection
-const results = detectHeadless();
+const results = await detectHeadless();
 
 console.log('Headless Score:', results.isHeadless); // 0.0 - 1.0
 console.log('Classification:', results.summary.classification);
@@ -120,41 +123,79 @@ console.log('Risk Level:', results.summary.riskLevel);
 
 ```javascript
 // Attach results to window for easy access
-const results = detectHeadless(true);
+const results = await detectHeadless(true);
 
 // Access from window object
 console.log(window.__headlessDetectionScore); // Quick score access
 console.log(window.__headlessDetection.summary); // Full summary
 ```
 
-### Behavioral Analysis (NEW 2026)
+---
 
-The behavioral monitor analyzes user interactions over time to detect bot-like patterns. These checks are fundamentally harder to spoof than fingerprint checks because they require genuine human interaction patterns.
+## Behavioral Analysis Module (Separate API)
 
-#### Quick Start with `detectHeadlessFull()`
+The `HeadlessBehaviorMonitor` is a standalone module that analyzes user interactions over time to detect bot-like patterns. These checks are fundamentally harder to spoof than fingerprint checks because they require genuine human interaction patterns.
 
-The easiest way to use behavioral analysis:
+**Key Concept:** The behavioral module is completely independent and can be used:
+- **Standalone** - For pure behavioral analysis
+- **Combined with headless detection** - Use both results in your application logic
+
+### Using Behavioral Monitor Standalone
 
 ```javascript
-// One-liner that handles everything
-const results = await detectHeadlessFull({
-    timeout: 10000,        // Wait up to 10 seconds for user interactions
-    minConfidence: 0.7,    // Minimum confidence threshold
-    attachToWindow: false,
-    behaviorOptions: {}    // Optional: customize behavioral monitor
+// Import the module
+const HeadlessBehaviorMonitor = require('headless-detector/scripts/behavior-monitor.js');
+// Or in browser: window.HeadlessBehaviorMonitor
+
+// Create and start monitor
+const monitor = new HeadlessBehaviorMonitor({
+    mouse: true,
+    keyboard: true,
+    scroll: true,
+    timeout: 10000
 });
 
-console.log('Combined Score:', results.isHeadless);
-console.log('Behavioral Data:', results.behaviorAnalysis);
+monitor.start();
+
+// Wait for enough user interaction data
+await monitor.waitForReady(10000);
+
+// Get behavioral analysis results
+const behaviorResults = monitor.getResults();
+console.log('Behavioral Score:', behaviorResults.overallScore);
+console.log('Confidence:', behaviorResults.confidence);
+console.log('Mouse Efficiency:', behaviorResults.mouse.metrics.mouseEfficiency);
+
+monitor.stop();
 ```
 
-#### Manual Behavioral Monitoring
+### Combining Both APIs
 
-For more control over the monitoring lifecycle:
+```javascript
+// Run both detections independently
+const headlessResults = await detectHeadless();
+
+const monitor = new HeadlessBehaviorMonitor({ timeout: 10000 });
+monitor.start();
+await monitor.waitForReady();
+const behaviorResults = monitor.getResults();
+monitor.stop();
+
+// Combine results in your application logic
+const combinedScore = (headlessResults.isHeadless * 0.6) + (behaviorResults.overallScore * 0.4);
+console.log('Headless Score:', headlessResults.isHeadless);
+console.log('Behavioral Score:', behaviorResults.overallScore);
+console.log('Combined Score:', combinedScore);
+```
+
+### Behavioral Monitor - Full API
+
+#### Configuration Options
 
 ```javascript
 // Import or access the class
 const HeadlessBehaviorMonitor = window.HeadlessBehaviorMonitor;
+// Or: require('headless-detector/scripts/behavior-monitor.js')
 
 // Create monitor with options
 const monitor = new HeadlessBehaviorMonitor({
@@ -208,30 +249,6 @@ console.log('Confidence:', results.confidence);
 const finalResults = monitor.stop();
 ```
 
-#### Combining with Standard Detection
-
-```javascript
-// Create and start behavioral monitor
-const monitor = new HeadlessBehaviorMonitor({ timeout: 10000 });
-monitor.start();
-
-// Wait for samples
-await monitor.waitForReady(10000);
-
-// Run detection with behavioral data
-const results = await detectHeadless({
-    attachToWindow: true,
-    includeBehavior: monitor  // Include behavioral analysis
-});
-
-// Results now include behavioral analysis
-console.log('Combined Score:', results.isHeadless);
-console.log('Behavioral Analysis:', results.behaviorAnalysis);
-
-// Stop monitoring
-monitor.stop();
-```
-
 #### Behavioral Checks Explained
 
 | Check | Description | Why Hard to Spoof |
@@ -245,7 +262,7 @@ monitor.stop();
 | **Sensor Entropy** | Analyzes accelerometer/gyroscope noise | Real hardware sensors have physical noise; simulated sensors are too stable |
 | **WebGL Shader Timing** | Measures shader compilation time | GPU-specific compilation patterns are hard to fake consistently |
 
-**Scoring:** When behavioral data is included with confidence > 0.5, the final score is: `60% instant checks + 40% behavioral analysis`
+---
 
 ### Accessing Individual Checks
 
@@ -289,29 +306,23 @@ summary.detections.forEach(d => {
 
 ## API Reference
 
-### `detectHeadless(attachToWindowOrOptions)`
+### Headless Detection API
 
-Main detection function with optional behavioral analysis.
+#### `detectHeadless(attachToWindow)`
+
+Main detection function for instant headless browser detection.
 
 **Parameters:**
-- `attachToWindowOrOptions` (boolean|Object, optional)
-  - As boolean: If true, attaches results to `window.__headlessDetection` (backward compatible)
-  - As object: Configuration options:
-    - `attachToWindow` (boolean) - Attach results to window
-    - `includeBehavior` (HeadlessBehaviorMonitor) - Include behavioral analysis
+- `attachToWindow` (boolean, optional) - If true, attaches results to `window.__headlessDetection`
 
 **Returns:** Promise<Object> with detection results
 
 ```javascript
-// Backward compatible usage
+// Basic usage
 const results = await detectHeadless();
-const results = await detectHeadless(true);
 
-// New: with behavioral analysis
-const results = await detectHeadless({
-    attachToWindow: true,
-    includeBehavior: monitor  // HeadlessBehaviorMonitor instance
-});
+// With window attachment
+const results = await detectHeadless(true);
 ```
 
 **Result Object:**
@@ -328,42 +339,19 @@ const results = await detectHeadless({
   advancedChecks: {...},               // Advanced detection methods
   mediaChecks: {...},                  // Media/WebRTC checks
   fingerprintChecks: {...},            // Fingerprinting results
-  behaviorAnalysis: {...},             // Behavioral analysis (if included)
   checkItemExplanations: {...},        // Method explanations
   summary: {...},                      // Detection summary
   timestamp: 1738584000000,
   userAgent: "Mozilla/5.0...",
-  detectionVersion: "2.0.0"
+  detectionVersion: "1.0.0"
 }
 ```
 
-### `detectHeadlessFull(options)`
+---
 
-Convenience function that automatically handles behavioral monitoring lifecycle.
+### Behavioral Analysis API
 
-**Parameters:**
-- `options` (Object, optional)
-  - `timeout` (number) - Time to wait for samples (default: 10000ms)
-  - `minConfidence` (number) - Minimum confidence threshold (default: 0.7)
-  - `attachToWindow` (boolean) - Attach results to window (default: false)
-  - `behaviorOptions` (Object) - Options to pass to HeadlessBehaviorMonitor
-
-**Returns:** Promise<Object> with combined detection results
-
-```javascript
-const results = await detectHeadlessFull({
-    timeout: 10000,
-    minConfidence: 0.7,
-    attachToWindow: false,
-    behaviorOptions: {
-        mouse: true,
-        keyboard: true,
-        minSamples: { mouse: 15, keyboard: 8 }
-    }
-});
-```
-
-### `HeadlessBehaviorMonitor`
+#### `HeadlessBehaviorMonitor`
 
 Class for monitoring user interactions over time to detect bot-like behavioral patterns.
 
@@ -461,7 +449,7 @@ window.HeadlessDetector.checks   // Individual check functions
 ```javascript
 document.documentElement.getAttribute('data-headless-score')     // "0.170"
 document.documentElement.getAttribute('data-headless-detected')  // "false"
-document.documentElement.getAttribute('data-detection-version')  // "2.0.0"
+document.documentElement.getAttribute('data-detection-version')  // "1.0.0"
 ```
 
 ## Demo
