@@ -69,6 +69,15 @@ class HeadlessBehaviorMonitor {
     
     /**
      * Start monitoring user interactions
+     * 
+     * This method is synchronous and returns immediately after attaching event listeners.
+     * Use waitForReady() to wait for enough samples to be collected.
+     * 
+     * @returns {void}
+     * 
+     * @example
+     * monitor.start();
+     * await monitor.waitForReady(10000);
      */
     start() {
         if (this.isRunning) return;
@@ -118,6 +127,17 @@ class HeadlessBehaviorMonitor {
     
     /**
      * Stop monitoring and return final results
+     * 
+     * This method is synchronous. It removes all event listeners and returns
+     * the final analysis results immediately.
+     * 
+     * @returns {Object|null} Final analysis results, or null if not running
+     * 
+     * @example
+     * const finalResults = monitor.stop();
+     * if (finalResults) {
+     *     console.log('Score:', finalResults.overallScore);
+     * }
      */
     stop() {
         if (!this.isRunning) return null;
@@ -147,6 +167,14 @@ class HeadlessBehaviorMonitor {
     
     /**
      * Get current monitoring status
+     * 
+     * This method is synchronous and returns the current state immediately.
+     * 
+     * @returns {Object} Status object with isRunning, elapsedTime, samples, and ready
+     * 
+     * @example
+     * const status = monitor.getStatus();
+     * console.log('Ready:', status.ready);
      */
     getStatus() {
         const status = {
@@ -167,6 +195,16 @@ class HeadlessBehaviorMonitor {
     
     /**
      * Get analysis results
+     * 
+     * This method is synchronous and computes results from collected data immediately.
+     * Can be called multiple times to get current analysis at any point.
+     * 
+     * @returns {Object} Analysis results with scores, confidence, and metrics
+     * 
+     * @example
+     * const results = monitor.getResults();
+     * console.log('Score:', results.overallScore);
+     * console.log('Confidence:', results.confidence);
      */
     getResults() {
         const analysis = {
@@ -203,6 +241,27 @@ class HeadlessBehaviorMonitor {
     
     /**
      * Wait for monitoring to collect enough samples
+     * 
+     * This is the ONLY async method in the API. It returns a Promise that resolves
+     * when enough samples have been collected or when the timeout is reached.
+     * 
+     * @param {number} timeout - Maximum time to wait in milliseconds
+     * @returns {Promise<boolean>} Resolves to true if ready, false if timeout
+     * 
+     * @example
+     * // With await
+     * const ready = await monitor.waitForReady(10000);
+     * if (ready) {
+     *     console.log('Ready to analyze');
+     * }
+     * 
+     * @example
+     * // With .then()
+     * monitor.waitForReady(10000).then(ready => {
+     *     if (ready) {
+     *         const results = monitor.getResults();
+     *     }
+     * });
      */
     async waitForReady(timeout) {
         const timeoutMs = timeout || this.options.timeout;

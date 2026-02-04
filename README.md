@@ -190,6 +190,82 @@ console.log('Combined Score:', combinedScore);
 
 ### Behavioral Monitor - Full API
 
+#### API Design Philosophy
+
+The `HeadlessBehaviorMonitor` follows JavaScript best practices for async/sync methods:
+
+- **Synchronous methods** (`start()`, `stop()`, `getStatus()`, `getResults()`)
+  - Return immediately
+  - No I/O or waiting involved
+  - Predictable, deterministic behavior
+
+- **Asynchronous method** (`waitForReady()`)
+  - Returns a Promise
+  - Waits for user interactions to be collected
+  - Use with `await` or `.then()`
+
+**Why this design?**
+- Don't make methods async unless they need to be
+- Keeps the API simple and predictable
+- Avoids unnecessary Promise overhead for simple operations
+
+#### Lifecycle Patterns
+
+**Pattern 1: Basic Usage (with timeout)**
+```javascript
+const monitor = new HeadlessBehaviorMonitor({ timeout: 10000 });
+monitor.start();
+
+try {
+    const ready = await monitor.waitForReady();
+    if (ready) {
+        const results = monitor.getResults();
+        console.log('Analysis complete:', results.overallScore);
+    } else {
+        console.log('Timeout reached, not enough samples');
+    }
+} catch (error) {
+    console.error('Monitoring error:', error);
+} finally {
+    monitor.stop();
+}
+```
+
+**Pattern 2: With Callbacks**
+```javascript
+const monitor = new HeadlessBehaviorMonitor({
+    timeout: 10000,
+    onReady: (results) => {
+        console.log('Ready! Score:', results.overallScore);
+    },
+    onSample: (sample) => {
+        console.log('Sample collected:', sample.type);
+    }
+});
+
+monitor.start();
+// Callbacks will fire automatically
+```
+
+**Pattern 3: Manual Control (no timeout)**
+```javascript
+const monitor = new HeadlessBehaviorMonitor({ timeout: 0 });
+monitor.start();
+
+// Check status periodically
+const checkInterval = setInterval(() => {
+    const status = monitor.getStatus();
+    console.log('Samples:', status.samples);
+    
+    if (status.ready) {
+        clearInterval(checkInterval);
+        const results = monitor.getResults();
+        monitor.stop();
+        console.log('Done:', results);
+    }
+}, 1000);
+```
+
 #### Configuration Options
 
 ```javascript
@@ -387,11 +463,75 @@ new HeadlessBehaviorMonitor({
 
 **Methods:**
 
-- `start()` - Start monitoring user interactions
-- `stop()` - Stop monitoring and return final results
-- `getStatus()` - Get current monitoring status
-- `getResults()` - Get analysis results
-- `waitForReady(timeout)` - Promise that resolves when enough samples collected
+**`start()` - Synchronous**
+- Starts monitoring user interactions
+- Attaches event listeners
+- Returns immediately
+- Can be called multiple times (idempotent - won't restart if already running)
+
+```javascript
+monitor.start();
+// Monitoring is now active
+```
+
+**`stop()` - Synchronous**
+- Stops monitoring and cleans up event listeners
+- Returns final analysis results or `null` if not running
+- Returns: `Object | null`
+
+```javascript
+const finalResults = monitor.stop();
+if (finalResults) {
+    console.log('Final score:', finalResults.overallScore);
+}
+```
+
+**`getStatus()` - Synchronous**
+- Gets current monitoring status
+- Returns: `Object` with `isRunning`, `elapsedTime`, `samples`, `ready`
+
+```javascript
+const status = monitor.getStatus();
+console.log('Running:', status.isRunning);
+console.log('Samples collected:', status.samples);
+console.log('Ready for analysis:', status.ready);
+```
+
+**`getResults()` - Synchronous**
+- Computes and returns current analysis results
+- Can be called multiple times while monitoring
+- Returns: `Object` with analysis data
+
+```javascript
+const results = monitor.getResults();
+console.log('Current score:', results.overallScore);
+console.log('Confidence:', results.confidence);
+```
+
+**`waitForReady(timeout)` - Asynchronous**
+- Waits for enough samples to be collected
+- Returns: `Promise<boolean>` - `true` if ready, `false` if timeout
+- Use with `await` or `.then()`
+
+```javascript
+// With await
+const isReady = await monitor.waitForReady(10000);
+if (isReady) {
+    const results = monitor.getResults();
+}
+
+// With .then()
+monitor.waitForReady(10000).then(ready => {
+    if (ready) {
+        const results = monitor.getResults();
+    }
+});
+```
+
+**API Design Note:**
+- Only `waitForReady()` is async because it waits for events
+- All other methods are synchronous for immediate, predictable behavior
+- This follows JavaScript best practices: don't make methods async unless necessary
 
 **Results Object:**
 
