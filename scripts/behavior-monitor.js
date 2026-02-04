@@ -492,6 +492,17 @@ class HeadlessBehaviorMonitor {
             }
         }
         
+        // Calculate mouse_efficiency (Ernest Behinov's suggestion)
+        // Measures how directly the mouse moved from start to end
+        const firstPoint = movements[0];
+        const lastPoint = movements[movements.length - 1];
+        const straightDistance = Math.sqrt(
+            Math.pow(lastPoint.x - firstPoint.x, 2) + 
+            Math.pow(lastPoint.y - firstPoint.y, 2)
+        );
+        const pathDistance = totalDistance;
+        const mouseEfficiency = pathDistance > 0 ? straightDistance / pathDistance : 1.0;
+        
         // Calculate entropy/variance metrics
         const velocityVariance = this._calculateVariance(velocities);
         const angleVariance = this._calculateVariance(angles);
@@ -503,12 +514,16 @@ class HeadlessBehaviorMonitor {
         // - Very low angle variance (too straight)
         // - High straight line ratio
         // - High untrusted event ratio
+        // - Very high mouse efficiency (too direct, bot-like)
         let suspiciousScore = 0;
         
         if (velocityVariance < 0.0001) suspiciousScore += 0.3;
         if (angleVariance < 0.01) suspiciousScore += 0.2;
         if (straightLineRatio > 0.5) suspiciousScore += 0.3;
         if (untrustedRatio > 0.1) suspiciousScore += 0.2;
+        // Bots tend to move very directly (efficiency close to 1.0)
+        // Humans tend to have efficiency between 0.3-0.8
+        if (mouseEfficiency > 0.95) suspiciousScore += 0.15;
         
         const confidence = Math.min(movements.length / this.options.minSamples.mouse, 1);
         
@@ -522,7 +537,10 @@ class HeadlessBehaviorMonitor {
                 angleVariance: angleVariance,
                 straightLineRatio: straightLineRatio,
                 untrustedRatio: untrustedRatio,
-                totalDistance: totalDistance
+                totalDistance: totalDistance,
+                mouseEfficiency: mouseEfficiency,
+                straightDistance: straightDistance,
+                pathDistance: pathDistance
             }
         };
     }

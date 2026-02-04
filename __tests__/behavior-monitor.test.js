@@ -276,6 +276,85 @@ describe('HeadlessBehaviorMonitor', () => {
             const variance = monitor._calculateVariance([]);
             expect(variance).toBe(0);
         });
+
+        test('_analyzeMouse() should calculate mouse_efficiency metric', () => {
+            // Add mouse data with some curvature (not perfectly straight)
+            // Create a path from (0,0) to (100,100) with some detours
+            monitor.data.mouse.push({ x: 0, y: 0, timestamp: Date.now(), isTrusted: true });
+            monitor.data.mouse.push({ x: 20, y: 10, timestamp: Date.now() + 10, isTrusted: true });
+            monitor.data.mouse.push({ x: 40, y: 30, timestamp: Date.now() + 20, isTrusted: true });
+            monitor.data.mouse.push({ x: 60, y: 50, timestamp: Date.now() + 30, isTrusted: true });
+            monitor.data.mouse.push({ x: 80, y: 70, timestamp: Date.now() + 40, isTrusted: true });
+            monitor.data.mouse.push({ x: 100, y: 100, timestamp: Date.now() + 50, isTrusted: true });
+
+            const result = monitor._analyzeMouse();
+
+            expect(result.available).toBe(true);
+            expect(result.metrics.mouseEfficiency).toBeDefined();
+            expect(result.metrics.straightDistance).toBeDefined();
+            expect(result.metrics.pathDistance).toBeDefined();
+            // For this path, efficiency should be less than 1.0 but greater than 0
+            expect(result.metrics.mouseEfficiency).toBeGreaterThan(0);
+            expect(result.metrics.mouseEfficiency).toBeLessThanOrEqual(1.0);
+        });
+
+        test('_analyzeMouse() should detect perfect straight line (efficiency ~1.0)', () => {
+            // Perfectly straight diagonal line
+            for (let i = 0; i <= 10; i++) {
+                monitor.data.mouse.push({
+                    x: i * 10,
+                    y: i * 10,
+                    timestamp: Date.now() + i * 10,
+                    isTrusted: true
+                });
+            }
+
+            const result = monitor._analyzeMouse();
+
+            expect(result.available).toBe(true);
+            expect(result.metrics.mouseEfficiency).toBeDefined();
+            // Perfect straight line should have efficiency very close to 1.0
+            expect(result.metrics.mouseEfficiency).toBeGreaterThan(0.99);
+        });
+
+        test('_analyzeMouse() should detect suspicious high efficiency movements', () => {
+            // Very direct movement (bot-like)
+            for (let i = 0; i <= 20; i++) {
+                monitor.data.mouse.push({
+                    x: i * 5,
+                    y: i * 5,
+                    timestamp: Date.now() + i * 10,
+                    isTrusted: true
+                });
+            }
+
+            const result = monitor._analyzeMouse();
+
+            expect(result.available).toBe(true);
+            expect(result.metrics.mouseEfficiency).toBeGreaterThan(0.95);
+            // High efficiency should contribute to suspiciousness
+            expect(result.score).toBeGreaterThan(0);
+        });
+
+        test('_analyzeMouse() should handle curved path (lower efficiency)', () => {
+            // Create a curved path
+            for (let i = 0; i <= 20; i++) {
+                const angle = (i / 20) * Math.PI; // 0 to π
+                monitor.data.mouse.push({
+                    x: i * 5,
+                    y: Math.sin(angle) * 50, // Curved path
+                    timestamp: Date.now() + i * 10,
+                    isTrusted: true
+                });
+            }
+
+            const result = monitor._analyzeMouse();
+
+            expect(result.available).toBe(true);
+            expect(result.metrics.mouseEfficiency).toBeDefined();
+            // Curved path should have lower efficiency
+            expect(result.metrics.mouseEfficiency).toBeLessThan(0.95);
+        });
     });
 
     describe('Overall Score Calculation', () => {

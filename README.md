@@ -237,6 +237,7 @@ monitor.stop();
 | Check | Description | Why Hard to Spoof |
 |-------|-------------|-------------------|
 | **Mouse Movement Entropy** | Analyzes velocity variance, angle variance, acceleration, straight-line ratio | Human movement is chaotic & unpredictable; bots tend to move in straight lines or consistent patterns |
+| **Mouse Efficiency** | Calculates ratio of straight distance vs actual path (straightDistance / pathDistance) | Bots move very directly (efficiency > 0.95); humans wander and curve (efficiency 0.3-0.8) |
 | **Keyboard Biometrics** | Measures key hold times, inter-key timing variance | Typing rhythm is unique per person; automated scripts have too-consistent timing |
 | **Scroll Behavior** | Checks delta variance, interval variance, unique delta counts | Real scrolling has inertia & variance; automated scrolling is too regular |
 | **Touch Analysis** | Measures force variance, radius variance | Real touch has physical properties that vary; simulated touch is too consistent |
@@ -417,7 +418,10 @@ new HeadlessBehaviorMonitor({
             velocityVariance: 0.042,
             angleVariance: 0.13,
             straightLineRatio: 0.12,
-            untrustedRatio: 0
+            untrustedRatio: 0,
+            mouseEfficiency: 0.67,      // straightDistance / pathDistance
+            straightDistance: 150.5,    // Direct distance from start to end
+            pathDistance: 224.8         // Total distance traveled
         }
     },
     keyboard: {...},
@@ -434,6 +438,12 @@ new HeadlessBehaviorMonitor({
     }
 }
 ```
+
+**Mouse Efficiency Metric:**
+- **mouseEfficiency** = straightDistance / pathDistance
+- Bot movements: efficiency > 0.95 (very direct, straight lines)
+- Human movements: efficiency typically 0.3-0.8 (curved, wandering paths)
+- Lower efficiency indicates more human-like behavior
 
 ### Window Access
 
