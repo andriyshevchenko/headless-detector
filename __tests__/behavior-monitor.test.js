@@ -515,4 +515,124 @@ describe('HeadlessBehaviorMonitor', () => {
             expect(results.metadata.samplesCollected.mouse).toBe(2);
         });
     });
+
+    describe('Sensor and WebGL', () => {
+        test('should collect sensor data when available', () => {
+            // Mock window for sensor monitoring
+            let sensorHandler = null;
+            const mockAddEventListener = jest.fn((event, handler, options) => {
+                if (event === 'devicemotion') {
+                    sensorHandler = handler;
+                }
+            });
+            
+            global.window.addEventListener = mockAddEventListener;
+            global.window.DeviceMotionEvent = function() {};
+            
+            const sensorMonitor = new HeadlessBehaviorMonitor({ sensors: true });
+            sensorMonitor.start();
+            
+            // Verify sensor monitoring was set up
+            expect(sensorHandler).not.toBeNull();
+            
+            // Simulate sensor event
+            if (sensorHandler) {
+                sensorHandler({
+                    acceleration: { x: 0.1, y: 0.2, z: 9.8 },
+                    rotationRate: { alpha: 0.01, beta: 0.02, gamma: 0.03 }
+                });
+                
+                expect(sensorMonitor.data.sensors.length).toBeGreaterThan(0);
+            }
+            
+            sensorMonitor.stop();
+        });
+
+        test('should analyze sensor data', () => {
+            // Add some mock sensor data
+            monitor.data.sensors = [
+                { x: 0.1, y: 0.2, z: 9.8, alpha: 0.01, beta: 0.02, gamma: 0.03, timestamp: Date.now() },
+                { x: 0.12, y: 0.21, z: 9.79, alpha: 0.011, beta: 0.021, gamma: 0.031, timestamp: Date.now() + 100 }
+            ];
+            
+            const result = monitor._analyzeSensors();
+            
+            expect(result).toBeDefined();
+            expect(result).toHaveProperty('available');
+            expect(result).toHaveProperty('score');
+            expect(result).toHaveProperty('confidence');
+        });
+
+        test('should measure WebGL timing', () => {
+            // Mock WebGLRenderingContext
+            global.window.WebGLRenderingContext = function() {};
+            
+            // Mock WebGL context with proper shader compilation
+            const mockShader = {};
+            const mockGl = {
+                VERTEX_SHADER: 35633,
+                FRAGMENT_SHADER: 35632,
+                createShader: jest.fn(() => mockShader),
+                shaderSource: jest.fn(),
+                compileShader: jest.fn(),
+                deleteShader: jest.fn()
+            };
+            
+            const mockCanvas = {
+                getContext: jest.fn((type) => {
+                    if (type === 'webgl' || type === 'experimental-webgl') {
+                        return mockGl;
+                    }
+                    return null;
+                })
+            };
+            
+            global.document.createElement = jest.fn((tag) => {
+                if (tag === 'canvas') {
+                    return mockCanvas;
+                }
+                return { getContext: jest.fn(() => null) };
+            });
+            
+            const webglMonitor = new HeadlessBehaviorMonitor({ webglTiming: true });
+            webglMonitor.start();
+            
+            // Check that WebGL timing was measured
+            expect(webglMonitor.data.webglTiming).not.toBeNull();
+            expect(webglMonitor.data.webglTiming).toHaveProperty('compilationTime');
+            expect(webglMonitor.data.webglTiming).toHaveProperty('timestamp');
+            expect(typeof webglMonitor.data.webglTiming.compilationTime).toBe('number');
+            
+            webglMonitor.stop();
+            
+            // Cleanup
+            delete global.window.WebGLRenderingContext;
+        });
+
+        test('should include WebGL timing in results', () => {
+            monitor.data.webglTiming = {
+                compilationTime: 5.2,
+                timestamp: Date.now()
+            };
+            
+            const results = monitor.getResults();
+            
+            expect(results.webglTiming).toBeDefined();
+            expect(results.webglTiming.compilationTime).toBe(5.2);
+        });
+
+        test('should handle missing WebGL gracefully', () => {
+            global.document.createElement = jest.fn(() => ({
+                getContext: jest.fn(() => null)
+            }));
+            
+            const webglMonitor = new HeadlessBehaviorMonitor({ webglTiming: true });
+            webglMonitor.start();
+            
+            // Should not throw and webglTiming should remain null
+            expect(webglMonitor.data.webglTiming).toBeNull();
+            
+            webglMonitor.stop();
+        });
+    });
 });

@@ -31,7 +31,6 @@ class HeadlessBehaviorMonitor {
             
             timeout: options.timeout || 30000,
             onReady: options.onReady || null,
-            onSuspicious: options.onSuspicious || null,
             onSample: options.onSample || null
         };
         
@@ -388,6 +387,8 @@ class HeadlessBehaviorMonitor {
         if (this.options.onSample) {
             this.options.onSample({ type: 'touch', data });
         }
+        
+        this._checkReadiness();
     }
     
     _handleEvent(eventType, event) {
@@ -493,15 +494,26 @@ class HeadlessBehaviorMonitor {
     }
     
     _checkReadiness(forceTimeout = false) {
-        if (this._isReady() || forceTimeout) {
-            // Notify callbacks
+        const isReady = this._isReady();
+        
+        if (isReady) {
+            // Actually ready - notify and resolve with true
             if (this.options.onReady) {
                 this.options.onReady(this.getResults());
             }
             
-            // Resolve all pending waiters
+            // Resolve all pending waiters with true
             this.readyResolvers.forEach(resolve => resolve(true));
             this.readyResolvers = [];
+        } else if (forceTimeout) {
+            // Timeout reached but not ready - resolve with false
+            this.readyResolvers.forEach(resolve => resolve(false));
+            this.readyResolvers = [];
+            
+            // Still call onReady callback to notify timeout state
+            if (this.options.onReady) {
+                this.options.onReady(this.getResults());
+            }
         }
     }
     

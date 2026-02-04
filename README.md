@@ -291,14 +291,11 @@ const monitor = new HeadlessBehaviorMonitor({
         events: 10
     },
     
-    timeout: 30000,        // Auto-stop after 30 seconds
+    timeout: 30000,        // Timeout for waitForReady() (default: 30000ms)
     
     // Optional callbacks
     onReady: (results) => {
         console.log('Enough samples collected:', results);
-    },
-    onSuspicious: (signal) => {
-        console.log('Suspicious signal detected:', signal);
     },
     onSample: (info) => {
         console.log('Sample collected:', info);
@@ -454,10 +451,9 @@ new HeadlessBehaviorMonitor({
     },
     
     // Timeout and callbacks
-    timeout: 30000,        // Auto-stop timeout (default: 30000ms)
-    onReady: (results) => {},      // Called when enough samples collected
-    onSuspicious: (signal) => {},  // Called on suspicious patterns
-    onSample: (info) => {}         // Called on each sample
+    timeout: 30000,        // Default timeout for waitForReady() (default: 30000ms)
+    onReady: (results) => {},      // Called when enough samples collected (or on timeout)
+    onSample: (info) => {}         // Called on each sample collected
 });
 ```
 
@@ -510,13 +506,18 @@ console.log('Confidence:', results.confidence);
 
 **`waitForReady(timeout)` - Asynchronous**
 - Waits for enough samples to be collected
-- Returns: `Promise<boolean>` - `true` if ready, `false` if timeout
+- `timeout` parameter: maximum time to wait in milliseconds (uses constructor timeout if not provided)
+- Returns: `Promise<boolean>` - `true` if enough samples collected, `false` if timeout reached
 - Use with `await` or `.then()`
 
 ```javascript
 // With await
 const isReady = await monitor.waitForReady(10000);
 if (isReady) {
+    const results = monitor.getResults();
+    // Results have high confidence
+} else {
+    // Timeout - may have low confidence
     const results = monitor.getResults();
 }
 
