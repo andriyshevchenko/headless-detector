@@ -6,6 +6,28 @@
     <title>Headless Behavior Monitor - Test Suite</title>
     <link rel="stylesheet" href="style.css">
     <style>
+        /* Fix for card rendering artifacts - ensure cards have clean edges */
+        #results-grid {
+            /* Prevent subpixel rendering issues in grid */
+            transform: translateZ(0);
+        }
+        
+        #results-grid .card {
+            overflow: hidden;
+            isolation: isolate;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            transform: translateZ(0);
+            /* Ensure clean card edges */
+            border: 1px solid transparent;
+        }
+        
+        /* Ensure card icons don't cause rendering artifacts */
+        .card-icon {
+            display: inline-block;
+            line-height: 1;
+        }
+        
         .btn-group {
             display: flex;
             gap: 15px;
