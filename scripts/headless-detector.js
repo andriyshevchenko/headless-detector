@@ -70,6 +70,7 @@ async function detectHeadless(attachToWindow = false) {
     const getFingerprintChecks = _modules?.getFingerprintChecks || _getFingerprintChecks;
     const getWorkerChecks = _modules?.getWorkerChecks || _getWorkerChecks;
     const getCheckItemExplanations = _modules?.getCheckItemExplanations || _getCheckItemExplanations;
+    const getAdvancedChecks = _modules?.getAdvancedChecks || _getAdvancedChecks;
 
     // Await worker checks first
     const workerChecks = await getWorkerChecks();
@@ -85,7 +86,7 @@ async function detectHeadless(attachToWindow = false) {
         headlessIndicators: getHeadlessIndicators(),
         userAgentFlags: checkUserAgent(),
         webglFlags: checkWebGL(),
-        advancedChecks: _getAdvancedChecks(),
+        advancedChecks: getAdvancedChecks(),
         mediaChecks: getMediaChecks(),
         fingerprintChecks: getFingerprintChecks(),
         workerChecks: workerChecks,

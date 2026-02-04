@@ -38,11 +38,14 @@ function checkWebRTC() {
         const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 
         // Check if WebRTC is artificially disabled (common in headless)
+        // Only attempt instantiation if API is available
         let rtcDisabled = false;
-        try {
-            new RTCPeerConnection();
-        } catch (e) {
-            rtcDisabled = true;
+        if (hasRTC) {
+            try {
+                new RTCPeerConnection();
+            } catch (e) {
+                rtcDisabled = true;
+            }
         }
 
         return {

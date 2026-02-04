@@ -64,7 +64,9 @@ async function detectHeadless(attachToWindow = false) {
     const requiredFunctions = [
         'detectWebdriver', 'detectCDP', 'checkUserAgent', 'checkWebGL',
         'getAutomationFlags', 'getHeadlessIndicators', 'getMediaChecks',
-        'getFingerprintChecks', 'getWorkerChecks', 'getCheckItemExplanations'
+        'getFingerprintChecks', 'getWorkerChecks', 'getCheckItemExplanations',
+        // Functions used by getAdvancedChecks:
+        'detectCDPStackTrace', 'detectConsoleDebugLeak', 'checkChromeRuntime', 'checkPermissions'
     ];
     const missingFunctions = requiredFunctions.filter(fn => !modules[fn]);
     if (missingFunctions.length > 0) {
@@ -405,11 +407,16 @@ if (typeof module !== 'undefined' && module.exports) {
         checkCDP: modules.detectCDP,
         checkUserAgent: modules.checkUserAgent,
         checkWebGL: modules.checkWebGL,
-        getWorkerChecks: modules.getWorkerChecks
+        getWorkerChecks: modules.getWorkerChecks,
+        getAdvancedChecks
     };
 }
 
 if (typeof window !== 'undefined') {
+    // Add getAdvancedChecks to modules so headless-detector.js can access it
+    window.HeadlessDetectorModules = window.HeadlessDetectorModules || {};
+    window.HeadlessDetectorModules.getAdvancedChecks = getAdvancedChecks;
+
     // Main detection function
     window.detectHeadless = detectHeadless;
     window.getWorkerChecks = modules.getWorkerChecks;

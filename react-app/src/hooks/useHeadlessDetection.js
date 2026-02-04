@@ -32,6 +32,7 @@ export function useHeadlessDetection() {
     useEffect(() => {
         // Run detection when component mounts, waiting for script readiness
         let cancelled = false;
+        let timeoutId = null;
         const maxWaitMs = 2000;
         const pollIntervalMs = 50;
         const startTime = Date.now();
@@ -53,7 +54,7 @@ export function useHeadlessDetection() {
                 return;
             }
 
-            setTimeout(tryRunDetection, pollIntervalMs);
+            timeoutId = setTimeout(tryRunDetection, pollIntervalMs);
         };
 
         const onDomReady = () => {
@@ -71,6 +72,9 @@ export function useHeadlessDetection() {
         
         return () => {
             cancelled = true;
+            if (timeoutId !== null) {
+                clearTimeout(timeoutId);
+            }
         };
     }, [runDetection]);
 

@@ -118,8 +118,13 @@ function checkCanvas() {
 
         const dataUrl = canvas.toDataURL();
 
-        // Use shared simpleHash for consistency
-        const hash = simpleHash(dataUrl);
+        // Compute hash matching legacy format (base-16 hex)
+        let hashNum = 0;
+        for (let i = 0; i < dataUrl.length; i++) {
+            hashNum = ((hashNum << 5) - hashNum) + dataUrl.charCodeAt(i);
+            hashNum = hashNum & hashNum;
+        }
+        const hash = hashNum.toString(16);
 
         // Check for canvas noise/blocking extensions
         let hasNoise = false;
