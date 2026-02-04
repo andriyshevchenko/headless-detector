@@ -523,6 +523,12 @@ function _checkClientHints() {
 function _checkWebGL() {
     try {
         const canvas = document.createElement('canvas');
+        
+        // Set canvas dimensions before creating WebGL context
+        const testSize = 64;
+        canvas.width = testSize;
+        canvas.height = testSize;
+        
         const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
 
         if (!gl) {
@@ -732,11 +738,14 @@ function _checkWebRTC() {
         const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 
         // Check if WebRTC is artificially disabled (common in headless)
+        // Only attempt instantiation if API is available
         let rtcDisabled = false;
-        try {
-            new RTCPeerConnection();
-        } catch (e) {
-            rtcDisabled = true;
+        if (hasRTC) {
+            try {
+                new RTCPeerConnection();
+            } catch (e) {
+                rtcDisabled = true;
+            }
         }
 
         return {
@@ -976,7 +985,7 @@ function _checkEmojiRendering() {
             rendered: true
         };
     } catch (e) {
-        return { suspicious: false, error: e.message };
+        return { suspicious: false, rendered: false, error: e.message };
     }
 }
 
@@ -986,19 +995,23 @@ function _checkEmojiRendering() {
  * Bots using software renderers will produce different/noisy output
  */
 function _performWebGLRenderingTest(gl, claimedVendor, claimedRenderer) {
+    let buffer, vertexShader, fragmentShader, program;
+    
     try {
+        const testSize = 64; // Fixed small canvas size for consistent, fast testing
+        
         // Create a simple rotating cube with lighting
         const vertices = new Float32Array([
             -1, -1, 1, 1, -1, 1, 1, 1, 1, -1, 1, 1,  // front
             -1, -1, -1, -1, 1, -1, 1, 1, -1, 1, -1, -1,  // back
         ]);
 
-        const buffer = gl.createBuffer();
+        buffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
         // Simple shader
-        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        vertexShader = gl.createShader(gl.VERTEX_SHADER);
         gl.shaderSource(vertexShader, `
             attribute vec3 position;
             void main() {
@@ -1006,8 +1019,14 @@ function _performWebGLRenderingTest(gl, claimedVendor, claimedRenderer) {
             }
         `);
         gl.compileShader(vertexShader);
+        
+        // Check shader compilation status
+        if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+            const error = gl.getShaderInfoLog(vertexShader);
+            throw new Error(`Vertex shader compilation failed: ${error}`);
+        }
 
-        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
         gl.shaderSource(fragmentShader, `
             precision mediump float;
             void main() {
@@ -1015,35 +1034,61 @@ function _performWebGLRenderingTest(gl, claimedVendor, claimedRenderer) {
             }
         `);
         gl.compileShader(fragmentShader);
+        
+        // Check shader compilation status
+        if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+            const error = gl.getShaderInfoLog(fragmentShader);
+            throw new Error(`Fragment shader compilation failed: ${error}`);
+        }
 
-        const program = gl.createProgram();
+        program = gl.createProgram();
         gl.attachShader(program, vertexShader);
         gl.attachShader(program, fragmentShader);
         gl.linkProgram(program);
+        
+        // Check program linking status
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            const error = gl.getProgramInfoLog(program);
+            throw new Error(`Program linking failed: ${error}`);
+        }
+        
         gl.useProgram(program);
 
         const position = gl.getAttribLocation(program, 'position');
         gl.enableVertexAttribArray(position);
         gl.vertexAttribPointer(position, 3, gl.FLOAT, false, 0, 0);
 
+        // Set viewport to fixed size for consistent results
+        gl.viewport(0, 0, testSize, testSize);
+        
         // Clear and draw
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-        // Read pixels and hash
-        const pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
-        gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        // Read pixels using fixed testSize
+        const width = testSize;
+        const height = testSize;
+        const pixels = new Uint8Array(width * height * 4);
+        gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
         const hash = _simpleHash(Array.from(pixels.slice(0, 1000)).join(','));
 
-        // Check for noise (software renderer often produces noisy output)
+        // Check for noise by comparing adjacent pixels at sampled positions
         let noiseLevel = 0;
-        for (let i = 0; i < pixels.length - 4; i += 4) {
+        let sampleCount = 0;
+        const sampleInterval = 16; // Sample every 16th pixel (pixels 0, 16, 32, 48, ...)
+        const sampleOffsetBytes = sampleInterval * 4; // 16 pixels × 4 bytes/pixel = 64 bytes
+        
+        // At each sampled position, compare it with the immediately adjacent pixel
+        // (e.g., compare pixel 0 with pixel 1, pixel 16 with pixel 17, etc.)
+        for (let i = 0; i + 4 < pixels.length; i += sampleOffsetBytes) {
+            // Compare R channel of sampled pixel (i) with R channel of adjacent pixel (i+4)
             const diff = Math.abs(pixels[i] - pixels[i + 4]);
             if (diff > 5) noiseLevel++;
+            sampleCount++;
         }
-        const noiseRatio = noiseLevel / (pixels.length / 4);
+        const noiseRatio = sampleCount > 0 ? noiseLevel / sampleCount : 0;
 
         // Check consistency with claimed GPU
         const isHighEndGPU = /nvidia|geforce|rtx|gtx|radeon|rx /i.test(claimedRenderer);
@@ -1059,6 +1104,18 @@ function _performWebGLRenderingTest(gl, claimedVendor, claimedRenderer) {
         };
     } catch (e) {
         return { suspicious: false, error: e.message };
+    } finally {
+        // Clean up WebGL resources to prevent GPU memory leaks
+        if (gl) {
+            try {
+                if (buffer) gl.deleteBuffer(buffer);
+                if (vertexShader) gl.deleteShader(vertexShader);
+                if (fragmentShader) gl.deleteShader(fragmentShader);
+                if (program) gl.deleteProgram(program);
+            } catch (cleanupError) {
+                // Ignore cleanup errors
+            }
+        }
     }
 }
 
