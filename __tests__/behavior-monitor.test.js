@@ -832,4 +832,107 @@ describe('HeadlessBehaviorMonitor', () => {
             webglMonitor.stop();
         });
     });
+
+    describe('Error Handling', () => {
+        test('should handle errors in onReady callback', async () => {
+            const errorCallback = jest.fn(() => {
+                throw new Error('User callback error');
+            });
+            
+            const errorMonitor = new HeadlessBehaviorMonitor({
+                timeout: 100,
+                onReady: errorCallback,
+                minSamples: { mouse: 1, keyboard: 1, scroll: 0, touch: 0, events: 0 }
+            });
+            
+            errorMonitor.start();
+            
+            // Simulate enough samples
+            errorMonitor.data.mouse = [{ x: 100, y: 100, timestamp: Date.now() }];
+            errorMonitor.data.keyboard = [{ key: 'a', timestamp: Date.now() }];
+            
+            // Should not throw even though callback throws
+            errorMonitor._checkReadiness();
+            
+            expect(errorCallback).toHaveBeenCalled();
+            errorMonitor.stop();
+        });
+
+        test('should handle errors in onSample callback', () => {
+            const errorCallback = jest.fn(() => {
+                throw new Error('Sample callback error');
+            });
+            
+            const errorMonitor = new HeadlessBehaviorMonitor({
+                onSample: errorCallback
+            });
+            
+            errorMonitor.start();
+            
+            // Simulate mouse event - should not throw
+            expect(() => {
+                errorMonitor._handleMouseMove({ clientX: 100, clientY: 100 });
+            }).not.toThrow();
+            
+            expect(errorCallback).toHaveBeenCalled();
+            expect(errorMonitor.data.mouse.length).toBe(1);
+            
+            errorMonitor.stop();
+        });
+
+        test('should handle errors in promise resolvers', async () => {
+            const errorResolver = jest.fn(() => {
+                throw new Error('Resolver error');
+            });
+            
+            monitor.start();
+            
+            // Manually add a resolver that throws
+            monitor.readyResolvers.push(errorResolver);
+            
+            // Simulate enough samples
+            monitor.data.mouse = Array(20).fill({ x: 100, y: 100, timestamp: Date.now() });
+            monitor.data.keyboard = Array(10).fill({ key: 'a', timestamp: Date.now() });
+            
+            // Should not throw even though resolver throws
+            expect(() => {
+                monitor._checkReadiness();
+            }).not.toThrow();
+            
+            expect(errorResolver).toHaveBeenCalled();
+            monitor.stop();
+        });
+    });
+
+    describe('waitForReady() with isRunning check', () => {
+        test('should return false immediately if monitor not started', async () => {
+            const notStartedMonitor = new HeadlessBehaviorMonitor();
+            
+            const ready = await notStartedMonitor.waitForReady(10000);
+            
+            expect(ready).toBe(false);
+        });
+
+        test('should return false immediately if monitor stopped', async () => {
+            monitor.start();
+            monitor.stop();
+            
+            const ready = await monitor.waitForReady(10000);
+            
+            expect(ready).toBe(false);
+        });
+
+        test('should work normally when monitor is running', async () => {
+            monitor.start();
+            
+            // Simulate enough samples immediately
+            monitor.data.mouse = Array(20).fill({ x: 100, y: 100, timestamp: Date.now() });
+            monitor.data.keyboard = Array(10).fill({ key: 'a', timestamp: Date.now() });
+            
+            const ready = await monitor.waitForReady(10000);
+            
+            expect(ready).toBe(true);
+            monitor.stop();
+        });
+    });
 });

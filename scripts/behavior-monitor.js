@@ -79,6 +79,10 @@ class HeadlessBehaviorMonitor {
      * Note: If you had pending waitForReady() promises from a previous session that was
      * stopped, those were already resolved with false by stop().
      * 
+     * Data accumulates across multiple start/stop cycles - previously collected data is not
+     * cleared. This allows you to pause and resume monitoring. If you need to start fresh,
+     * create a new HeadlessBehaviorMonitor instance.
+     * 
      * @returns {void}
      * 
      * @example
@@ -279,11 +283,15 @@ class HeadlessBehaviorMonitor {
      * This is the ONLY async method in the API. It returns a Promise that resolves
      * when enough samples have been collected or when the timeout is reached.
      * 
+     * IMPORTANT: You must call start() before calling waitForReady(). If the monitor
+     * is not running, the promise will resolve with false immediately (or after timeout).
+     * 
      * @param {number} timeout - Maximum time to wait in milliseconds
-     * @returns {Promise<boolean>} Resolves to true if ready, false if timeout
+     * @returns {Promise<boolean>} Resolves to true if ready, false if timeout or not running
      * 
      * @example
      * // With await
+     * monitor.start();
      * const ready = await monitor.waitForReady(10000);
      * if (ready) {
      *     console.log('Ready to analyze');
@@ -291,6 +299,7 @@ class HeadlessBehaviorMonitor {
      * 
      * @example
      * // With .then()
+     * monitor.start();
      * monitor.waitForReady(10000).then(ready => {
      *     if (ready) {
      *         const results = monitor.getResults();
@@ -301,6 +310,11 @@ class HeadlessBehaviorMonitor {
         const timeoutMs = (typeof timeout === 'number' && Number.isFinite(timeout))
             ? timeout
             : this.options.timeout;
+        
+        // Return false immediately if not running
+        if (!this.isRunning) {
+            return false;
+        }
         
         if (this._isReady()) {
             return true;
@@ -346,7 +360,11 @@ class HeadlessBehaviorMonitor {
         this.data.mouse.push(data);
         
         if (this.options.onSample) {
-            this.options.onSample({ type: 'mouse', data });
+            try {
+                this.options.onSample({ type: 'mouse', data });
+            } catch (e) {
+                // Ignore errors from user callback to prevent disrupting event handling
+            }
         }
         
         this._checkReadiness();
@@ -370,7 +388,11 @@ class HeadlessBehaviorMonitor {
         this.lastKeyDownTime = null;
         
         if (this.options.onSample) {
-            this.options.onSample({ type: 'keyboard', data });
+            try {
+                this.options.onSample({ type: 'keyboard', data });
+            } catch (e) {
+                // Ignore errors from user callback to prevent disrupting event handling
+            }
         }
         
         this._checkReadiness();
@@ -387,7 +409,11 @@ class HeadlessBehaviorMonitor {
         this.data.scroll.push(data);
         
         if (this.options.onSample) {
-            this.options.onSample({ type: 'scroll', data });
+            try {
+                this.options.onSample({ type: 'scroll', data });
+            } catch (e) {
+                // Ignore errors from user callback to prevent disrupting event handling
+            }
         }
         
         this._checkReadiness();
@@ -412,7 +438,11 @@ class HeadlessBehaviorMonitor {
         this.data.touch.push(data);
         
         if (this.options.onSample) {
-            this.options.onSample({ type: 'touch', data });
+            try {
+                this.options.onSample({ type: 'touch', data });
+            } catch (e) {
+                // Ignore errors from user callback to prevent disrupting event handling
+            }
         }
         
         this._checkReadiness();
@@ -437,7 +467,11 @@ class HeadlessBehaviorMonitor {
         this.data.touch.push(data);
         
         if (this.options.onSample) {
-            this.options.onSample({ type: 'touch', data });
+            try {
+                this.options.onSample({ type: 'touch', data });
+            } catch (e) {
+                // Ignore errors from user callback to prevent disrupting event handling
+            }
         }
         
         this._checkReadiness();
@@ -454,7 +488,11 @@ class HeadlessBehaviorMonitor {
         this.data.events.push(data);
         
         if (this.options.onSample) {
-            this.options.onSample({ type: 'event', data });
+            try {
+                this.options.onSample({ type: 'event', data });
+            } catch (e) {
+                // Ignore errors from user callback to prevent disrupting event handling
+            }
         }
         
         this._checkReadiness();
@@ -584,21 +622,41 @@ class HeadlessBehaviorMonitor {
             // Fire onReady callback only once
             if (!this.readyFired && this.options.onReady) {
                 this.readyFired = true;
-                this.options.onReady(this.getResults());
+                try {
+                    this.options.onReady(this.getResults());
+                } catch (e) {
+                    // Ignore errors from user callback to prevent disrupting internal state
+                }
             }
             
             // Resolve all pending waiters with true
-            this.readyResolvers.forEach(resolve => resolve(true));
+            this.readyResolvers.forEach(resolve => {
+                try {
+                    resolve(true);
+                } catch (e) {
+                    // Ignore resolver errors to ensure all waiters are processed
+                }
+            });
             this.readyResolvers = [];
         } else if (forceTimeout) {
             // Timeout reached but not ready - resolve with false
-            this.readyResolvers.forEach(resolve => resolve(false));
+            this.readyResolvers.forEach(resolve => {
+                try {
+                    resolve(false);
+                } catch (e) {
+                    // Ignore resolver errors to ensure all waiters are processed
+                }
+            });
             this.readyResolvers = [];
             
             // Fire onReady callback on timeout (only once)
             if (!this.readyFired && this.options.onReady) {
                 this.readyFired = true;
-                this.options.onReady(this.getResults());
+                try {
+                    this.options.onReady(this.getResults());
+                } catch (e) {
+                    // Ignore errors from user callback to prevent disrupting internal state
+                }
             }
         }
     }
