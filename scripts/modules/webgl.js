@@ -40,6 +40,12 @@ if (!simpleHash) {
 function checkWebGL() {
     try {
         const canvas = document.createElement('canvas');
+        
+        // Set canvas dimensions before creating WebGL context
+        const testSize = 64;
+        canvas.width = testSize;
+        canvas.height = testSize;
+        
         const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
 
         if (!gl) {
@@ -60,7 +66,7 @@ function checkWebGL() {
             rendererLower.includes('mesa');
 
         // 2026: Perform complex rendering test to validate GPU consistency
-        const renderingTest = performWebGLRenderingTest(gl, canvas, renderer);
+        const renderingTest = performWebGLRenderingTest(gl, testSize, renderer);
 
         return {
             supported: true,
@@ -81,17 +87,13 @@ function checkWebGL() {
  * Perform complex WebGL rendering test (2026: NEW)
  * Renders a complex 3D scene and hashes the output
  * Bots using software renderers will produce different/noisy output
- * @param {WebGLRenderingContext} gl - WebGL context
- * @param {HTMLCanvasElement} canvas - Canvas element for setting dimensions
+ * @param {WebGLRenderingContext} gl - WebGL context (canvas must be sized before context creation)
+ * @param {number} testSize - Canvas dimensions (width and height)
  * @param {string} claimedRenderer - Claimed GPU renderer
  * @returns {Object} Rendering test results
  */
-function performWebGLRenderingTest(gl, canvas, claimedRenderer) {
+function performWebGLRenderingTest(gl, testSize, claimedRenderer) {
     try {
-        // Use a fixed small canvas size for consistent, fast testing
-        const testSize = 64;
-        canvas.width = testSize;
-        canvas.height = testSize;
         
         // Create a simple rotating cube with lighting
         const vertices = new Float32Array([
@@ -112,6 +114,12 @@ function performWebGLRenderingTest(gl, canvas, claimedRenderer) {
             }
         `);
         gl.compileShader(vertexShader);
+        
+        // Check shader compilation status
+        if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+            const error = gl.getShaderInfoLog(vertexShader);
+            throw new Error(`Vertex shader compilation failed: ${error}`);
+        }
 
         const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
         gl.shaderSource(fragmentShader, `
@@ -121,11 +129,24 @@ function performWebGLRenderingTest(gl, canvas, claimedRenderer) {
             }
         `);
         gl.compileShader(fragmentShader);
+        
+        // Check shader compilation status
+        if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+            const error = gl.getShaderInfoLog(fragmentShader);
+            throw new Error(`Fragment shader compilation failed: ${error}`);
+        }
 
         const program = gl.createProgram();
         gl.attachShader(program, vertexShader);
         gl.attachShader(program, fragmentShader);
         gl.linkProgram(program);
+        
+        // Check program linking status
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            const error = gl.getProgramInfoLog(program);
+            throw new Error(`Program linking failed: ${error}`);
+        }
+        
         gl.useProgram(program);
 
         const position = gl.getAttribLocation(program, 'position');
