@@ -50,6 +50,7 @@ class HeadlessBehaviorMonitor {
         this.startTime = null;
         this.readyResolvers = [];
         this.timeoutId = null;
+        this.readyFired = false;
         
         // Event handlers (bound methods for proper removal)
         this.handlers = {
@@ -85,6 +86,7 @@ class HeadlessBehaviorMonitor {
         
         this.isRunning = true;
         this.startTime = Date.now();
+        this.readyFired = false;
         
         // Attach event listeners
         if (typeof window !== 'undefined' && typeof document !== 'undefined') {
@@ -277,7 +279,9 @@ class HeadlessBehaviorMonitor {
      * });
      */
     async waitForReady(timeout) {
-        const timeoutMs = timeout || this.options.timeout;
+        const timeoutMs = (typeof timeout === 'number' && Number.isFinite(timeout))
+            ? timeout
+            : this.options.timeout;
         
         if (this._isReady()) {
             return true;
@@ -552,8 +556,15 @@ class HeadlessBehaviorMonitor {
         const isReady = this._isReady();
         
         if (isReady) {
-            // Actually ready - notify and resolve with true
-            if (this.options.onReady) {
+            // Clear global timeout since we're ready
+            if (this.timeoutId) {
+                clearTimeout(this.timeoutId);
+                this.timeoutId = null;
+            }
+            
+            // Fire onReady callback only once
+            if (!this.readyFired && this.options.onReady) {
+                this.readyFired = true;
                 this.options.onReady(this.getResults());
             }
             
@@ -565,8 +576,9 @@ class HeadlessBehaviorMonitor {
             this.readyResolvers.forEach(resolve => resolve(false));
             this.readyResolvers = [];
             
-            // Still call onReady callback to notify timeout state
-            if (this.options.onReady) {
+            // Fire onReady callback on timeout (only once)
+            if (!this.readyFired && this.options.onReady) {
+                this.readyFired = true;
                 this.options.onReady(this.getResults());
             }
         }

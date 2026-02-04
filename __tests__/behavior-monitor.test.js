@@ -559,6 +559,90 @@ describe('HeadlessBehaviorMonitor', () => {
                 done();
             }, 10);
         });
+
+        test('waitForReady() should accept timeout=0', async () => {
+            monitor.start();
+
+            // Start waiting with timeout=0 (should not use fallback)
+            const promise = monitor.waitForReady(0);
+
+            // Add samples to make it ready
+            for (let i = 0; i < 20; i++) {
+                monitor.data.mouse.push({
+                    x: i, y: i, timestamp: Date.now(), isTrusted: true
+                });
+            }
+            for (let i = 0; i < 10; i++) {
+                monitor.data.keyboard.push({
+                    key: 'a', timestamp: Date.now(), holdTime: 50, isTrusted: true
+                });
+            }
+
+            monitor._checkReadiness();
+
+            const result = await promise;
+            expect(result).toBe(true);
+        });
+
+        test('onReady should fire only once when ready', (done) => {
+            const onReadySpy = jest.fn();
+            const monitorWithCallback = new HeadlessBehaviorMonitor({
+                onReady: onReadySpy
+            });
+
+            monitorWithCallback.start();
+
+            // Add sufficient samples
+            for (let i = 0; i < 20; i++) {
+                monitorWithCallback.data.mouse.push({
+                    x: i, y: i, timestamp: Date.now(), isTrusted: true
+                });
+            }
+            for (let i = 0; i < 10; i++) {
+                monitorWithCallback.data.keyboard.push({
+                    key: 'a', timestamp: Date.now(), holdTime: 50, isTrusted: true
+                });
+            }
+
+            // Call checkReadiness multiple times
+            monitorWithCallback._checkReadiness();
+            monitorWithCallback._checkReadiness();
+            monitorWithCallback._checkReadiness();
+
+            setTimeout(() => {
+                expect(onReadySpy).toHaveBeenCalledTimes(1);
+                done();
+            }, 10);
+        });
+
+        test('global timeout should be cleared when ready early', (done) => {
+            const monitorWithTimeout = new HeadlessBehaviorMonitor({
+                timeout: 10000
+            });
+
+            monitorWithTimeout.start();
+            expect(monitorWithTimeout.timeoutId).not.toBeNull();
+
+            // Add sufficient samples
+            for (let i = 0; i < 20; i++) {
+                monitorWithTimeout.data.mouse.push({
+                    x: i, y: i, timestamp: Date.now(), isTrusted: true
+                });
+            }
+            for (let i = 0; i < 10; i++) {
+                monitorWithTimeout.data.keyboard.push({
+                    key: 'a', timestamp: Date.now(), holdTime: 50, isTrusted: true
+                });
+            }
+
+            // Trigger readiness
+            monitorWithTimeout._checkReadiness();
+
+            setTimeout(() => {
+                expect(monitorWithTimeout.timeoutId).toBeNull();
+                done();
+            }, 10);
+        });
     });
 
     describe('Integration', () => {
