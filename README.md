@@ -1,7 +1,7 @@
 # Headless Browser Detector
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/andriyshevchenko/headless-detector)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/andriyshevchenko/headless-detector)
 [![CI Tests](https://github.com/andriyshevchenko/headless-detector/actions/workflows/test.yml/badge.svg)](https://github.com/andriyshevchenko/headless-detector/actions/workflows/test.yml)
 [![npm version](https://img.shields.io/npm/v/headless-detector.svg)](https://www.npmjs.com/package/headless-detector)
 
@@ -14,6 +14,7 @@ A comprehensive JavaScript library for detecting headless browsers, automation f
 - 🔧 **Worker UA Check** - Compares User-Agent between main thread and Worker (NEW 2026)
 - 😀 **Emoji OS Consistency** - Verifies emoji rendering matches OS (NEW 2026)
 - 🎨 **WebGL Rendering Test** - Complex 3D rendering to detect software renderers (NEW 2026)
+- 🖱️ **Behavioral Analysis** - Monitor user interactions over time for bot-like patterns (NEW 2026)
 - 🔍 **Advanced CDP Detection** - Identifies Chrome DevTools Protocol usage
 - 🖌️ **Fingerprinting** - Canvas, Audio Context, and Font detection
 - 📱 **Media Checks** - WebRTC and MediaDevices availability
@@ -29,6 +30,7 @@ A comprehensive JavaScript library for detecting headless browsers, automation f
 | CDP Artifacts | Very High | Detects ChromeDriver and CDP connection signals |
 | **Playwright Bindings** | Very High | Detects `__playwright__binding__`, `__pwInitScripts` (NEW 2026) |
 | **Playwright Exposed Functions** | Very High | Detects functions with `__installed` property (NEW 2026) |
+| **Behavioral Analysis** | Very High | Monitors mouse, keyboard, scroll, touch patterns over time (NEW 2026) |
 | **Worker UA Check** | High | Compares User-Agent in main thread vs Worker (NEW 2026) |
 | **Emoji OS Consistency** | Medium | Verifies emoji rendering matches declared OS (NEW 2026) |
 | **WebGL Rendering Test** | Medium | Complex 3D scene rendering test (NEW 2026) |
@@ -125,6 +127,125 @@ console.log(window.__headlessDetectionScore); // Quick score access
 console.log(window.__headlessDetection.summary); // Full summary
 ```
 
+### Behavioral Analysis (NEW 2026)
+
+The behavioral monitor analyzes user interactions over time to detect bot-like patterns. These checks are fundamentally harder to spoof than fingerprint checks because they require genuine human interaction patterns.
+
+#### Quick Start with `detectHeadlessFull()`
+
+The easiest way to use behavioral analysis:
+
+```javascript
+// One-liner that handles everything
+const results = await detectHeadlessFull({
+    timeout: 10000,        // Wait up to 10 seconds for user interactions
+    minConfidence: 0.7,    // Minimum confidence threshold
+    attachToWindow: false,
+    behaviorOptions: {}    // Optional: customize behavioral monitor
+});
+
+console.log('Combined Score:', results.isHeadless);
+console.log('Behavioral Data:', results.behaviorAnalysis);
+```
+
+#### Manual Behavioral Monitoring
+
+For more control over the monitoring lifecycle:
+
+```javascript
+// Import or access the class
+const HeadlessBehaviorMonitor = window.HeadlessBehaviorMonitor;
+
+// Create monitor with options
+const monitor = new HeadlessBehaviorMonitor({
+    mouse: true,           // Monitor mouse movements
+    keyboard: true,        // Monitor keyboard timing
+    scroll: true,          // Monitor scroll behavior
+    touch: true,           // Monitor touch events
+    events: true,          // Monitor general events
+    sensors: true,         // Monitor device sensors
+    webglTiming: true,     // Measure WebGL shader timing
+    
+    minSamples: {          // Minimum samples needed per category
+        mouse: 20,
+        keyboard: 10,
+        scroll: 5,
+        touch: 5,
+        events: 10
+    },
+    
+    timeout: 30000,        // Auto-stop after 30 seconds
+    
+    // Optional callbacks
+    onReady: (results) => {
+        console.log('Enough samples collected:', results);
+    },
+    onSuspicious: (signal) => {
+        console.log('Suspicious signal detected:', signal);
+    },
+    onSample: (info) => {
+        console.log('Sample collected:', info);
+    }
+});
+
+// Start monitoring
+monitor.start();
+
+// Check status
+const status = monitor.getStatus();
+console.log('Running:', status.isRunning);
+console.log('Samples collected:', status.samples);
+
+// Wait for enough samples
+await monitor.waitForReady(30000);
+
+// Get current results
+const results = monitor.getResults();
+console.log('Behavioral Score:', results.overallScore);
+console.log('Confidence:', results.confidence);
+
+// Stop monitoring and get final results
+const finalResults = monitor.stop();
+```
+
+#### Combining with Standard Detection
+
+```javascript
+// Create and start behavioral monitor
+const monitor = new HeadlessBehaviorMonitor({ timeout: 10000 });
+monitor.start();
+
+// Wait for samples
+await monitor.waitForReady(10000);
+
+// Run detection with behavioral data
+const results = await detectHeadless({
+    attachToWindow: true,
+    includeBehavior: monitor  // Include behavioral analysis
+});
+
+// Results now include behavioral analysis
+console.log('Combined Score:', results.isHeadless);
+console.log('Behavioral Analysis:', results.behaviorAnalysis);
+
+// Stop monitoring
+monitor.stop();
+```
+
+#### Behavioral Checks Explained
+
+| Check | Description | Why Hard to Spoof |
+|-------|-------------|-------------------|
+| **Mouse Movement Entropy** | Analyzes velocity variance, angle variance, acceleration, straight-line ratio | Human movement is chaotic & unpredictable; bots tend to move in straight lines or consistent patterns |
+| **Keyboard Biometrics** | Measures key hold times, inter-key timing variance | Typing rhythm is unique per person; automated scripts have too-consistent timing |
+| **Scroll Behavior** | Checks delta variance, interval variance, unique delta counts | Real scrolling has inertia & variance; automated scrolling is too regular |
+| **Touch Analysis** | Measures force variance, radius variance | Real touch has physical properties that vary; simulated touch is too consistent |
+| **Event Timing** | Checks `isTrusted` flag, interval variance | Synthetic events lack the `isTrusted` flag and have suspicious timing patterns |
+| **Sensor Entropy** | Analyzes accelerometer/gyroscope noise | Real hardware sensors have physical noise; simulated sensors are too stable |
+| **WebGL Shader Timing** | Measures shader compilation time | GPU-specific compilation patterns are hard to fake consistently |
+
+**Scoring:** When behavioral data is included with confidence > 0.5, the final score is: `60% instant checks + 40% behavioral analysis`
+
 ### Accessing Individual Checks
 
 ```javascript
@@ -167,14 +288,32 @@ summary.detections.forEach(d => {
 
 ## API Reference
 
-### `detectHeadless(attachToWindow)`
+### `detectHeadless(attachToWindowOrOptions)`
 
-Main detection function.
+Main detection function with optional behavioral analysis.
 
 **Parameters:**
-- `attachToWindow` (boolean, optional) - If true, attaches results to `window.__headlessDetection`
+- `attachToWindowOrOptions` (boolean|Object, optional)
+  - As boolean: If true, attaches results to `window.__headlessDetection` (backward compatible)
+  - As object: Configuration options:
+    - `attachToWindow` (boolean) - Attach results to window
+    - `includeBehavior` (HeadlessBehaviorMonitor) - Include behavioral analysis
 
-**Returns:** Object with detection results
+**Returns:** Promise<Object> with detection results
+
+```javascript
+// Backward compatible usage
+const results = await detectHeadless();
+const results = await detectHeadless(true);
+
+// New: with behavioral analysis
+const results = await detectHeadless({
+    attachToWindow: true,
+    includeBehavior: monitor  // HeadlessBehaviorMonitor instance
+});
+```
+
+**Result Object:**
 
 ```javascript
 {
@@ -188,11 +327,111 @@ Main detection function.
   advancedChecks: {...},               // Advanced detection methods
   mediaChecks: {...},                  // Media/WebRTC checks
   fingerprintChecks: {...},            // Fingerprinting results
-  explanations: {...},                 // Method explanations
+  behaviorAnalysis: {...},             // Behavioral analysis (if included)
+  checkItemExplanations: {...},        // Method explanations
   summary: {...},                      // Detection summary
   timestamp: 1738584000000,
   userAgent: "Mozilla/5.0...",
-  detectionVersion: "2.1.0"
+  detectionVersion: "2.0.0"
+}
+```
+
+### `detectHeadlessFull(options)`
+
+Convenience function that automatically handles behavioral monitoring lifecycle.
+
+**Parameters:**
+- `options` (Object, optional)
+  - `timeout` (number) - Time to wait for samples (default: 10000ms)
+  - `minConfidence` (number) - Minimum confidence threshold (default: 0.7)
+  - `attachToWindow` (boolean) - Attach results to window (default: false)
+  - `behaviorOptions` (Object) - Options to pass to HeadlessBehaviorMonitor
+
+**Returns:** Promise<Object> with combined detection results
+
+```javascript
+const results = await detectHeadlessFull({
+    timeout: 10000,
+    minConfidence: 0.7,
+    attachToWindow: false,
+    behaviorOptions: {
+        mouse: true,
+        keyboard: true,
+        minSamples: { mouse: 15, keyboard: 8 }
+    }
+});
+```
+
+### `HeadlessBehaviorMonitor`
+
+Class for monitoring user interactions over time to detect bot-like behavioral patterns.
+
+**Constructor Options:**
+
+```javascript
+new HeadlessBehaviorMonitor({
+    // Feature flags
+    mouse: true,           // Monitor mouse movements (default: true)
+    keyboard: true,        // Monitor keyboard timing (default: true)
+    scroll: true,          // Monitor scroll behavior (default: true)
+    touch: true,           // Monitor touch events (default: true)
+    events: true,          // Monitor general events (default: true)
+    sensors: true,         // Monitor device sensors (default: true)
+    webglTiming: true,     // Measure WebGL timing (default: true)
+    
+    // Minimum samples needed
+    minSamples: {
+        mouse: 20,         // Default: 20
+        keyboard: 10,      // Default: 10
+        scroll: 5,         // Default: 5
+        touch: 5,          // Default: 5
+        events: 10         // Default: 10
+    },
+    
+    // Timeout and callbacks
+    timeout: 30000,        // Auto-stop timeout (default: 30000ms)
+    onReady: (results) => {},      // Called when enough samples collected
+    onSuspicious: (signal) => {},  // Called on suspicious patterns
+    onSample: (info) => {}         // Called on each sample
+});
+```
+
+**Methods:**
+
+- `start()` - Start monitoring user interactions
+- `stop()` - Stop monitoring and return final results
+- `getStatus()` - Get current monitoring status
+- `getResults()` - Get analysis results
+- `waitForReady(timeout)` - Promise that resolves when enough samples collected
+
+**Results Object:**
+
+```javascript
+{
+    mouse: {
+        available: true,
+        score: 0.3,           // Suspiciousness score 0-1
+        confidence: 0.85,     // Confidence in the score
+        metrics: {
+            sampleCount: 25,
+            velocityVariance: 0.042,
+            angleVariance: 0.13,
+            straightLineRatio: 0.12,
+            untrustedRatio: 0
+        }
+    },
+    keyboard: {...},
+    scroll: {...},
+    touch: {...},
+    events: {...},
+    sensors: {...},
+    webglTiming: {...},
+    overallScore: 0.28,      // Combined score 0-1
+    confidence: 0.82,         // Overall confidence
+    metadata: {
+        samplesCollected: {...},
+        duration: 15234
+    }
 }
 ```
 
@@ -212,7 +451,7 @@ window.HeadlessDetector.checks   // Individual check functions
 ```javascript
 document.documentElement.getAttribute('data-headless-score')     // "0.170"
 document.documentElement.getAttribute('data-headless-detected')  // "false"
-document.documentElement.getAttribute('data-detection-version')  // "2.1.0"
+document.documentElement.getAttribute('data-detection-version')  // "2.0.0"
 ```
 
 ## Demo
