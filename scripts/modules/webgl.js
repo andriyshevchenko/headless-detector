@@ -175,8 +175,8 @@ function performWebGLRenderingTest(gl, testSize, claimedRenderer) {
         const sampleOffset = sampleInterval * 4; // 4 bytes per pixel (RGBA)
         
         // Compare adjacent pixels within sampled regions (more sensitive to rendering artifacts)
-        for (let i = 0; i + sampleOffset + 4 < pixels.length; i += sampleOffset) {
-            // Compare R channel of current pixel with R channel of immediately adjacent pixel
+        for (let i = 0; i + 4 < pixels.length; i += sampleOffset) {
+            // Compare R channel of current pixel (i) with R channel of next pixel (i+4)
             const diff = Math.abs(pixels[i] - pixels[i + 4]);
             if (diff > 5) noiseLevel++;
             sampleCount++;
