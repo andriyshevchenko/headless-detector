@@ -168,15 +168,15 @@ function performWebGLRenderingTest(gl, testSize, claimedRenderer) {
 
         const hash = simpleHash(Array.from(pixels.slice(0, 1000)).join(','));
 
-        // Check for noise by comparing adjacent sampled pixels (every 16th pixel)
+        // Check for noise by comparing adjacent pixels in sampled regions
         let noiseLevel = 0;
         let sampleCount = 0;
         const sampleInterval = 16; // Sample every 16th pixel
         const sampleOffset = sampleInterval * 4; // 4 bytes per pixel (RGBA)
         
-        // Compare each sampled pixel with the next sampled pixel
+        // Compare adjacent pixels within sampled regions (more sensitive to rendering artifacts)
         for (let i = 0; i + sampleOffset + 4 < pixels.length; i += sampleOffset) {
-            // Compare R channel of current sampled pixel with R channel of next sampled pixel
+            // Compare R channel of current pixel with R channel of immediately adjacent pixel
             const diff = Math.abs(pixels[i] - pixels[i + 4]);
             if (diff > 5) noiseLevel++;
             sampleCount++;
