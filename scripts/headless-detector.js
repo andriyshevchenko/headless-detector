@@ -92,6 +92,9 @@ async function _calculateHeadlessScore(workerChecks = null) {
     const automation = _getAutomationFlags();
     if (automation.plugins === 0) score += 0.07;
     if (!automation.languages) score += 0.07;
+    // 2026: Playwright-specific detection (Castle.io)
+    if (automation.__playwright__binding__ || automation.__pwInitScripts) score += 0.30;
+    if (automation.playwrightExposedFunctions && automation.playwrightExposedFunctions.detected) score += 0.25;
 
     // Headless indicators
     const headless = _getHeadlessIndicators();
@@ -150,10 +153,78 @@ function _detectWebdriver() {
             window['_phantom'] ||
             window['__nightmare'] ||
             window.callPhantom ||
-            window._phantom
+            window._phantom ||
+            // 2026: Playwright bindings (Castle.io)
+            window['__playwright__binding__'] ||
+            window['__pwInitScripts']
         );
     } catch (e) {
         return false;
+    }
+}
+
+/**
+ * Detect Playwright exposed functions (2026: Castle.io method)
+ * Playwright exposes functions with __installed property and specific toString() output
+ * NOTE: We exclude our own HeadlessDetector functions
+ */
+function _detectPlaywrightExposedFunctions() {
+    try {
+        let matchedCount = 0;
+        const suspiciousFunctions = [];
+
+        // Our own functions to ignore
+        const ourFunctions = [
+            '_calculateHeadlessScore', '_detectWebdriver', '_detectPlaywrightExposedFunctions',
+            '_getAutomationFlags', '_detectCDP', '_getHeadlessIndicators', '_checkUserAgent',
+            '_checkWebGL', '_getAdvancedChecks', '_getMediaChecks', '_getFingerprintChecks',
+            '_getWorkerChecks', '_getWorkerChecksSync', '_getDetectionExplanations',
+            '_generateDetectionSummary', '_checkCanvas', '_checkAudioContext', '_checkFonts',
+            '_simpleHash', '_checkEmojiRendering', '_performWebGLRenderingTest',
+            '_checkMediaDevices', '_checkWebRTC', '_checkBattery', '_detectCDPStackTrace',
+            '_checkChromeRuntime', '_checkPermissions', '_detectConsoleDebugLeak',
+            '_getCheckItemExplanations', 'detectHeadless', 'HeadlessDetector'
+        ];
+
+        Object.entries(window).forEach(([key, value]) => {
+            // Skip our own functions
+            if (ourFunctions.includes(key)) return;
+            if (key.startsWith('_') && key.includes('Headless')) return;
+            if (key === 'HeadlessDetector') return;
+
+            if (typeof value === 'function' && value !== null) {
+                // Check for __installed property (Playwright-specific)
+                if (typeof value['__installed'] === 'boolean') {
+                    matchedCount++;
+                    suspiciousFunctions.push(key);
+                }
+                // Check for Playwright-specific toString pattern
+                try {
+                    const funcStr = value.toString();
+                    // Only match actual Playwright patterns, not just any function
+                    if (funcStr.includes('exposeBindingHandle supports a single argument') ||
+                        funcStr.includes('serializeAsCallArgument') ||
+                        funcStr.includes('globalThis[bindingName]') ||
+                        funcStr.includes('me["callbacks"]') ||
+                        funcStr.includes('me["lastSeq"]')) {
+                        matchedCount++;
+                        if (!suspiciousFunctions.includes(key)) {
+                            suspiciousFunctions.push(key);
+                        }
+                    }
+                } catch (e) {
+                    // toString may throw
+                }
+            }
+        });
+
+        return {
+            detected: matchedCount > 0,
+            count: matchedCount,
+            functions: suspiciousFunctions.slice(0, 5) // First 5 for privacy
+        };
+    } catch (e) {
+        return { detected: false, count: 0, error: e.message };
     }
 }
 
@@ -185,6 +256,11 @@ function _getAutomationFlags() {
             // Playwright specific (2025: new)
             __playwright: !!window.__playwright,
             playwrightGlobal: typeof window.playwright !== 'undefined',
+            // 2026: Playwright binding detection (Castle.io method)
+            __playwright__binding__: '__playwright__binding__' in window,
+            __pwInitScripts: '__pwInitScripts' in window,
+            playwrightExposedFunctions: _detectPlaywrightExposedFunctions(),
+
             // Browser properties
             plugins: navigator.plugins ? navigator.plugins.length : 0,
             languages: navigator.languages && navigator.languages.length > 0,
@@ -1193,6 +1269,26 @@ function _getCheckItemExplanations() {
             description: "PhantomJS function for communication",
             good: "Not present - normal browser",
             bad: "Present - PhantomJS detected"
+        },
+
+        // Playwright Detection (2026: Castle.io)
+        'playwright-binding': {
+            label: "__playwright__binding__",
+            description: "Playwright's internal binding mechanism exposed in window",
+            good: "Not present - normal browser",
+            bad: "Present - Playwright automation framework detected"
+        },
+        'playwright-initscripts': {
+            label: "__pwInitScripts",
+            description: "Playwright initialization scripts registry",
+            good: "Not present - normal browser",
+            bad: "Present - Playwright detected with init scripts"
+        },
+        'playwright-exposed': {
+            label: "Exposed Functions",
+            description: "Functions injected via page.exposeFunction() with __installed property",
+            good: "None detected - normal browser",
+            bad: "Detected - Playwright is using exposed bindings for automation"
         },
 
         // Advanced Checks

@@ -346,4 +346,296 @@ describe('HeadlessDetector', () => {
       expect(result.workerChecks.userAgentMismatch).toBeDefined();
     });
   });
+
+  describe('Playwright Detection (2026 Castle.io)', () => {
+    beforeEach(() => {
+      // Clean up any Playwright-like variables
+      delete global.window.__playwright__binding__;
+      delete global.window.__pwInitScripts;
+    });
+
+    test('should detect __playwright__binding__ variable', async () => {
+      global.window.__playwright__binding__ = {};
+
+      jest.resetModules();
+      const freshDetector = require('../scripts/headless-detector.js');
+      const result = await freshDetector.detectHeadless();
+
+      expect(result.automationFlags.__playwright__binding__).toBe(true);
+    });
+
+    test('should detect __pwInitScripts variable', async () => {
+      global.window.__pwInitScripts = [];
+
+      jest.resetModules();
+      const freshDetector = require('../scripts/headless-detector.js');
+      const result = await freshDetector.detectHeadless();
+
+      expect(result.automationFlags.__pwInitScripts).toBe(true);
+    });
+
+    test('should not detect Playwright when bindings are absent', async () => {
+      // Make sure bindings are absent
+      delete global.window.__playwright__binding__;
+      delete global.window.__pwInitScripts;
+
+      jest.resetModules();
+      const freshDetector = require('../scripts/headless-detector.js');
+      const result = await freshDetector.detectHeadless();
+
+      expect(result.automationFlags.__playwright__binding__).toBe(false);
+      expect(result.automationFlags.__pwInitScripts).toBe(false);
+    });
+
+    test('should detect Playwright exposed functions with __installed property', async () => {
+      // Mock a Playwright-style exposed function
+      global.window.exposedPlaywrightFunc = function () { };
+      global.window.exposedPlaywrightFunc.__installed = true;
+
+      jest.resetModules();
+      const freshDetector = require('../scripts/headless-detector.js');
+      const result = await freshDetector.detectHeadless();
+
+      expect(result.automationFlags.playwrightExposedFunctions).toBeDefined();
+      expect(result.automationFlags.playwrightExposedFunctions.detected).toBe(true);
+      expect(result.automationFlags.playwrightExposedFunctions.count).toBeGreaterThan(0);
+
+      // Cleanup
+      delete global.window.exposedPlaywrightFunc;
+    });
+
+    test('should detect Playwright exposed functions by toString pattern', async () => {
+      // Mock a function with Playwright's signature
+      global.window.playwrightBinding = function () {
+        // This mimics what Playwright's exposeBinding creates
+        const exposeBindingHandle = 'supports a single argument';
+        return exposeBindingHandle;
+      };
+      // Override toString to return Playwright-like code
+      global.window.playwrightBinding.toString = () =>
+        `(...args) => { if (exposeBindingHandle supports a single argument) throw new Error(); }`;
+
+      jest.resetModules();
+      const freshDetector = require('../scripts/headless-detector.js');
+      const result = await freshDetector.detectHeadless();
+
+      expect(result.automationFlags.playwrightExposedFunctions.detected).toBe(true);
+
+      // Cleanup
+      delete global.window.playwrightBinding;
+    });
+
+    test('should NOT detect our own HeadlessDetector functions as Playwright', async () => {
+      // Our functions should be ignored
+      jest.resetModules();
+      const freshDetector = require('../scripts/headless-detector.js');
+      const result = await freshDetector.detectHeadless();
+
+      // If playwrightExposedFunctions.functions exists, it should not contain our functions
+      if (result.automationFlags.playwrightExposedFunctions.functions) {
+        const ourFunctions = ['detectHeadless', '_calculateHeadlessScore', '_detectWebdriver'];
+        ourFunctions.forEach(fn => {
+          expect(result.automationFlags.playwrightExposedFunctions.functions).not.toContain(fn);
+        });
+      }
+    });
+
+    test('should increase score when Playwright bindings detected', async () => {
+      // First get baseline score
+      delete global.window.__playwright__binding__;
+      delete global.window.__pwInitScripts;
+      jest.resetModules();
+      let freshDetector = require('../scripts/headless-detector.js');
+      const baselineResult = await freshDetector.detectHeadless();
+      const baselineScore = baselineResult.isHeadless;
+
+      // Now add Playwright binding
+      global.window.__playwright__binding__ = {};
+      jest.resetModules();
+      freshDetector = require('../scripts/headless-detector.js');
+      const playwrightResult = await freshDetector.detectHeadless();
+
+      expect(playwrightResult.isHeadless).toBeGreaterThan(baselineScore);
+
+      // Cleanup
+      delete global.window.__playwright__binding__;
+    });
+  });
+
+  describe('Emoji Rendering Check (2026)', () => {
+    test('should detect OS from User-Agent for emoji check', async () => {
+      global.navigator.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124';
+
+      jest.resetModules();
+      const freshDetector = require('../scripts/headless-detector.js');
+      const result = await freshDetector.detectHeadless();
+
+      // In test env, canvas might not be available, so check structure
+      expect(result.fingerprintChecks).toBeDefined();
+      expect(result.fingerprintChecks.canvas).toBeDefined();
+    });
+
+    test('should handle missing canvas gracefully', async () => {
+      // Canvas not available in test env
+      const result = await detector.detectHeadless();
+
+      // Should not throw, should return result
+      expect(result).toBeDefined();
+      expect(result.fingerprintChecks).toBeDefined();
+    });
+  });
+
+  describe('WebGL Rendering Test (2026)', () => {
+    test('should include renderingTest property when WebGL available', async () => {
+      const result = await detector.detectHeadless();
+
+      expect(result.webglFlags).toBeDefined();
+      // In test env, WebGL might not be available
+      if (result.webglFlags.supported) {
+        expect(result.webglFlags.renderingTest).toBeDefined();
+      }
+    });
+
+    test('should detect software renderer in checkWebGL result', async () => {
+      const result = await detector.detectHeadless();
+
+      // In test env without real WebGL, just verify structure exists
+      expect(result.webglFlags).toBeDefined();
+      expect(result.webglFlags).toHaveProperty('supported');
+
+      // isSoftwareRenderer should be defined if WebGL is supported
+      if (result.webglFlags.supported) {
+        expect(result.webglFlags).toHaveProperty('isSoftwareRenderer');
+      }
+    });
+  });
+
+  describe('Worker UA Check (2026)', () => {
+    test('should detect platform mismatch', async () => {
+      global.Worker = class MockPlatformMismatchWorker {
+        constructor() {
+          this.onmessage = null;
+        }
+        postMessage() {
+          setTimeout(() => {
+            if (this.onmessage) {
+              this.onmessage({
+                data: {
+                  userAgent: global.navigator.userAgent,
+                  platform: 'Linux' // Different from Win32
+                }
+              });
+            }
+          }, 10);
+        }
+        terminate() { }
+      };
+
+      jest.resetModules();
+      const freshDetector = require('../scripts/headless-detector.js');
+      const result = await freshDetector.getWorkerChecks();
+
+      expect(result.platformMismatch).toBe(true);
+    });
+
+    test('should not detect mismatch when UA and platform match', async () => {
+      global.navigator.platform = 'Win32';
+      global.Worker = class MockMatchingWorker {
+        constructor() {
+          this.onmessage = null;
+        }
+        postMessage() {
+          setTimeout(() => {
+            if (this.onmessage) {
+              this.onmessage({
+                data: {
+                  userAgent: global.navigator.userAgent,
+                  platform: 'Win32'
+                }
+              });
+            }
+          }, 10);
+        }
+        terminate() { }
+      };
+
+      jest.resetModules();
+      const freshDetector = require('../scripts/headless-detector.js');
+      const result = await freshDetector.getWorkerChecks();
+
+      expect(result.userAgentMismatch).toBe(false);
+      expect(result.platformMismatch).toBe(false);
+    });
+
+    test('should handle worker timeout gracefully', async () => {
+      global.Worker = class MockTimeoutWorker {
+        constructor() {
+          this.onmessage = null;
+        }
+        postMessage() {
+          // Never responds - simulates timeout
+        }
+        terminate() { }
+      };
+
+      jest.resetModules();
+      const freshDetector = require('../scripts/headless-detector.js');
+
+      // Should resolve even with timeout (1 second default)
+      const result = await freshDetector.getWorkerChecks();
+
+      expect(result).toBeDefined();
+      expect(result.available).toBe(false);
+    }, 2000); // Extended timeout for this test
+
+    test('should handle worker error gracefully', async () => {
+      global.Worker = class MockErrorWorker {
+        constructor() {
+          this.onmessage = null;
+          this.onerror = null;
+        }
+        postMessage() {
+          setTimeout(() => {
+            if (this.onerror) {
+              this.onerror({ message: 'Worker error' });
+            }
+          }, 10);
+        }
+        terminate() { }
+      };
+
+      jest.resetModules();
+      const freshDetector = require('../scripts/headless-detector.js');
+      const result = await freshDetector.getWorkerChecks();
+
+      expect(result).toBeDefined();
+      expect(result.available).toBe(false);
+    });
+  });
+
+  describe('Check Item Explanations (2026)', () => {
+    test('should include explanations for Playwright detection', async () => {
+      const result = await detector.detectHeadless();
+
+      expect(result.checkItemExplanations).toBeDefined();
+      expect(result.checkItemExplanations['playwright-binding']).toBeDefined();
+      expect(result.checkItemExplanations['playwright-binding'].label).toBe('__playwright__binding__');
+    });
+
+    test('should include explanations for new 2026 checks', async () => {
+      const result = await detector.detectHeadless();
+
+      const explanations = result.checkItemExplanations;
+
+      // Worker check
+      expect(explanations['worker-available']).toBeDefined();
+      expect(explanations['worker-mismatch']).toBeDefined();
+
+      // Emoji check
+      expect(explanations['emoji-rendered']).toBeDefined();
+
+      // WebGL rendering test
+      expect(explanations['webgl-rendering-test']).toBeDefined();
+    });
+  });
 });

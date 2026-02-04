@@ -473,6 +473,44 @@
                 `;
             }).join('');
 
+            // Playwright Detection (2026: Castle.io method)
+            const playwrightFlags = [
+                { key: '__playwright__binding__', label: '__playwright__binding__', id: 'playwright-binding' },
+                { key: '__pwInitScripts', label: '__pwInitScripts', id: 'playwright-initscripts' },
+            ];
+            
+            let playwrightHtml = playwrightFlags.map(flag => {
+                const value = results.automationFlags[flag.key];
+                return `
+                    <div class="check-item">
+                        <span class="check-label">${flag.label}</span>
+                        <span class="check-value ${value ? 'fail' : 'pass'}" id="${flag.id}">${value ? 'YES' : 'NO'}</span>
+                    </div>
+                `;
+            }).join('');
+            
+            // Playwright exposed functions
+            const pwFuncs = results.automationFlags.playwrightExposedFunctions;
+            if (pwFuncs) {
+                playwrightHtml += `
+                    <div class="check-item">
+                        <span class="check-label">Exposed Functions</span>
+                        <span class="check-value ${pwFuncs.detected ? 'fail' : 'pass'}" id="playwright-exposed">${pwFuncs.detected ? `YES (${pwFuncs.count})` : 'NO'}</span>
+                    </div>
+                `;
+                if (pwFuncs.functions && pwFuncs.functions.length > 0) {
+                    playwrightHtml += `<div style="font-size: 11px; color: #666; margin-top: 5px;">Functions: ${pwFuncs.functions.join(', ')}</div>`;
+                }
+            }
+            
+            autoFlags.innerHTML += `
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                    <strong style="color: #764ba2;">🎭 Playwright Detection</strong>
+                    <span class="new-badge" style="background: #764ba2; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 5px;">2026</span>
+                </div>
+                ${playwrightHtml}
+            `;
+
             // Advanced Checks
             const adv = results.advancedChecks;
             setStatus('adv-stacktrace', adv.stackTrace?.cdpDetected);

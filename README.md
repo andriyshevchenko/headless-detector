@@ -1,7 +1,7 @@
 # Headless Browser Detector
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/andriyshevchenko/headless-detector)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/andriyshevchenko/headless-detector)
 [![CI Tests](https://github.com/andriyshevchenko/headless-detector/actions/workflows/test.yml/badge.svg)](https://github.com/andriyshevchenko/headless-detector/actions/workflows/test.yml)
 [![npm version](https://img.shields.io/npm/v/headless-detector.svg)](https://www.npmjs.com/package/headless-detector)
 
@@ -9,9 +9,13 @@ A comprehensive JavaScript library for detecting headless browsers, automation f
 
 ## Features
 
-- 🎯 **10+ Detection Vectors** - Multi-layered approach using various detection methods
+- 🎯 **15+ Detection Vectors** - Multi-layered approach using various detection methods
+- 🎭 **Playwright Detection** - Identifies Playwright bindings and exposed functions (NEW 2026)
+- 🔧 **Worker UA Check** - Compares User-Agent between main thread and Worker (NEW 2026)
+- 😀 **Emoji OS Consistency** - Verifies emoji rendering matches OS (NEW 2026)
+- 🎨 **WebGL Rendering Test** - Complex 3D rendering to detect software renderers (NEW 2026)
 - 🔍 **Advanced CDP Detection** - Identifies Chrome DevTools Protocol usage
-- 🎨 **Fingerprinting** - Canvas, Audio Context, and Font detection
+- 🖌️ **Fingerprinting** - Canvas, Audio Context, and Font detection
 - 📱 **Media Checks** - WebRTC and MediaDevices availability
 - 🤖 **Automation Detection** - Selenium, Puppeteer, Playwright identification
 - 📊 **Detailed Reporting** - Human-readable explanations and risk assessments
@@ -23,6 +27,11 @@ A comprehensive JavaScript library for detecting headless browsers, automation f
 |--------|--------|-------------|
 | WebDriver Detection | High | Checks for `navigator.webdriver` and automation properties |
 | CDP Artifacts | Very High | Detects ChromeDriver and CDP connection signals |
+| **Playwright Bindings** | Very High | Detects `__playwright__binding__`, `__pwInitScripts` (NEW 2026) |
+| **Playwright Exposed Functions** | Very High | Detects functions with `__installed` property (NEW 2026) |
+| **Worker UA Check** | High | Compares User-Agent in main thread vs Worker (NEW 2026) |
+| **Emoji OS Consistency** | Medium | Verifies emoji rendering matches declared OS (NEW 2026) |
+| **WebGL Rendering Test** | Medium | Complex 3D scene rendering test (NEW 2026) |
 | User-Agent Analysis | High | Identifies automation patterns in browser identification |
 | Advanced CDP/Runtime | Very High | Error stack trace and Chrome runtime validation |
 | WebGL Renderer | Medium | Detects software rendering vs hardware GPU |
@@ -252,6 +261,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - W3C specifications and guidance
 
 ## Version History
+
+### 1.2.0 (2026-02-04)
+- 🎭 **Playwright Detection** - Detects `__playwright__binding__`, `__pwInitScripts` and exposed functions
+- 🔧 **Worker UA Check** - Compares User-Agent between main thread and Worker
+- 😀 **Emoji OS Consistency** - Verifies emoji rendering matches OS
+- 🎨 **WebGL Rendering Test** - Complex 3D scene rendering test
+- 18 new unit tests (46 total)
+- Fixed async Worker checks and infinite loop issues
 
 ### 1.0.0 (2026-02-03)
 - Initial stable release with comprehensive headless browser detection
