@@ -898,16 +898,35 @@ class HeadlessBehaviorMonitor {
         const intervalVariance = this._calculateVariance(intervals);
         const uniqueDeltaRatio = uniqueDeltas.size / deltas.length;
         
+        // Calculate event frequency (events per second)
+        const totalDuration = scrolls.length > 1 
+            ? (scrolls[scrolls.length - 1].timestamp - scrolls[0].timestamp) / 1000 
+            : 1;
+        const eventsPerSecond = scrolls.length / Math.max(totalDuration, 0.001);
+        
         // Suspicious indicators:
         // - Very low delta variance (always same scroll amount)
         // - Very low interval variance (perfectly timed)
         // - Low unique delta ratio (repetitive pattern)
         // - Bot timing pattern detection
+        // - EXTREMELY HIGH delta variance (unnaturally erratic)
+        // - HIGH event frequency (too many events per second)
         let suspiciousScore = 0;
         
-        if (deltaVariance < 1) suspiciousScore += 0.3;
-        if (intervalVariance < 10) suspiciousScore += 0.3;
-        if (uniqueDeltaRatio < 0.3) suspiciousScore += 0.3;
+        // Low variance = bot-like repetitive patterns (weights: 0.2 each)
+        if (deltaVariance < 1) suspiciousScore += 0.2;
+        if (intervalVariance < 10) suspiciousScore += 0.2;
+        if (uniqueDeltaRatio < 0.3) suspiciousScore += 0.2;
+        
+        // EXTREMELY HIGH variance = unnaturally erratic (weights: 0.15 each)
+        // Normal human scroll variance is typically 100-1000
+        // Variance > 3000 suggests artificially erratic behavior
+        if (deltaVariance > 3000) suspiciousScore += 0.15;
+        
+        // HIGH event frequency = too many events per second (weight: 0.15)
+        // Normal human scrolling is 10-50 events/sec
+        // > 100 events/sec suggests automation or scripted rapid scrolling
+        if (eventsPerSecond > 100) suspiciousScore += 0.15;
         
         // Check for automation timing patterns in scroll events
         const hasSubMillisecondPattern = this._detectSubMillisecondPattern(scrolls);
@@ -923,7 +942,8 @@ class HeadlessBehaviorMonitor {
                 sampleCount: scrolls.length,
                 deltaVariance: deltaVariance,
                 intervalVariance: intervalVariance,
-                uniqueDeltaRatio: uniqueDeltaRatio
+                uniqueDeltaRatio: uniqueDeltaRatio,
+                eventsPerSecond: eventsPerSecond
             }
         };
     }
@@ -936,6 +956,7 @@ class HeadlessBehaviorMonitor {
         const touches = this.data.touch;
         let forces = [];
         let radii = [];
+        let intervals = [];
         let untrustedCount = 0;
         
         for (let i = 0; i < touches.length; i++) {
@@ -952,21 +973,47 @@ class HeadlessBehaviorMonitor {
             if (!touch.isTrusted) {
                 untrustedCount++;
             }
+            
+            // Calculate intervals between touch events
+            if (i > 0 && touches[i].timestamp && touches[i - 1].timestamp) {
+                intervals.push(touches[i].timestamp - touches[i - 1].timestamp);
+            }
         }
         
         const forceVariance = this._calculateVariance(forces);
         const radiusVariance = this._calculateVariance(radii);
         const untrustedRatio = untrustedCount / touches.length;
         
+        // Calculate event frequency (events per second)
+        const totalDuration = touches.length > 1 && touches[touches.length - 1].timestamp && touches[0].timestamp
+            ? (touches[touches.length - 1].timestamp - touches[0].timestamp) / 1000 
+            : 1;
+        const eventsPerSecond = touches.length / Math.max(totalDuration, 0.001);
+        
         // Suspicious indicators:
-        // - Very low force variance (unrealistic)
+        // - Very low force variance (unrealistic - bots have no force variation)
         // - Very low radius variance (unrealistic)
         // - High untrusted event ratio
+        // - EXTREMELY HIGH force variance (unnaturally erratic)
+        // - HIGH event frequency (too many touch events per second)
         let suspiciousScore = 0;
         
-        if (forces.length > 0 && forceVariance < 0.001) suspiciousScore += 0.3;
-        if (radii.length > 0 && radiusVariance < 0.1) suspiciousScore += 0.3;
-        if (untrustedRatio > 0.1) suspiciousScore += 0.4;
+        // Low variance = bot-like patterns (weights: 0.2 each)
+        if (forces.length > 0 && forceVariance < 0.001) suspiciousScore += 0.2;
+        if (radii.length > 0 && radiusVariance < 0.1) suspiciousScore += 0.2;
+        
+        // Untrusted events (weight: 0.2)
+        if (untrustedRatio > 0.1) suspiciousScore += 0.2;
+        
+        // EXTREMELY HIGH force variance = unnaturally erratic (weight: 0.2)
+        // Normal human touch force variance is typically 0.01-0.1
+        // Variance > 0.15 suggests artificially erratic behavior
+        if (forces.length > 0 && forceVariance > 0.15) suspiciousScore += 0.2;
+        
+        // HIGH event frequency = too many events per second (weight: 0.2)
+        // Normal human touch is 5-30 events/sec
+        // > 50 events/sec suggests automation or scripted rapid touching
+        if (eventsPerSecond > 50) suspiciousScore += 0.2;
         
         const confidence = Math.min(touches.length / this.options.minSamples.touch, 1);
         
@@ -978,7 +1025,8 @@ class HeadlessBehaviorMonitor {
                 sampleCount: touches.length,
                 forceVariance: forceVariance,
                 radiusVariance: radiusVariance,
-                untrustedRatio: untrustedRatio
+                untrustedRatio: untrustedRatio,
+                eventsPerSecond: eventsPerSecond
             }
         };
     }
