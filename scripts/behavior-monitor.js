@@ -911,7 +911,7 @@ class HeadlessBehaviorMonitor {
         
         // Check for automation timing patterns in scroll events
         const hasSubMillisecondPattern = this._detectSubMillisecondPattern(scrolls);
-        if (hasSubMillisecondPattern) suspiciousScore += 0.2;
+        if (hasSubMillisecondPattern) suspiciousScore += 0.1;
         
         const confidence = Math.min(scrolls.length / this.options.minSamples.scroll, 1);
         
