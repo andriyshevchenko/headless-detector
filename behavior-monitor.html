@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Headless Behavior Monitor - Test Suite</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Fix for card rendering artifacts - ensure cards have clean edges */
+        #results-grid {
+            /* Prevent subpixel rendering issues in grid */
+            transform: translateZ(0);
+            /* Add spacing above results grid */
+            margin-top: 20px;
+        }
+        
+        #results-grid .card {
+            overflow: hidden;
+            isolation: isolate;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            transform: translateZ(0);
+            /* Ensure clean card edges */
+            border: 1px solid transparent;
+        }
+        
+        /* Ensure card icons don't cause rendering artifacts */
+        .card-icon {
+            display: inline-block;
+            line-height: 1;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        
+        .session-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        
+        .session-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        
+        .session-btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+        
+        .session-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .session-btn:focus {
+            outline: 3px solid #667eea;
+            outline-offset: 2px;
+        }
+        
+        .session-btn.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .session-btn.danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+        
+        .session-status {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .status-indicator.running {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-indicator.stopped {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+        
+        .pulse-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        
+        .static-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #9ca3af;
+        }
+        
+        .samples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .sample-counter {
+            text-align: center;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 10px;
+        }
+        
+        .sample-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .sample-label {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .analysis-section {
+            margin-top: 15px;
+        }
+        
+        .analysis-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .analysis-row:last-child {
+            border-bottom: none;
+        }
+        
+        .analysis-label {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .analysis-score {
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 12px;
+        }
+        
+        .score-low {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .score-medium {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .score-high {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .confidence-bar {
+            width: 100px;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+        
+        .nav-link {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            margin-top: 10px;
+            opacity: 0.9;
+            transition: opacity 0.2s;
+        }
+        
+        .nav-link:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+        
+        .instruction-box {
+            background: #f0f4ff;
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .instruction-title {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+        
+        .instruction-text {
+            color: #555;
+            line-height: 1.6;
+        }
+        
+        .elapsed-time {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 Headless Behavior Monitor</h1>
+            <p>Real-time behavioral analysis to detect bot-like interaction patterns</p>
+            <a href="index.html" class="nav-link" aria-label="Navigate back to Headless Browser Detector">← Back to Headless Detector</a>
+        </div>
+
+        <!-- Session Controls -->
+        <div class="score-card">
+            <div class="score-label">Session Controls</div>
+            
+            <div class="btn-group">
+                <button id="start-btn" class="session-btn primary" onclick="startSession()" aria-label="Start behavior monitoring session">
+                    ▶️ Start Session
+                </button>
+                <button id="stop-btn" class="session-btn danger" onclick="stopSession()" disabled aria-label="End behavior monitoring session">
+                    ⏹️ End Session
+                </button>
+            </div>
+            
+            <div class="session-status">
+                <div id="status-indicator" class="status-indicator stopped" role="status" aria-live="polite">
+                    <span id="status-dot" class="static-dot" aria-hidden="true"></span>
+                    <span id="status-text">Session Stopped</span>
+                </div>
+                <div id="elapsed-time" class="elapsed-time" aria-live="off"></div>
+            </div>
+            
+            <div class="instruction-box">
+                <div class="instruction-title">💡 How to Test</div>
+                <div class="instruction-text">
+                    1. Click <strong>Start Session</strong> to begin monitoring<br>
+                    2. Move your mouse, type on keyboard, scroll the page<br>
+                    3. Click <strong>End Session</strong> to see analysis results<br>
+                    <em>The monitor needs enough samples to provide accurate analysis</em>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Sample Counters -->
+        <div class="card">
+            <div class="card-title">
+                <span class="card-icon" aria-hidden="true">📊</span>
+                Live Sample Counters
+            </div>
+            <div class="samples-grid" role="region" aria-live="off" aria-label="Live sample counts">
+                <div class="sample-counter">
+                    <div class="sample-value" id="mouse-count">0</div>
+                    <div class="sample-label"><span aria-hidden="true">🖱️</span> Mouse</div>
+                </div>
+                <div class="sample-counter">
+                    <div class="sample-value" id="keyboard-count">0</div>
+                    <div class="sample-label"><span aria-hidden="true">⌨️</span> Keyboard</div>
+                </div>
+                <div class="sample-counter">
+                    <div class="sample-value" id="scroll-count">0</div>
+                    <div class="sample-label"><span aria-hidden="true">📜</span> Scroll</div>
+                </div>
+                <div class="sample-counter">
+                    <div class="sample-value" id="touch-count">0</div>
+                    <div class="sample-label"><span aria-hidden="true">👆</span> Touch</div>
+                </div>
+                <div class="sample-counter">
+                    <div class="sample-value" id="events-count">0</div>
+                    <div class="sample-label"><span aria-hidden="true">🎯</span> Events</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Results Grid -->
+        <div class="grid" id="results-grid" style="display: none;">
+            <!-- Overall Score Card -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="card-icon" aria-hidden="true">🎯</span>
+                    Overall Analysis
+                </div>
+                <div style="text-align: center; padding: 20px 0;">
+                    <div class="score-label">Bot Likelihood Score</div>
+                    <div class="score-value" id="overall-score">0.00</div>
+                    <div id="overall-badge" class="status-badge status-normal">Human-like</div>
+                    <div style="margin-top: 15px;">
+                        <span style="color: #666;">Confidence:</span>
+                        <span id="overall-confidence" style="font-weight: bold;">0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mouse Analysis -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="card-icon" aria-hidden="true">🖱️</span>
+                    Mouse Movement Analysis
+                </div>
+                <div class="analysis-section">
+                    <div class="analysis-row">
+                        <span class="analysis-label">Bot Score</span>
+                        <span class="analysis-score" id="mouse-score">N/A</span>
+                    </div>
+                    <div class="analysis-row">
+                        <span class="analysis-label">Confidence</span>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" id="mouse-confidence" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Samples</span>
+                        <span class="check-value info" id="mouse-samples">0</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Velocity Variance</span>
+                        <span class="check-value info" id="mouse-velocity">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Angle Variance</span>
+                        <span class="check-value info" id="mouse-angle">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Keyboard Analysis -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="card-icon" aria-hidden="true">⌨️</span>
+                    Keyboard Analysis
+                </div>
+                <div class="analysis-section">
+                    <div class="analysis-row">
+                        <span class="analysis-label">Bot Score</span>
+                        <span class="analysis-score" id="keyboard-score">N/A</span>
+                    </div>
+                    <div class="analysis-row">
+                        <span class="analysis-label">Confidence</span>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" id="keyboard-confidence" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Samples</span>
+                        <span class="check-value info" id="keyboard-samples">0</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Hold Time Variance</span>
+                        <span class="check-value info" id="keyboard-holdtime">-</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Inter-Key Variance</span>
+                        <span class="check-value info" id="keyboard-interkey">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scroll Analysis -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="card-icon" aria-hidden="true">📜</span>
+                    Scroll Analysis
+                </div>
+                <div class="analysis-section">
+                    <div class="analysis-row">
+                        <span class="analysis-label">Bot Score</span>
+                        <span class="analysis-score" id="scroll-score">N/A</span>
+                    </div>
+                    <div class="analysis-row">
+                        <span class="analysis-label">Confidence</span>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" id="scroll-confidence" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Samples</span>
+                        <span class="check-value info" id="scroll-samples">0</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Delta Variance</span>
+                        <span class="check-value info" id="scroll-delta">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Touch Analysis -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="card-icon" aria-hidden="true">👆</span>
+                    Touch Analysis
+                </div>
+                <div class="analysis-section">
+                    <div class="analysis-row">
+                        <span class="analysis-label">Bot Score</span>
+                        <span class="analysis-score" id="touch-score">N/A</span>
+                    </div>
+                    <div class="analysis-row">
+                        <span class="analysis-label">Confidence</span>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" id="touch-confidence" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Samples</span>
+                        <span class="check-value info" id="touch-samples">0</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Force Variance</span>
+                        <span class="check-value info" id="touch-force">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Events Analysis -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="card-icon" aria-hidden="true">🎯</span>
+                    Events Analysis
+                </div>
+                <div class="analysis-section">
+                    <div class="analysis-row">
+                        <span class="analysis-label">Bot Score</span>
+                        <span class="analysis-score" id="events-score">N/A</span>
+                    </div>
+                    <div class="analysis-row">
+                        <span class="analysis-label">Confidence</span>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" id="events-confidence" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Samples</span>
+                        <span class="check-value info" id="events-samples">0</span>
+                    </div>
+                    <div class="check-item">
+                        <span class="check-label">Untrusted Ratio</span>
+                        <span class="check-value info" id="events-untrusted">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sensor Analysis -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="card-icon" aria-hidden="true">📡</span>
+                    Sensor Analysis
+                </div>
+                <div class="analysis-section">
+                    <div class="analysis-row">
+                        <span class="analysis-label">Bot Score</span>
+                        <span class="analysis-score" id="sensor-score">N/A</span>
+                    </div>
+                    <div class="analysis-row">
+                        <span class="analysis-label">Available</span>
+                        <span class="check-value" id="sensor-available">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Session Metadata -->
+        <div class="metadata" id="session-metadata" style="display: none;">
+            <div class="metadata-title">📋 Session Metadata</div>
+            <div class="metadata-item">
+                <span class="metadata-label">Session Duration:</span>
+                <span class="metadata-value" id="session-duration">-</span>
+            </div>
+            <div class="metadata-item">
+                <span class="metadata-label">Total Samples:</span>
+                <span class="metadata-value" id="total-samples">-</span>
+            </div>
+            <div class="metadata-item">
+                <span class="metadata-label">Timestamp:</span>
+                <span class="metadata-value" id="session-timestamp">-</span>
+            </div>
+        </div>
+
+        <!-- API Access Info -->
+        <div class="metadata" style="margin-top: 20px; background: #f0f4ff; border: 2px solid #667eea;">
+            <div class="metadata-title" style="color: #667eea;">🤖 Automation Testing Access</div>
+            <div class="metadata-item">
+                <span class="metadata-label">Monitor Instance:</span>
+                <code class="metadata-value" style="background: #fff; padding: 2px 6px; border-radius: 4px;">window.__behaviorMonitor</code>
+            </div>
+            <div class="metadata-item">
+                <span class="metadata-label">Get Status:</span>
+                <code class="metadata-value" style="background: #fff; padding: 2px 6px; border-radius: 4px;">window.__behaviorMonitor.getStatus()</code>
+            </div>
+            <div class="metadata-item">
+                <span class="metadata-label">Get Results:</span>
+                <code class="metadata-value" style="background: #fff; padding: 2px 6px; border-radius: 4px;">window.__behaviorMonitor.getResults()</code>
+            </div>
+            <div class="metadata-item">
+                <span class="metadata-label">Start/Stop:</span>
+                <code class="metadata-value" style="background: #fff; padding: 2px 6px; border-radius: 4px;">window.__behaviorMonitor.start() / .stop()</code>
+            </div>
+        </div>
+    </div>
+
+    <script src="scripts/behavior-monitor.js"></script>
+    <script>
+        // Configuration constants
+        const ELAPSED_TIME_UPDATE_MS = 1000;  // Elapsed time update interval (1 second)
+        
+        // Global monitor instance for automation access
+        let monitor = null;
+        let elapsedInterval = null;
+
+        // Initialize monitor with error handling
+        function initMonitor() {
+            try {
+                if (typeof HeadlessBehaviorMonitor === 'undefined') {
+                    console.error('HeadlessBehaviorMonitor class not found. Ensure behavior-monitor.js is loaded.');
+                    return false;
+                }
+                monitor = new HeadlessBehaviorMonitor({
+                    onSample: updateCounters
+                });
+                window.__behaviorMonitor = monitor;
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize HeadlessBehaviorMonitor:', error);
+                return false;
+            }
+        }
+
+        function startSession() {
+            // Clear any existing intervals to prevent memory leaks
+            if (elapsedInterval !== null) {
+                clearInterval(elapsedInterval);
+                elapsedInterval = null;
+            }
+            
+            if (!monitor) {
+                if (!initMonitor()) {
+                    // Initialization failed - provide user feedback
+                    const statusText = document.getElementById('status-text');
+                    if (statusText) {
+                        statusText.textContent = 'Error: Failed to initialize monitor';
+                    }
+                    return;
+                }
+            }
+            
+            monitor.start();
+            
+            // Reset counter displays to 0 for new session
+            document.getElementById('mouse-count').textContent = '0';
+            document.getElementById('keyboard-count').textContent = '0';
+            document.getElementById('scroll-count').textContent = '0';
+            document.getElementById('touch-count').textContent = '0';
+            document.getElementById('events-count').textContent = '0';
+            
+            // Update UI
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('stop-btn').disabled = false;
+            
+            const statusIndicator = document.getElementById('status-indicator');
+            statusIndicator.className = 'status-indicator running';
+            document.getElementById('status-dot').className = 'pulse-dot';
+            document.getElementById('status-text').textContent = 'Session Running';
+            
+            // Hide results while session is running
+            document.getElementById('results-grid').style.display = 'none';
+            document.getElementById('session-metadata').style.display = 'none';
+            
+            // Start elapsed time counter
+            updateElapsedTime();
+            elapsedInterval = setInterval(updateElapsedTime, ELAPSED_TIME_UPDATE_MS);
+            
+            // Note: updateCounters is called via onSample callback, no need for setInterval
+        }
+
+        function stopSession() {
+            if (!monitor) return;
+            
+            const results = monitor.stop();
+            
+            // Update UI
+            document.getElementById('start-btn').disabled = false;
+            document.getElementById('stop-btn').disabled = true;
+            
+            const statusIndicator = document.getElementById('status-indicator');
+            statusIndicator.className = 'status-indicator stopped';
+            document.getElementById('status-dot').className = 'static-dot';
+            document.getElementById('status-text').textContent = 'Session Stopped';
+            
+            // Clear intervals
+            if (elapsedInterval) {
+                clearInterval(elapsedInterval);
+                elapsedInterval = null;
+            }
+            
+            // Display results
+            if (results) {
+                displayResults(results);
+            }
+        }
+
+        function updateCounters() {
+            if (!monitor || typeof monitor.getStatus !== 'function') return;
+            
+            const status = monitor.getStatus();
+            if (!status || !status.samples) return;
+            
+            document.getElementById('mouse-count').textContent = status.samples.mouse || 0;
+            document.getElementById('keyboard-count').textContent = status.samples.keyboard || 0;
+            document.getElementById('scroll-count').textContent = status.samples.scroll || 0;
+            document.getElementById('touch-count').textContent = status.samples.touch || 0;
+            document.getElementById('events-count').textContent = status.samples.events || 0;
+        }
+
+        function updateElapsedTime() {
+            if (!monitor || typeof monitor.getStatus !== 'function') return;
+            
+            const status = monitor.getStatus();
+            if (!status) return;
+            
+            const elapsed = Math.floor((status.elapsedTime || 0) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            
+            document.getElementById('elapsed-time').textContent = 
+                `Elapsed: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function displayResults(results) {
+            // Defensive check for results object
+            if (!results) return;
+            
+            // Show results grid
+            document.getElementById('results-grid').style.display = 'grid';
+            document.getElementById('session-metadata').style.display = 'block';
+            
+            // Overall Score
+            const overallScore = results.overallScore || 0;
+            document.getElementById('overall-score').textContent = overallScore.toFixed(2);
+            document.getElementById('overall-confidence').textContent = 
+                ((results.confidence || 0) * 100).toFixed(0) + '%';
+            
+            const overallBadge = document.getElementById('overall-badge');
+            if (overallScore < 0.3) {
+                overallBadge.className = 'status-badge status-normal';
+                overallBadge.textContent = '✅ Human-like';
+            } else if (overallScore < 0.6) {
+                overallBadge.className = 'status-badge status-suspicious';
+                overallBadge.textContent = '⚠️ Suspicious';
+            } else {
+                overallBadge.className = 'status-badge status-headless';
+                overallBadge.textContent = '🚫 Bot-like';
+            }
+            
+            // Mouse Analysis
+            if (results.mouse) {
+                displayAnalysisCard('mouse', results.mouse);
+                if (results.mouse.metrics) {
+                    document.getElementById('mouse-velocity').textContent = 
+                        results.mouse.metrics.velocityVariance?.toFixed(2) || '-';
+                    document.getElementById('mouse-angle').textContent = 
+                        results.mouse.metrics.angleVariance?.toFixed(2) || '-';
+                }
+            }
+            
+            // Keyboard Analysis
+            if (results.keyboard) {
+                displayAnalysisCard('keyboard', results.keyboard);
+                if (results.keyboard.metrics) {
+                    document.getElementById('keyboard-holdtime').textContent = 
+                        results.keyboard.metrics.holdTimeVariance?.toFixed(2) || '-';
+                    document.getElementById('keyboard-interkey').textContent = 
+                        results.keyboard.metrics.interKeyVariance?.toFixed(2) || '-';
+                }
+            }
+            
+            // Scroll Analysis
+            if (results.scroll) {
+                displayAnalysisCard('scroll', results.scroll);
+                if (results.scroll.metrics) {
+                    document.getElementById('scroll-delta').textContent = 
+                        results.scroll.metrics.deltaVariance?.toFixed(2) || '-';
+                }
+            }
+            
+            // Touch Analysis
+            if (results.touch) {
+                displayAnalysisCard('touch', results.touch);
+                if (results.touch.metrics) {
+                    document.getElementById('touch-force').textContent = 
+                        results.touch.metrics.forceVariance?.toFixed(4) || '-';
+                }
+            }
+            
+            // Events Analysis
+            if (results.events) {
+                displayAnalysisCard('events', results.events);
+                if (results.events.metrics) {
+                    const untrustedRatio = results.events.metrics.untrustedRatio;
+                    document.getElementById('events-untrusted').textContent = 
+                        untrustedRatio != null ? (untrustedRatio * 100).toFixed(1) + '%' : '-';
+                }
+            }
+            
+            // Sensor Analysis
+            const sensorScore = document.getElementById('sensor-score');
+            if (results.sensors && results.sensors.available) {
+                const score = results.sensors.score;
+                sensorScore.textContent = score != null ? score.toFixed(2) : 'N/A';
+                sensorScore.className = 'analysis-score ' + (score != null ? getScoreClass(score) : '');
+                document.getElementById('sensor-available').textContent = 'YES';
+                document.getElementById('sensor-available').className = 'check-value pass';
+            } else {
+                sensorScore.textContent = 'N/A';
+                sensorScore.className = 'analysis-score';
+                document.getElementById('sensor-available').textContent = 'NO';
+                document.getElementById('sensor-available').className = 'check-value info';
+            }
+            
+            // Session Metadata
+            if (results.metadata) {
+                const duration = results.metadata.duration || 0;
+                const minutes = Math.floor(duration / 60000);
+                const seconds = Math.floor((duration % 60000) / 1000);
+                document.getElementById('session-duration').textContent = 
+                    `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                const samplesCollected = results.metadata.samplesCollected || {};
+                const totalSamples = Object.values(samplesCollected)
+                    .reduce((a, b) => a + b, 0);
+                document.getElementById('total-samples').textContent = totalSamples;
+            }
+            document.getElementById('session-timestamp').textContent = new Date().toLocaleString();
+        }
+
+        function displayAnalysisCard(type, analysis) {
+            if (!analysis) return;
+            
+            const scoreEl = document.getElementById(`${type}-score`);
+            const confidenceEl = document.getElementById(`${type}-confidence`);
+            const samplesEl = document.getElementById(`${type}-samples`);
+            
+            if (!scoreEl || !confidenceEl || !samplesEl) return;
+            
+            if (analysis.available) {
+                const score = analysis.score;
+                const hasScore = typeof score === 'number';
+                scoreEl.textContent = hasScore ? score.toFixed(2) : 'N/A';
+                scoreEl.className = 'analysis-score ' + getScoreClass(hasScore ? score : 0);
+                confidenceEl.style.width = ((analysis.confidence || 0) * 100) + '%';
+                samplesEl.textContent = analysis.metrics?.sampleCount || '0';
+            } else {
+                scoreEl.textContent = 'N/A';
+                scoreEl.className = 'analysis-score';
+                confidenceEl.style.width = '0%';
+                samplesEl.textContent = '0';
+            }
+        }
+
+        function getScoreClass(score) {
+            if (typeof score !== 'number') return '';
+            if (score < 0.3) return 'score-low';
+            if (score < 0.6) return 'score-medium';
+            return 'score-high';
+        }
+
+        // Initialize on DOM ready (faster than 'load' event)
+        // Check readyState in case script loads after DOMContentLoaded has fired
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initMonitor);
+        } else {
+            initMonitor();
+        }
+    </script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 # Headless Browser Detector
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/andriyshevchenko/headless-detector)
+[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](https://github.com/andriyshevchenko/headless-detector)
 [![CI Tests](https://github.com/andriyshevchenko/headless-detector/actions/workflows/test.yml/badge.svg)](https://github.com/andriyshevchenko/headless-detector/actions/workflows/test.yml)
 [![npm version](https://img.shields.io/npm/v/headless-detector.svg)](https://www.npmjs.com/package/headless-detector)
 
@@ -596,7 +596,13 @@ document.documentElement.getAttribute('data-detection-version')  // "1.0.0"
 
 ## Demo
 
-Open `client/detectors/index.html` in your browser to see the interactive demo with real-time detection results.
+Open `index.html` in your browser to see the interactive headless detection demo with real-time results.
+
+**Behavior Monitor Test UI:** Open `behavior-monitor.html` for an interactive test page to try the HeadlessBehaviorMonitor with:
+- Start/End Session controls
+- Live sample counters
+- Real-time analysis results
+- Programmatic access via `window.__behaviorMonitor`
 
 ## Score Interpretation
 
@@ -612,8 +618,12 @@ Open `client/detectors/index.html` in your browser to see the interactive demo w
 
 ```
 headless-detector/
+├── index.html                 # Main headless detection demo
+├── behavior-monitor.html      # Behavior monitor test UI (NEW)
+├── style.css                  # Shared styles
 ├── scripts/
 │   ├── headless-detector.js    # Main entry point (backward compatible)
+│   ├── behavior-monitor.js     # Behavioral analysis module
 │   ├── modules/
 │   │   ├── index.js            # Module aggregator
 │   │   ├── webdriver.js        # WebDriver detection
@@ -635,6 +645,7 @@ headless-detector/
 │       └── headless-detector.js
 └── __tests__/
     ├── headless-detector.test.js
+    ├── behavior-monitor.test.js
     └── modules/                # Per-module unit tests
 ```
 
@@ -670,6 +681,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - W3C specifications and guidance
 
 ## Version History
+
+### 2.1.0 (2026-02-04)
+- 🧪 **Behavior Monitor Test UI** - New interactive test page (`behavior-monitor.html`)
+  - Start/End Session controls with status indicator and elapsed time
+  - Live sample counters for mouse, keyboard, scroll, touch, events
+  - Comprehensive analysis results display with per-category scores
+  - Programmatic API access via `window.__behaviorMonitor`
+- ♿ **Accessibility Improvements** - aria-labels, aria-live regions, keyboard focus styles
+- 🛡️ **Error Handling** - Defensive checks and try-catch for monitor initialization
 
 ### 2.0.0 (2026-02-04)
 - 🏗️ **Modular Architecture** - Refactored into separate detection modules
