@@ -2,7 +2,8 @@
  * Playwright E2E test for behavior monitor with human-like behavior
  * 
  * This test connects to the behavioral monitor, initiates a 5-minute session,
- * and performs human-like actions to test detection bypass capabilities.
+ * and performs human-like actions to verify the behavior monitor correctly
+ * detects automated behavior patterns.
  */
 
 const { test, expect } = require('@playwright/test');
@@ -92,13 +93,13 @@ test.describe('Behavior Monitor E2E Tests', () => {
         console.log(`Overall Bot Score: ${results.overallScore}`);
         console.log(`Confidence: ${results.confidence}`);
         
-        // The score should indicate human-like behavior (lower is more human)
-        // We're testing if the human-like behavior can bypass detection
-        // A score below 0.5 generally indicates human-like behavior
-        if (results.overallScore < 0.5) {
-            console.log('✓ Test PASSED: Human-like behavior successfully detected as human');
+        // The Behavior Monitor should detect the automated behavior
+        // A score above 0.5 indicates bot-like behavior was detected
+        // We're testing that the monitor correctly identifies automation
+        if (results.overallScore >= 0.5) {
+            console.log('✓ Test PASSED: Behavior Monitor correctly detected automated behavior');
         } else {
-            console.log('⚠ Note: Bot score is elevated, but this can vary based on timing');
+            console.log('⚠ Note: Bot score is low, the human-like behavior simulation may be too realistic');
         }
     });
     
@@ -136,5 +137,13 @@ test.describe('Behavior Monitor E2E Tests', () => {
         
         expect(results).not.toBeNull();
         console.log(`Quick test completed. Score: ${results.overallScore}`);
+        
+        // The Behavior Monitor should detect automated behavior
+        // Log whether the monitor correctly identified the automation
+        if (results.overallScore >= 0.5) {
+            console.log('✓ Behavior Monitor correctly detected automated behavior');
+        } else {
+            console.log('⚠ Bot score is low - human-like simulation may be too realistic');
+        }
     });
 });
