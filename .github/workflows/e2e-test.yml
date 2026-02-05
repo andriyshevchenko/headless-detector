@@ -1,9 +1,6 @@
 name: E2E Tests
 
 on:
-  push:
-    branches:
-      - '**'  # Run on all branches
   pull_request:
     branches:
       - '**'
