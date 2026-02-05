@@ -980,18 +980,18 @@ class HeadlessBehaviorMonitor {
             lowAccelVariance: 0.0001
         };
         const defaultWeights = {
-            lowVelocityVariance: 0.25,
-            lowAngleVariance: 0.15,
-            highStraightLineRatio: 0.25,
-            highUntrustedRatio: 0.2,
+            lowVelocityVariance: 0.10,      // Matches calibration-weights.js
+            lowAngleVariance: 0.05,         // Matches calibration-weights.js
+            highStraightLineRatio: 0.30,    // Matches calibration-weights.js
+            highUntrustedRatio: 0.30,       // Matches calibration-weights.js
             highMouseEfficiency: 0.15,
-            lowTimingVariance: 0.15,
-            subMillisecondPattern: 0.15,
-            lowAccelVariance: 0.15,
-            bezierPattern: 0.2,
-            pressureSuspicious: 0.15,
+            lowTimingVariance: 0.20,        // Matches calibration-weights.js
+            subMillisecondPattern: 0.10,    // Matches calibration-weights.js
+            lowAccelVariance: 0.10,         // Matches calibration-weights.js
+            bezierPattern: 0.05,            // Matches calibration-weights.js
+            pressureSuspicious: 0.05,       // Matches calibration-weights.js
             lowEntropy: 0.15,
-            fingerprintSuspicious: 0.15
+            fingerprintSuspicious: 0.05     // Matches calibration-weights.js
         };
         const thresholds = (this.WEIGHTS && this.WEIGHTS.MOUSE_THRESHOLDS) || defaultThresholds;
         const weights = (this.WEIGHTS && this.WEIGHTS.MOUSE_WEIGHTS) || defaultWeights;
@@ -1071,9 +1071,9 @@ class HeadlessBehaviorMonitor {
                 subMillisecondPattern: { triggered: hasSubMillisecondPattern && hasSufficientSamples, weight: weights.subMillisecondPattern, value: hasSubMillisecondPattern },
                 lowAccelVariance: { triggered: lowAccelTriggered, weight: weights.lowAccelVariance, value: accelVariance, threshold: thresholds.lowAccelVariance },
                 bezierPattern: { triggered: hasBezierPattern && hasSufficientSamples, weight: weights.bezierPattern, value: hasBezierPattern },
-                pressureSuspicious: { triggered: pressureAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern), weight: weights.pressureSuspicious || 0.15, details: pressureAnalysis, requiresMultiSignal: true },
-                lowEntropy: { triggered: entropyAnalysis.suspicious && hasSufficientSamples, weight: weights.lowEntropy || 0.15, details: entropyAnalysis },
-                fingerprintSuspicious: { triggered: fingerprintAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern), weight: weights.fingerprintSuspicious || 0.15, details: fingerprintAnalysis, requiresMultiSignal: true }
+                pressureSuspicious: { triggered: pressureAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern), weight: weights.pressureSuspicious, details: pressureAnalysis, requiresMultiSignal: true },
+                lowEntropy: { triggered: entropyAnalysis.suspicious && hasSufficientSamples, weight: weights.lowEntropy, details: entropyAnalysis },
+                fingerprintSuspicious: { triggered: fingerprintAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern), weight: weights.fingerprintSuspicious, details: fingerprintAnalysis, requiresMultiSignal: true }
             }
         };
     }
