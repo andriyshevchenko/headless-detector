@@ -278,6 +278,91 @@ class HeadlessBehaviorMonitor {
     }
     
     /**
+     * Get calibration data for weight tuning
+     * 
+     * Returns detailed metrics and scoring breakdowns that can be used to calibrate
+     * the detection weights. This data is useful for:
+     * - Understanding why a session was classified as bot/human
+     * - Collecting baseline data from real users for threshold calibration
+     * - Building a dataset of known bot/human samples
+     * 
+     * @returns {Object} Calibration data with metrics, scores, and human baselines
+     * 
+     * @example
+     * const calibration = monitor.getCalibrationData();
+     * // Save to file for analysis
+     * fs.writeFileSync('session_metrics.json', JSON.stringify(calibration, null, 2));
+     */
+    getCalibrationData() {
+        const results = this.getResults();
+        
+        return {
+            version: '2.0.0',
+            timestamp: new Date().toISOString(),
+            sessionDuration: results.metadata.duration,
+            
+            // Overall classification
+            classification: {
+                overallScore: results.overallScore,
+                confidence: results.confidence,
+                verdict: results.overallScore >= 0.5 ? 'BOT' : 'HUMAN',
+                verdictConfidence: results.confidence
+            },
+            
+            // Per-channel detailed analysis with scoring breakdowns
+            channelAnalysis: {
+                mouse: results.mouse,
+                keyboard: results.keyboard,
+                scroll: results.scroll,
+                touch: results.touch,
+                events: results.events,
+                sensors: results.sensors,
+                webglTiming: results.webglTiming
+            },
+            
+            // Sample counts
+            sampleCounts: results.metadata.samplesCollected,
+            
+            // Human baseline reference values for calibration
+            // These are typical ranges observed in real human behavior
+            humanBaselines: {
+                mouse: {
+                    velocityVariance: { min: 0.001, typical: 0.1, max: 5.0, description: 'Human mouse velocity varies naturally' },
+                    angleVariance: { min: 0.05, typical: 0.3, max: 2.0, description: 'Humans have varied movement angles' },
+                    straightLineRatio: { min: 0.0, typical: 0.15, max: 0.4, description: 'Humans rarely move in perfectly straight lines' },
+                    mouseEfficiency: { min: 0.3, typical: 0.6, max: 0.85, description: 'Humans take indirect paths to targets' },
+                    timingVariance: { min: 100, typical: 500, max: 5000, description: 'Human timing is highly variable' }
+                },
+                keyboard: {
+                    holdTimeVariance: { min: 20, typical: 100, max: 1000, description: 'Key hold times vary with typing style' },
+                    interKeyVariance: { min: 200, typical: 1000, max: 10000, description: 'Time between keys is highly variable' }
+                },
+                scroll: {
+                    deltaVariance: { min: 50, typical: 500, max: 2000, description: 'Scroll amounts vary naturally' },
+                    intervalVariance: { min: 50, typical: 500, max: 5000, description: 'Scroll timing is irregular' },
+                    eventsPerSecond: { min: 5, typical: 20, max: 50, description: 'Normal scroll event frequency' }
+                },
+                touch: {
+                    forceVariance: { min: 0.01, typical: 0.05, max: 0.12, description: 'Touch pressure varies naturally' },
+                    eventsPerSecond: { min: 5, typical: 15, max: 35, description: 'Normal touch event frequency' }
+                }
+            },
+            
+            // Recommendations for avoiding false positives
+            calibrationNotes: [
+                'To avoid false positives with real humans:',
+                '1. Collect more human samples from real users on your site',
+                '2. If mouse.velocityVariance triggers frequently, raise threshold from 0.0001 to 0.001',
+                '3. If scroll.eventsPerSecond triggers on mobile, raise threshold from 100 to 150',
+                '4. Touch detection thresholds may need adjustment for different device types',
+                '5. Consider confidence-weighted scoring to reduce impact of low-sample channels',
+                '6. Use the scoringBreakdown to identify which specific checks cause false positives',
+                '7. Monitor which channels contribute most to human misclassification'
+            ]
+        };
+    }
+    
+    /**
      * Wait for monitoring to collect enough samples
      * 
      * This is the ONLY async method in the API. It returns a Promise that resolves
@@ -811,7 +896,24 @@ class HeadlessBehaviorMonitor {
                 totalDistance: totalDistance,
                 mouseEfficiency: mouseEfficiency,
                 straightDistance: straightDistance,
-                pathDistance: pathDistance
+                pathDistance: pathDistance,
+                timingVariance: timingVariance,
+                accelVariance: accelVariance
+            },
+            // Detailed scoring breakdown for calibration
+            scoringBreakdown: {
+                lowVelocityVariance: { triggered: velocityVariance < 0.0001, weight: 0.25, value: velocityVariance, threshold: 0.0001 },
+                lowAngleVariance: { triggered: angleVariance < 0.01, weight: 0.15, value: angleVariance, threshold: 0.01 },
+                highStraightLineRatio: { triggered: straightLineRatio > 0.5, weight: 0.25, value: straightLineRatio, threshold: 0.5 },
+                highUntrustedRatio: { triggered: untrustedRatio > 0.1, weight: 0.2, value: untrustedRatio, threshold: 0.1 },
+                highMouseEfficiency: { triggered: mouseEfficiency > 0.95, weight: 0.15, value: mouseEfficiency, threshold: 0.95 },
+                lowTimingVariance: { triggered: timingVariance < 50 && timingIntervals.length > 5, weight: 0.15, value: timingVariance, threshold: 50 },
+                subMillisecondPattern: { triggered: hasSubMillisecondPattern, weight: 0.15, value: hasSubMillisecondPattern },
+                lowAccelVariance: { triggered: accelVariance < 0.00001 && accelerations.length > 3, weight: 0.15, value: accelVariance, threshold: 0.00001 },
+                bezierPattern: { triggered: hasBezierPattern, weight: 0.2, value: hasBezierPattern },
+                pressureSuspicious: { triggered: pressureAnalysis.suspicious, weight: 0.15, details: pressureAnalysis },
+                lowEntropy: { triggered: entropyAnalysis.suspicious, weight: 0.15, details: entropyAnalysis },
+                fingerprintSuspicious: { triggered: fingerprintAnalysis.suspicious, weight: 0.15, details: fingerprintAnalysis }
             }
         };
     }
@@ -868,6 +970,12 @@ class HeadlessBehaviorMonitor {
                 holdTimeVariance: holdTimeVariance,
                 interKeyVariance: interKeyVariance,
                 untrustedRatio: untrustedRatio
+            },
+            // Detailed scoring breakdown for calibration
+            scoringBreakdown: {
+                lowHoldTimeVariance: { triggered: holdTimeVariance < 10, weight: 0.3, value: holdTimeVariance, threshold: 10 },
+                lowInterKeyVariance: { triggered: interKeyVariance < 100, weight: 0.3, value: interKeyVariance, threshold: 100 },
+                highUntrustedRatio: { triggered: untrustedRatio > 0.1, weight: 0.4, value: untrustedRatio, threshold: 0.1 }
             }
         };
     }
@@ -944,6 +1052,15 @@ class HeadlessBehaviorMonitor {
                 intervalVariance: intervalVariance,
                 uniqueDeltaRatio: uniqueDeltaRatio,
                 eventsPerSecond: eventsPerSecond
+            },
+            // Detailed scoring breakdown for calibration
+            scoringBreakdown: {
+                lowDeltaVariance: { triggered: deltaVariance < 1, weight: 0.2, value: deltaVariance, threshold: 1 },
+                lowIntervalVariance: { triggered: intervalVariance < 10, weight: 0.2, value: intervalVariance, threshold: 10 },
+                lowUniqueDeltaRatio: { triggered: uniqueDeltaRatio < 0.3, weight: 0.2, value: uniqueDeltaRatio, threshold: 0.3 },
+                highDeltaVariance: { triggered: deltaVariance > 3000, weight: 0.15, value: deltaVariance, threshold: 3000 },
+                highEventFrequency: { triggered: eventsPerSecond > 100, weight: 0.15, value: eventsPerSecond, threshold: 100 },
+                subMillisecondPattern: { triggered: hasSubMillisecondPattern, weight: 0.1, value: hasSubMillisecondPattern }
             }
         };
     }
@@ -1027,6 +1144,14 @@ class HeadlessBehaviorMonitor {
                 radiusVariance: radiusVariance,
                 untrustedRatio: untrustedRatio,
                 eventsPerSecond: eventsPerSecond
+            },
+            // Detailed scoring breakdown for calibration
+            scoringBreakdown: {
+                lowForceVariance: { triggered: forces.length > 0 && forceVariance < 0.001, weight: 0.2, value: forceVariance, threshold: 0.001 },
+                lowRadiusVariance: { triggered: radii.length > 0 && radiusVariance < 1, weight: 0.2, value: radiusVariance, threshold: 1 },
+                highUntrustedRatio: { triggered: untrustedRatio > 0.1, weight: 0.3, value: untrustedRatio, threshold: 0.1 },
+                highForceVariance: { triggered: forces.length > 0 && forceVariance > 0.15, weight: 0.2, value: forceVariance, threshold: 0.15 },
+                highEventFrequency: { triggered: eventsPerSecond > 50, weight: 0.2, value: eventsPerSecond, threshold: 50 }
             }
         };
     }
@@ -1072,6 +1197,11 @@ class HeadlessBehaviorMonitor {
                 sampleCount: events.length,
                 intervalVariance: intervalVariance,
                 untrustedRatio: untrustedRatio
+            },
+            // Detailed scoring breakdown for calibration
+            scoringBreakdown: {
+                lowIntervalVariance: { triggered: intervalVariance < 100, weight: 0.4, value: intervalVariance, threshold: 100 },
+                highUntrustedRatio: { triggered: untrustedRatio > 0.1, weight: 0.6, value: untrustedRatio, threshold: 0.1 }
             }
         };
     }

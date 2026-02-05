@@ -1075,10 +1075,25 @@ async function runBehaviorSession(page, durationSeconds, mode, options = {}) {
     // Stop and get results
     const { results, status } = await stopSessionAndGetResults(page, mode);
 
+    // Get calibration data for detailed metrics export
+    const calibrationData = await page.evaluate(() => {
+        if (window.behaviorMonitor && typeof window.behaviorMonitor.getCalibrationData === 'function') {
+            return window.behaviorMonitor.getCalibrationData();
+        }
+        return null;
+    });
+
     // Validate results
     expect(results).not.toBeNull();
     console.log('Session Results:', JSON.stringify(results, null, 2));
     console.log('Final Status:', JSON.stringify(status, null, 2));
+    
+    // Log calibration data for weight tuning
+    if (calibrationData) {
+        console.log('\n=== CALIBRATION DATA (for weight tuning) ===');
+        console.log(JSON.stringify(calibrationData, null, 2));
+        console.log('==============================================\n');
+    }
 
     // Assert score is within expected range
     expect(results.overallScore).toBeGreaterThanOrEqual(minExpectedScore);
@@ -1086,7 +1101,7 @@ async function runBehaviorSession(page, durationSeconds, mode, options = {}) {
 
     console.log(`Overall Bot Score: ${results.overallScore} (expected: ${minExpectedScore}-${maxExpectedScore})`);
 
-    return { results, status };
+    return { results, status, calibrationData };
 }
 
 module.exports = {
