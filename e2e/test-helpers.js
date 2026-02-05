@@ -11,6 +11,7 @@ const { HumanBehavior, resetMousePosition, sleep, randomBetween, randomInt } = r
  */
 const BehaviorMode = {
     HUMAN_LIKE: 'human-like',
+    HUMAN_SMOOTH: 'human-smooth', // Smooth, slow movements with timing jitter
     ROBOT: 'robot',
     IMPULSIVE: 'impulsive',
     HUMAN_IMPULSIVE: 'human-impulsive',
@@ -115,6 +116,163 @@ class RobotBehavior {
         }
 
         console.log(`Robot actions completed: ${actionCount} actions in ${durationSeconds}s`);
+    }
+}
+
+/**
+ * Smooth, slow human-like behavior with enhanced timing jitter
+ * Simulates very natural, unhurried human movements
+ */
+class SmoothBehavior {
+    /**
+     * Move mouse very smoothly with more steps and enhanced jitter
+     * @param {import('@playwright/test').Page} page
+     * @param {number} targetX
+     * @param {number} targetY
+     */
+    static async moveMouse(page, targetX, targetY) {
+        // Use more steps for smoother movement (100 instead of 50)
+        await HumanBehavior.moveMouseHumanLike(page, targetX, targetY, 100);
+        // Add extra settling time with jitter
+        await sleep(randomBetween(100, 300));
+    }
+
+    /**
+     * Scroll very smoothly with many small steps
+     * @param {import('@playwright/test').Page} page
+     * @param {number} totalAmount
+     */
+    static async scroll(page, totalAmount) {
+        const steps = randomInt(8, 15); // More steps for smoother scroll
+        const stepAmount = totalAmount / steps;
+
+        for (let i = 0; i < steps; i++) {
+            await page.evaluate((a) => window.scrollBy(0, a), stepAmount);
+            // Variable delays between scroll steps (timing jitter)
+            await sleep(randomBetween(80, 250));
+        }
+
+        // Reading pause after scroll with jitter
+        await sleep(randomBetween(500, 1500));
+    }
+
+    /**
+     * Type very slowly with natural rhythm variations
+     * @param {import('@playwright/test').Page} page
+     * @param {string} text
+     */
+    static async type(page, text) {
+        for (const char of text) {
+            await page.keyboard.type(char);
+            // Very slow typing with high jitter
+            let delay = randomBetween(100, 250);
+            // Occasional thinking pauses
+            if (Math.random() < 0.15) {
+                delay += randomBetween(300, 800);
+            }
+            await sleep(delay);
+        }
+    }
+
+    /**
+     * Perform smooth, slow random actions with enhanced timing jitter
+     * @param {import('@playwright/test').Page} page
+     * @param {number} durationSeconds
+     */
+    static async performRandomActions(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+
+        let actionCount = 0;
+        let lastLoggedMinute = 0;
+
+        while (Date.now() < endTime) {
+            // Random action selection (weighted towards slower actions)
+            const roll = Math.random();
+            let action;
+            if (roll < 0.35) {
+                action = 'mouse';
+            } else if (roll < 0.65) {
+                action = 'scroll';
+            } else if (roll < 0.85) {
+                action = 'wait'; // Just pause (like reading/thinking)
+            } else {
+                action = 'key';
+            }
+
+            try {
+                switch (action) {
+                    case 'mouse': {
+                        // Smooth mouse movement to random position
+                        const maxX = Math.max(0, viewport.width - 100);
+                        const minX = Math.min(100, maxX);
+                        const maxY = Math.max(0, viewport.height - 100);
+                        const minY = Math.min(100, maxY);
+                        const x = randomInt(minX, maxX);
+                        const y = randomInt(minY, maxY);
+                        await SmoothBehavior.moveMouse(page, x, y);
+                        break;
+                    }
+
+                    case 'scroll': {
+                        // Gentle scroll with variable distance
+                        const direction = Math.random() > 0.3 ? 1 : -1;
+                        const amount = randomInt(100, 300) * direction;
+                        await SmoothBehavior.scroll(page, amount);
+                        break;
+                    }
+
+                    case 'wait': {
+                        // Natural pause (like reading content)
+                        await sleep(randomBetween(1000, 3000));
+                        break;
+                    }
+
+                    case 'key': {
+                        // Occasional key press
+                        const keys = ['ArrowDown', 'ArrowUp', 'Tab'];
+                        const key = keys[randomInt(0, keys.length - 1)];
+                        await page.keyboard.press(key);
+                        // Pause after key press
+                        await sleep(randomBetween(500, 1500));
+                        break;
+                    }
+                }
+
+                actionCount++;
+
+                // Variable pause between actions (timing jitter)
+                // Sometimes quick, sometimes longer pauses
+                const pauseRoll = Math.random();
+                if (pauseRoll < 0.2) {
+                    // Quick transition
+                    await sleep(randomBetween(300, 800));
+                } else if (pauseRoll < 0.7) {
+                    // Normal pause
+                    await sleep(randomBetween(800, 2000));
+                } else {
+                    // Longer pause (like reading/thinking)
+                    await sleep(randomBetween(2000, 4000));
+                }
+
+            } catch (error) {
+                const errorMessage = (error && typeof error.message === 'string')
+                    ? error.message
+                    : String(error);
+                console.log(`Smooth action ${action} failed:`, errorMessage);
+            }
+
+            // Log progress every minute
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const currentMinute = Math.floor(elapsed / 60);
+            if (currentMinute > lastLoggedMinute) {
+                lastLoggedMinute = currentMinute;
+                console.log(`Smooth progress: ${elapsed}s elapsed, ${actionCount} actions performed`);
+            }
+        }
+
+        console.log(`Smooth actions completed: ${actionCount} actions in ${durationSeconds}s`);
     }
 }
 
@@ -228,7 +386,11 @@ class ImpulsiveBehavior {
 async function startSession(page, mode = BehaviorMode.HUMAN_LIKE) {
     await page.goto('/behavior-monitor.html');
 
-    if (mode === BehaviorMode.HUMAN_LIKE || mode === BehaviorMode.HUMAN_IMPULSIVE) {
+    const isHumanLike = mode === BehaviorMode.HUMAN_LIKE || 
+                        mode === BehaviorMode.HUMAN_SMOOTH || 
+                        mode === BehaviorMode.HUMAN_IMPULSIVE;
+
+    if (isHumanLike) {
         await HumanBehavior.pageLoadDelay();
     } else {
         await sleep(500); // Minimal delay for robot mode
@@ -238,7 +400,7 @@ async function startSession(page, mode = BehaviorMode.HUMAN_LIKE) {
     await expect(page.locator('h1')).toContainText('Headless Behavior Monitor');
 
     // Click start button
-    if (mode === BehaviorMode.HUMAN_LIKE || mode === BehaviorMode.HUMAN_IMPULSIVE) {
+    if (isHumanLike) {
         await HumanBehavior.clickWithHumanBehavior(page, '#start-btn');
     } else {
         await RobotBehavior.click(page, '#start-btn');
@@ -255,13 +417,17 @@ async function startSession(page, mode = BehaviorMode.HUMAN_LIKE) {
  * @returns {Promise<{results: object, status: object}>}
  */
 async function stopSessionAndGetResults(page, mode = BehaviorMode.HUMAN_LIKE) {
+    const isHumanLike = mode === BehaviorMode.HUMAN_LIKE || 
+                        mode === BehaviorMode.HUMAN_SMOOTH || 
+                        mode === BehaviorMode.HUMAN_IMPULSIVE;
+
     // Small pause before stopping
-    if (mode === BehaviorMode.HUMAN_LIKE || mode === BehaviorMode.HUMAN_IMPULSIVE) {
+    if (isHumanLike) {
         await HumanBehavior.randomDelay(0.5, 1);
     }
 
     // Click stop button
-    if (mode === BehaviorMode.HUMAN_LIKE || mode === BehaviorMode.HUMAN_IMPULSIVE) {
+    if (isHumanLike) {
         await HumanBehavior.clickWithHumanBehavior(page, '#stop-btn');
     } else {
         await RobotBehavior.click(page, '#stop-btn');
@@ -298,6 +464,11 @@ async function performActions(page, durationSeconds, mode) {
     switch (mode) {
         case BehaviorMode.HUMAN_LIKE:
             await HumanBehavior.performRandomActions(page, durationSeconds);
+            break;
+
+        case BehaviorMode.HUMAN_SMOOTH:
+            // Smooth, slow movements with enhanced timing jitter
+            await SmoothBehavior.performRandomActions(page, durationSeconds);
             break;
 
         case BehaviorMode.ROBOT:
@@ -386,7 +557,10 @@ async function runBehaviorSession(page, durationSeconds, mode, options = {}) {
     console.log(`Starting ${mode} behavior session for ${durationSeconds} seconds...`);
 
     // Reset mouse tracking if using human-like behavior
-    if (mode === BehaviorMode.HUMAN_LIKE || mode === BehaviorMode.HUMAN_IMPULSIVE) {
+    const isHumanLike = mode === BehaviorMode.HUMAN_LIKE || 
+                        mode === BehaviorMode.HUMAN_SMOOTH || 
+                        mode === BehaviorMode.HUMAN_IMPULSIVE;
+    if (isHumanLike) {
         resetMousePosition();
     }
 
@@ -420,5 +594,6 @@ module.exports = {
     startSession,
     stopSessionAndGetResults,
     performActions,
-    runBehaviorSession
+    runBehaviorSession,
+    SmoothBehavior
 };
