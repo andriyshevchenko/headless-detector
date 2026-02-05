@@ -982,10 +982,12 @@ class HeadlessBehaviorMonitor {
         const defaultWeights = {
             lowVelocityVariance: 0.10,      // Matches calibration-weights.js
             lowAngleVariance: 0.05,         // Matches calibration-weights.js
-            highStraightLineRatio: 0.30,    // Matches calibration-weights.js
+            highStraightLineRatio: 0.50,    // Increased in iteration 14 - #1 naive bot tell
             highUntrustedRatio: 0.30,       // Matches calibration-weights.js
             highMouseEfficiency: 0.15,
             lowTimingVariance: 0.35,        // Matches calibration-weights.js (iteration 13)
+            constantTiming: 0.40,           // NEW in iteration 14 - catches constant intervals at ANY speed
+            periodicNoise: 0.25,            // NEW in iteration 14 - catches sinusoidal noise patterns
             subMillisecondPattern: 0.10,    // Matches calibration-weights.js
             lowAccelVariance: 0.10,         // Matches calibration-weights.js
             bezierPattern: 0.05,            // Matches calibration-weights.js
@@ -993,8 +995,18 @@ class HeadlessBehaviorMonitor {
             lowEntropy: 0.15,
             fingerprintSuspicious: 0.05     // Matches calibration-weights.js
         };
+        const defaultSophisticationThresholds = {
+            constantTimingCV: 0.15,         // Coefficient of variation threshold
+            periodicNoiseAC: 0.5,           // Autocorrelation threshold
+            naiveSignalMultiplier: 1.5      // Multiplier when multiple naive signals fire
+        };
         const thresholds = (this.WEIGHTS && this.WEIGHTS.MOUSE_THRESHOLDS) || defaultThresholds;
         const weights = (this.WEIGHTS && this.WEIGHTS.MOUSE_WEIGHTS) || defaultWeights;
+        const sophThresholds = (this.WEIGHTS && this.WEIGHTS.SOPHISTICATION_THRESHOLDS) || defaultSophisticationThresholds;
+        
+        // Track naive signals for multiplier
+        let naiveSignalCount = 0;
+        
         const lowVelocityTriggered = velocityVariance < thresholds.lowVelocityVariance && hasSufficientSamples &&
             (accelVariance < thresholds.lowAccelVariance || hasSubMillisecondPattern);
         if (lowVelocityTriggered) suspiciousScore += weights.lowVelocityVariance;
@@ -1004,8 +1016,12 @@ class HeadlessBehaviorMonitor {
             (lowVelocityTriggered || straightLineRatio > thresholds.highStraightLineRatio);
         if (lowAngleTriggered) suspiciousScore += weights.lowAngleVariance;
         
-        // straightLineRatio can stand alone with sufficient samples
-        if (straightLineRatio > thresholds.highStraightLineRatio && hasSufficientSamples) suspiciousScore += weights.highStraightLineRatio;
+        // straightLineRatio can stand alone with sufficient samples - MAJOR naive bot indicator
+        const straightLineTriggered = straightLineRatio > thresholds.highStraightLineRatio && hasSufficientSamples;
+        if (straightLineTriggered) {
+            suspiciousScore += weights.highStraightLineRatio;
+            naiveSignalCount++;  // Straight lines are a key naive signal
+        }
         
         // Untrusted ratio is context-independent
         if (untrustedRatio > thresholds.highUntrustedRatio) suspiciousScore += weights.highUntrustedRatio;
@@ -1016,7 +1032,25 @@ class HeadlessBehaviorMonitor {
         if (highEfficiencyTriggered) suspiciousScore += weights.highMouseEfficiency;
         
         // SAFEGUARD 6: Very low timing variance requires sufficient samples
-        if (lowTimingVarianceTriggered && hasSufficientSamples) suspiciousScore += weights.lowTimingVariance;
+        if (lowTimingVarianceTriggered && hasSufficientSamples) {
+            suspiciousScore += weights.lowTimingVariance;
+            naiveSignalCount++;  // Low timing variance is a key naive signal
+        }
+        
+        // NEW: Constant timing detection - catches robot-slow's 500ms fixed intervals
+        const constantTimingAnalysis = this._detectConstantTiming(movements);
+        const constantTimingTriggered = constantTimingAnalysis.constantTiming && hasSufficientSamples;
+        if (constantTimingTriggered) {
+            suspiciousScore += weights.constantTiming || 0.40;
+            naiveSignalCount++;  // Constant timing is a key naive signal
+        }
+        
+        // NEW: Periodic noise detection - catches stealth-bot's Math.sin patterns
+        const periodicNoiseAnalysis = this._detectPeriodicNoise(movements);
+        const periodicNoiseTriggered = periodicNoiseAnalysis.periodicNoise && hasSufficientSamples;
+        if (periodicNoiseTriggered) {
+            suspiciousScore += weights.periodicNoise || 0.25;
+        }
         
         if (hasSubMillisecondPattern && hasSufficientSamples) suspiciousScore += weights.subMillisecondPattern;
         
@@ -1041,6 +1075,13 @@ class HeadlessBehaviorMonitor {
         // SAFEGUARD 6: Fingerprint requires another signal
         if (fingerprintAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern)) suspiciousScore += weights.fingerprintSuspicious;
         
+        // NAIVE SIGNAL MULTIPLIER: When multiple naive signals fire together, boost the score
+        // This creates the inverse-sophistication scoring: naive bots trigger multiple obvious signals
+        if (naiveSignalCount >= 2) {
+            const multiplier = sophThresholds.naiveSignalMultiplier || 1.5;
+            suspiciousScore *= multiplier;
+        }
+        
         const confidence = Math.min(movements.length / this.options.minSamples.mouse, 1);
         
         return {
@@ -1058,22 +1099,28 @@ class HeadlessBehaviorMonitor {
                 straightDistance: straightDistance,
                 pathDistance: pathDistance,
                 timingVariance: timingVariance,
-                accelVariance: accelVariance
+                accelVariance: accelVariance,
+                constantTimingCV: constantTimingAnalysis.coefficientOfVariation,
+                periodicNoiseAC: periodicNoiseAnalysis.autocorrelation,
+                naiveSignalCount: naiveSignalCount
             },
             // Detailed scoring breakdown for calibration (reflects multi-signal safeguards)
             scoringBreakdown: {
                 lowVelocityVariance: { triggered: lowVelocityTriggered, weight: weights.lowVelocityVariance, value: velocityVariance, threshold: thresholds.lowVelocityVariance, requiresMultiSignal: true },
                 lowAngleVariance: { triggered: lowAngleTriggered, weight: weights.lowAngleVariance, value: angleVariance, threshold: thresholds.lowAngleVariance, requiresMultiSignal: true },
-                highStraightLineRatio: { triggered: straightLineRatio > thresholds.highStraightLineRatio && hasSufficientSamples, weight: weights.highStraightLineRatio, value: straightLineRatio, threshold: thresholds.highStraightLineRatio },
+                highStraightLineRatio: { triggered: straightLineTriggered, weight: weights.highStraightLineRatio, value: straightLineRatio, threshold: thresholds.highStraightLineRatio, isNaiveSignal: true },
                 highUntrustedRatio: { triggered: untrustedRatio > thresholds.highUntrustedRatio, weight: weights.highUntrustedRatio, value: untrustedRatio, threshold: thresholds.highUntrustedRatio },
                 highMouseEfficiency: { triggered: highEfficiencyTriggered, weight: weights.highMouseEfficiency, value: mouseEfficiency, threshold: thresholds.highMouseEfficiency, requiresMultiSignal: true },
-                lowTimingVariance: { triggered: lowTimingVarianceTriggered && hasSufficientSamples, weight: weights.lowTimingVariance, value: timingVariance, threshold: thresholds.lowTimingVariance },
+                lowTimingVariance: { triggered: lowTimingVarianceTriggered && hasSufficientSamples, weight: weights.lowTimingVariance, value: timingVariance, threshold: thresholds.lowTimingVariance, isNaiveSignal: true },
+                constantTiming: { triggered: constantTimingTriggered, weight: weights.constantTiming || 0.40, value: constantTimingAnalysis.coefficientOfVariation, threshold: sophThresholds.constantTimingCV, isNaiveSignal: true, meanInterval: constantTimingAnalysis.meanInterval },
+                periodicNoise: { triggered: periodicNoiseTriggered, weight: weights.periodicNoise || 0.25, value: periodicNoiseAnalysis.autocorrelation, threshold: sophThresholds.periodicNoiseAC },
                 subMillisecondPattern: { triggered: hasSubMillisecondPattern && hasSufficientSamples, weight: weights.subMillisecondPattern, value: hasSubMillisecondPattern },
                 lowAccelVariance: { triggered: lowAccelTriggered, weight: weights.lowAccelVariance, value: accelVariance, threshold: thresholds.lowAccelVariance },
                 bezierPattern: { triggered: hasBezierPattern && hasSufficientSamples, weight: weights.bezierPattern, value: hasBezierPattern },
                 pressureSuspicious: { triggered: pressureAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern), weight: weights.pressureSuspicious, details: pressureAnalysis, requiresMultiSignal: true },
                 lowEntropy: { triggered: entropyAnalysis.suspicious && hasSufficientSamples, weight: weights.lowEntropy, details: entropyAnalysis },
-                fingerprintSuspicious: { triggered: fingerprintAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern), weight: weights.fingerprintSuspicious, details: fingerprintAnalysis, requiresMultiSignal: true }
+                fingerprintSuspicious: { triggered: fingerprintAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern), weight: weights.fingerprintSuspicious, details: fingerprintAnalysis, requiresMultiSignal: true },
+                naiveSignalMultiplier: { applied: naiveSignalCount >= 2, naiveSignalCount: naiveSignalCount, multiplier: naiveSignalCount >= 2 ? (sophThresholds.naiveSignalMultiplier || 1.5) : 1 }
             }
         };
     }
@@ -1625,6 +1672,134 @@ class HeadlessBehaviorMonitor {
             inconsistentPointerType,
             hasAdvancedProperties
         };
+    }
+    
+    /**
+     * Detect constant timing patterns regardless of interval length
+     * Naive bots use fixed intervals (e.g., 100ms, 500ms) which have very low coefficient of variation
+     * This catches robot-slow (500ms) that bypasses the lowTimingVariance check (50ms threshold)
+     * @param {Array} events - Array of events with timestamp property
+     * @returns {Object} Analysis result with constantTiming flag and coefficient of variation
+     */
+    _detectConstantTiming(events) {
+        if (events.length < 10) {
+            return { constantTiming: false, coefficientOfVariation: 1 };
+        }
+        
+        const intervals = [];
+        for (let i = 1; i < events.length; i++) {
+            const interval = events[i].timestamp - events[i - 1].timestamp;
+            if (interval > 0) {  // Ignore zero intervals
+                intervals.push(interval);
+            }
+        }
+        
+        if (intervals.length < 5) {
+            return { constantTiming: false, coefficientOfVariation: 1 };
+        }
+        
+        const mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+        const variance = this._calculateVariance(intervals);
+        const stdDev = Math.sqrt(variance);
+        
+        // Coefficient of Variation (CV) = stdDev / mean
+        // CV < 0.1 means very constant timing (regardless of interval length)
+        // Human timing typically has CV > 0.3-0.5
+        const cv = mean > 0 ? stdDev / mean : 0;
+        
+        return {
+            constantTiming: cv < 0.15,  // Very low CV = constant timing
+            coefficientOfVariation: cv,
+            meanInterval: mean
+        };
+    }
+    
+    /**
+     * Detect periodic (sinusoidal) noise patterns
+     * Stealth bots use Math.sin() for noise which creates detectable periodicity
+     * Real human noise is chaotic and aperiodic
+     * @param {Array} movements - Array of mouse movements
+     * @returns {Object} Analysis result with periodicNoise flag
+     */
+    _detectPeriodicNoise(movements) {
+        if (movements.length < 20) {
+            return { periodicNoise: false, autocorrelation: 0 };
+        }
+        
+        // Extract residuals from linear trend (the "noise" component)
+        const xValues = movements.map(m => m.x);
+        const yValues = movements.map(m => m.y);
+        
+        // Calculate residuals from linear fit
+        const xResiduals = this._calculateResiduals(xValues);
+        const yResiduals = this._calculateResiduals(yValues);
+        
+        // Combine residuals
+        const residuals = xResiduals.map((xr, i) => Math.sqrt(xr * xr + yResiduals[i] * yResiduals[i]));
+        
+        // Calculate autocorrelation at various lags
+        // Periodic signals have high autocorrelation at specific lags
+        const maxLag = Math.min(20, Math.floor(residuals.length / 2));
+        let maxAutocorrelation = 0;
+        
+        for (let lag = 2; lag <= maxLag; lag++) {
+            const ac = this._autocorrelation(residuals, lag);
+            if (ac > maxAutocorrelation) {
+                maxAutocorrelation = ac;
+            }
+        }
+        
+        // High autocorrelation (> 0.5) at any lag suggests periodic pattern
+        // Math.sin() patterns typically show AC > 0.7
+        return {
+            periodicNoise: maxAutocorrelation > 0.5,
+            autocorrelation: maxAutocorrelation
+        };
+    }
+    
+    /**
+     * Calculate residuals from linear regression
+     */
+    _calculateResiduals(values) {
+        const n = values.length;
+        if (n < 2) return values.map(() => 0);
+        
+        // Linear regression: y = mx + b
+        let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+        for (let i = 0; i < n; i++) {
+            sumX += i;
+            sumY += values[i];
+            sumXY += i * values[i];
+            sumX2 += i * i;
+        }
+        
+        const m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        const b = (sumY - m * sumX) / n;
+        
+        // Calculate residuals
+        return values.map((v, i) => v - (m * i + b));
+    }
+    
+    /**
+     * Calculate autocorrelation at a given lag
+     */
+    _autocorrelation(values, lag) {
+        const n = values.length;
+        if (lag >= n) return 0;
+        
+        const mean = values.reduce((a, b) => a + b, 0) / n;
+        let numerator = 0;
+        let denominator = 0;
+        
+        for (let i = 0; i < n - lag; i++) {
+            numerator += (values[i] - mean) * (values[i + lag] - mean);
+        }
+        
+        for (let i = 0; i < n; i++) {
+            denominator += (values[i] - mean) * (values[i] - mean);
+        }
+        
+        return denominator > 0 ? numerator / denominator : 0;
     }
     
     /**
