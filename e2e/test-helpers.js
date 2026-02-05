@@ -1431,9 +1431,11 @@ async function runBehaviorSession(page, durationSeconds, mode, options = {}) {
     const { results, status } = await stopSessionAndGetResults(page, mode);
 
     // Get calibration data for detailed metrics export
+    // Note: The HTML page stores the monitor as window.__behaviorMonitor
     const calibrationData = await page.evaluate(() => {
-        if (window.behaviorMonitor && typeof window.behaviorMonitor.getCalibrationData === 'function') {
-            return window.behaviorMonitor.getCalibrationData();
+        const monitor = window.__behaviorMonitor || window.behaviorMonitor;
+        if (monitor && typeof monitor.getCalibrationData === 'function') {
+            return monitor.getCalibrationData();
         }
         return null;
     });
