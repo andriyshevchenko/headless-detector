@@ -51,6 +51,21 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore);
     });
 
+    test('5-minute alternating burst/smooth with long pauses', async ({ page }) => {
+        // Alternating between fast/jerky movements and smooth/slow movements
+        // with occasional 10-15 second pauses (like distraction/thinking)
+        // This simulates the most natural human behavior pattern
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.ALTERNATING,
+            { minExpectedScore: 0.2 } // Expect low scores due to natural pattern
+        );
+        
+        console.log('✓ Alternating burst/smooth behavior with long pauses');
+        logDetectionResult(results.overallScore);
+    });
+
     // ========================================
     // Robot behavior tests (no human-like)
     // ========================================

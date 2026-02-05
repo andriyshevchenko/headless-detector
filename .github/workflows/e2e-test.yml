@@ -17,9 +17,9 @@ on:
 jobs:
   e2e-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
     # All tests run for 5 minutes each to provide real-world validation
-    # Total: 6 tests × 5 min = 30 min + buffer
+    # Total: 7 tests × 5 min = 35 min + buffer
     permissions:
       contents: read
     

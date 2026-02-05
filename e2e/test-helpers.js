@@ -15,7 +15,8 @@ const BehaviorMode = {
     ROBOT: 'robot',
     IMPULSIVE: 'impulsive',
     HUMAN_IMPULSIVE: 'human-impulsive',
-    ROBOT_IMPULSIVE: 'robot-impulsive'
+    ROBOT_IMPULSIVE: 'robot-impulsive',
+    ALTERNATING: 'alternating' // Alternates between fast/jerky and smooth/slow with long pauses
 };
 
 /**
@@ -379,6 +380,182 @@ class ImpulsiveBehavior {
 }
 
 /**
+ * Alternating behavior - switches between fast/jerky bursts and smooth/slow phases
+ * With occasional long 10-15 second pauses (like thinking/distraction)
+ * Most human-like pattern for real user simulation
+ */
+class AlternatingBehavior {
+    /**
+     * Perform fast, jerky movements (burst phase)
+     * @param {import('@playwright/test').Page} page
+     * @param {number} durationSeconds
+     */
+    static async performBurstPhase(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+
+        while (Date.now() < endTime) {
+            const actionType = randomInt(0, 2);
+
+            try {
+                switch (actionType) {
+                    case 0: // Rapid mouse movements
+                        for (let i = 0; i < randomInt(5, 15); i++) {
+                            const x = randomInt(50, viewport.width - 50);
+                            const y = randomInt(50, viewport.height - 50);
+                            await page.mouse.move(x, y);
+                            await sleep(randomBetween(15, 50)); // Quick but with jitter
+                        }
+                        break;
+
+                    case 1: // Quick scrolls
+                        for (let i = 0; i < randomInt(3, 8); i++) {
+                            const direction = Math.random() > 0.5 ? 1 : -1;
+                            const amount = randomInt(150, 400) * direction;
+                            await page.evaluate((a) => window.scrollBy(0, a), amount);
+                            await sleep(randomBetween(30, 100));
+                        }
+                        break;
+
+                    case 2: // Fast key presses
+                        const keys = ['ArrowUp', 'ArrowDown', 'Tab', 'Space'];
+                        for (let i = 0; i < randomInt(2, 5); i++) {
+                            const key = keys[randomInt(0, keys.length - 1)];
+                            await page.keyboard.press(key);
+                            await sleep(randomBetween(50, 150));
+                        }
+                        break;
+                }
+
+                // Short pause between burst actions (with jitter)
+                await sleep(randomBetween(100, 400));
+
+            } catch (error) {
+                // Ignore errors during burst phase
+            }
+        }
+    }
+
+    /**
+     * Perform smooth, slow movements (calm phase)
+     * @param {import('@playwright/test').Page} page
+     * @param {number} durationSeconds
+     */
+    static async performSmoothPhase(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+
+        while (Date.now() < endTime) {
+            const actionType = randomInt(0, 3);
+
+            try {
+                switch (actionType) {
+                    case 0: // Slow mouse movement with Bezier curve
+                        const maxX = Math.max(0, viewport.width - 100);
+                        const minX = Math.min(100, maxX);
+                        const maxY = Math.max(0, viewport.height - 100);
+                        const minY = Math.min(100, maxY);
+                        const x = randomInt(minX, maxX);
+                        const y = randomInt(minY, maxY);
+                        await HumanBehavior.moveMouseHumanLike(page, x, y, 80);
+                        await sleep(randomBetween(200, 500));
+                        break;
+
+                    case 1: // Gentle scroll
+                        const direction = Math.random() > 0.4 ? 1 : -1;
+                        const totalAmount = randomInt(80, 200) * direction;
+                        const steps = randomInt(5, 10);
+                        for (let i = 0; i < steps; i++) {
+                            await page.evaluate((a) => window.scrollBy(0, a), totalAmount / steps);
+                            await sleep(randomBetween(100, 200));
+                        }
+                        break;
+
+                    case 2: // Reading pause
+                        await sleep(randomBetween(800, 2000));
+                        break;
+
+                    case 3: // Slow key press
+                        await page.keyboard.press('ArrowDown');
+                        await sleep(randomBetween(400, 800));
+                        break;
+                }
+
+                // Natural pause between actions (with jitter)
+                await sleep(randomBetween(500, 1500));
+
+            } catch (error) {
+                // Ignore errors during smooth phase
+            }
+        }
+    }
+
+    /**
+     * Perform alternating behavior - switches between burst and smooth phases
+     * with occasional long pauses
+     * @param {import('@playwright/test').Page} page
+     * @param {number} durationSeconds
+     */
+    static async performRandomActions(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+
+        let phaseCount = 0;
+        let lastLoggedMinute = 0;
+        let isBurstPhase = Math.random() > 0.5; // Random start
+
+        while (Date.now() < endTime) {
+            const remainingTime = Math.max(0, (endTime - Date.now()) / 1000);
+            if (remainingTime <= 0) break;
+
+            // Determine phase duration with jitter (8-20 seconds)
+            const phaseDuration = Math.min(randomBetween(8, 20), remainingTime);
+
+            try {
+                console.log(`Phase ${phaseCount + 1}: ${isBurstPhase ? 'BURST' : 'SMOOTH'} for ${phaseDuration.toFixed(1)}s`);
+
+                if (isBurstPhase) {
+                    await AlternatingBehavior.performBurstPhase(page, phaseDuration);
+                } else {
+                    await AlternatingBehavior.performSmoothPhase(page, phaseDuration);
+                }
+
+                phaseCount++;
+
+                // Occasional long pause (10-15 seconds) like distraction/thinking
+                // Happens roughly every 3-5 phases
+                if (phaseCount % randomInt(3, 5) === 0 && Date.now() < endTime - 15000) {
+                    const longPause = randomBetween(10000, 15000);
+                    console.log(`  Long pause: ${(longPause / 1000).toFixed(1)}s (like distraction)`);
+                    await sleep(longPause);
+                } else {
+                    // Normal transition pause with jitter
+                    await sleep(randomBetween(500, 2000));
+                }
+
+                // Toggle phase
+                isBurstPhase = !isBurstPhase;
+
+            } catch (error) {
+                console.log(`Alternating phase ${phaseCount} failed:`, error.message || String(error));
+            }
+
+            // Log progress every minute
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const currentMinute = Math.floor(elapsed / 60);
+            if (currentMinute > lastLoggedMinute) {
+                lastLoggedMinute = currentMinute;
+                console.log(`Alternating progress: ${elapsed}s elapsed, ${phaseCount} phases completed`);
+            }
+        }
+
+        console.log(`Alternating actions completed: ${phaseCount} phases in ${durationSeconds}s`);
+    }
+}
+
+/**
  * Start a behavior monitor session
  * @param {import('@playwright/test').Page} page
  * @param {BehaviorMode} mode - Behavior mode for clicking
@@ -388,7 +565,8 @@ async function startSession(page, mode = BehaviorMode.HUMAN_LIKE) {
 
     const isHumanLike = mode === BehaviorMode.HUMAN_LIKE || 
                         mode === BehaviorMode.HUMAN_SMOOTH || 
-                        mode === BehaviorMode.HUMAN_IMPULSIVE;
+                        mode === BehaviorMode.HUMAN_IMPULSIVE ||
+                        mode === BehaviorMode.ALTERNATING;
 
     if (isHumanLike) {
         await HumanBehavior.pageLoadDelay();
@@ -419,7 +597,8 @@ async function startSession(page, mode = BehaviorMode.HUMAN_LIKE) {
 async function stopSessionAndGetResults(page, mode = BehaviorMode.HUMAN_LIKE) {
     const isHumanLike = mode === BehaviorMode.HUMAN_LIKE || 
                         mode === BehaviorMode.HUMAN_SMOOTH || 
-                        mode === BehaviorMode.HUMAN_IMPULSIVE;
+                        mode === BehaviorMode.HUMAN_IMPULSIVE ||
+                        mode === BehaviorMode.ALTERNATING;
 
     // Small pause before stopping
     if (isHumanLike) {
@@ -487,6 +666,11 @@ async function performActions(page, durationSeconds, mode) {
         case BehaviorMode.ROBOT_IMPULSIVE:
             // Mix robot-like with impulsive bursts
             await performMixedActions(page, durationSeconds, RobotBehavior, ImpulsiveBehavior);
+            break;
+
+        case BehaviorMode.ALTERNATING:
+            // Alternating between fast/jerky and smooth/slow with long pauses
+            await AlternatingBehavior.performRandomActions(page, durationSeconds);
             break;
 
         default:
@@ -559,7 +743,8 @@ async function runBehaviorSession(page, durationSeconds, mode, options = {}) {
     // Reset mouse tracking if using human-like behavior
     const isHumanLike = mode === BehaviorMode.HUMAN_LIKE || 
                         mode === BehaviorMode.HUMAN_SMOOTH || 
-                        mode === BehaviorMode.HUMAN_IMPULSIVE;
+                        mode === BehaviorMode.HUMAN_IMPULSIVE ||
+                        mode === BehaviorMode.ALTERNATING;
     if (isHumanLike) {
         resetMousePosition();
     }
@@ -591,6 +776,7 @@ module.exports = {
     BehaviorMode,
     RobotBehavior,
     ImpulsiveBehavior,
+    AlternatingBehavior,
     startSession,
     stopSessionAndGetResults,
     performActions,
