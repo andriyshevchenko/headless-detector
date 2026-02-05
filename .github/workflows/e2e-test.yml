@@ -3,8 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - main
-      - master
+      - '**'  # Run on all branches
   pull_request:
     branches:
       - '**'
@@ -13,19 +12,17 @@ on:
       test_type:
         description: 'Test type to run'
         required: true
-        default: 'quick'
+        default: 'full'
         type: choice
         options:
-          - quick
           - full
 
 jobs:
   e2e-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    # Note: Quick E2E tests run by default on every push/PR for CI efficiency.
-    # Use the "workflow_dispatch" trigger with test_type=full to run the full
-    # E2E suite periodically and before releases to ensure comprehensive coverage.
+    timeout-minutes: 45
+    # All tests run for 5 minutes each to provide real-world validation
+    # Total: 6 tests × 5 min = 30 min + buffer
     permissions:
       contents: read
     
@@ -44,13 +41,8 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       
-      - name: Run quick E2E test (default)
-        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.test_type == 'quick' }}
-        run: npm run test:e2e:quick
-      
-      - name: Run full 5-minute E2E test
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'full' }}
-        run: npm run test:e2e:full
+      - name: Run all E2E tests (5-minute sessions)
+        run: npm run test:e2e
       
       - name: Upload test results
         uses: actions/upload-artifact@v4

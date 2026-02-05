@@ -12,9 +12,8 @@ const { test, expect } = require('@playwright/test');
 const { resetMousePosition } = require('./human-behavior');
 const { BehaviorMode, runBehaviorSession } = require('./test-helpers');
 
-// Session durations
-const FULL_SESSION_SECONDS = 5 * 60; // 5 minutes
-const QUICK_SESSION_SECONDS = 30;    // 30 seconds
+// Session durations - all tests run for 5 minutes for real-world validation
+const SESSION_SECONDS = 5 * 60; // 5 minutes
 
 test.describe('Behavior Monitor E2E Tests', () => {
     
@@ -30,7 +29,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
     test('5-minute human-like behavior session', async ({ page }) => {
         const { results } = await runBehaviorSession(
             page,
-            FULL_SESSION_SECONDS,
+            SESSION_SECONDS,
             BehaviorMode.HUMAN_LIKE,
             { minExpectedScore: 0.3 }
         );
@@ -43,7 +42,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
         // This should produce the lowest bot scores (most human-like)
         const { results } = await runBehaviorSession(
             page,
-            FULL_SESSION_SECONDS,
+            SESSION_SECONDS,
             BehaviorMode.HUMAN_SMOOTH,
             { minExpectedScore: 0 } // We expect very low scores for smooth behavior
         );
@@ -52,10 +51,10 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore);
     });
 
-    test('quick human-like sanity check (30s)', async ({ page }) => {
+    test('5-minute human-like session (alt)', async ({ page }) => {
         const { results } = await runBehaviorSession(
             page,
-            QUICK_SESSION_SECONDS,
+            SESSION_SECONDS,
             BehaviorMode.HUMAN_LIKE,
             { minExpectedScore: 0.3 }
         );
@@ -67,11 +66,11 @@ test.describe('Behavior Monitor E2E Tests', () => {
     // Robot behavior tests (no human-like)
     // ========================================
 
-    test('robot behavior - regular Playwright API (30s)', async ({ page }) => {
+    test('5-minute robot behavior - regular Playwright API', async ({ page }) => {
         // Robot behavior should be easily detected - expect higher scores
         const { results } = await runBehaviorSession(
             page,
-            QUICK_SESSION_SECONDS,
+            SESSION_SECONDS,
             BehaviorMode.ROBOT,
             { minExpectedScore: 0.4 }
         );
@@ -84,11 +83,11 @@ test.describe('Behavior Monitor E2E Tests', () => {
     // Impulsive behavior tests
     // ========================================
 
-    test('human-like + impulsive fast movements (30s)', async ({ page }) => {
+    test('5-minute human-like + impulsive fast movements', async ({ page }) => {
         // Mix of human-like behavior with rapid impulsive bursts
         const { results } = await runBehaviorSession(
             page,
-            QUICK_SESSION_SECONDS,
+            SESSION_SECONDS,
             BehaviorMode.HUMAN_IMPULSIVE,
             { minExpectedScore: 0.3 }
         );
@@ -97,12 +96,12 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore);
     });
 
-    test('robot + impulsive fast movements (30s)', async ({ page }) => {
+    test('5-minute robot + impulsive fast movements', async ({ page }) => {
         // Robot behavior combined with rapid impulsive movements
         // This should produce the highest bot scores
         const { results } = await runBehaviorSession(
             page,
-            QUICK_SESSION_SECONDS,
+            SESSION_SECONDS,
             BehaviorMode.ROBOT_IMPULSIVE,
             { minExpectedScore: 0.3 } // Reduced from 0.4 - impulsive movements add variance
         );
