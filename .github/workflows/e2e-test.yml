@@ -59,6 +59,13 @@ jobs:
             grep: "5-minute keyboard-heavy behavior"
           - name: mixed-random
             grep: "5-minute mixed-random behavior"
+          # Advanced stealth bot tests
+          - name: stealth-bot
+            grep: "5-minute stealth-bot behavior"
+          - name: replay-bot
+            grep: "5-minute replay-bot behavior"
+          - name: timing-bot
+            grep: "5-minute timing-bot behavior"
     
     name: E2E - ${{ matrix.test.name }}
     

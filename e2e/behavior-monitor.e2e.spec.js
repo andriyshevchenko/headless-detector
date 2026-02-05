@@ -238,6 +238,54 @@ test.describe('Behavior Monitor E2E Tests', () => {
         console.log('✓ Mixed-random behavior test');
         logDetectionResult(results.overallScore);
     });
+
+    // ========================================
+    // Advanced stealth bot tests
+    // ========================================
+    // These bots try to evade detection by mimicking human patterns
+    // but should still be detectable due to subtle mechanical tells
+
+    test('5-minute stealth-bot behavior', async ({ page }) => {
+        // Stealth bot: adds noise/jitter but noise is mathematically predictable
+        // Should score higher than naive robots due to evasion attempts
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.STEALTH_BOT,
+            { minExpectedScore: 0.25, maxExpectedScore: 0.6 }
+        );
+        
+        console.log('✓ Stealth-bot behavior test');
+        logDetectionResult(results.overallScore);
+    });
+
+    test('5-minute replay-bot behavior', async ({ page }) => {
+        // Replay bot: uses pre-recorded patterns that are too consistent
+        // Should be detectable via pattern repetition analysis
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.REPLAY_BOT,
+            { minExpectedScore: 0.25, maxExpectedScore: 0.65 }
+        );
+        
+        console.log('✓ Replay-bot behavior test');
+        logDetectionResult(results.overallScore);
+    });
+
+    test('5-minute timing-bot behavior', async ({ page }) => {
+        // Timing bot: human-like timing but mechanical movements
+        // Should be detectable via movement analysis (too straight)
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.TIMING_BOT,
+            { minExpectedScore: 0.2, maxExpectedScore: 0.55 }
+        );
+        
+        console.log('✓ Timing-bot behavior test');
+        logDetectionResult(results.overallScore);
+    });
 });
 
 /**

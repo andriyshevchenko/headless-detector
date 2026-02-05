@@ -26,7 +26,11 @@ const BehaviorMode = {
     SCROLL_HEAVY: 'scroll-heavy', // Primarily scroll-based behavior
     MOUSE_HEAVY: 'mouse-heavy', // Primarily mouse movement-based behavior
     KEYBOARD_HEAVY: 'keyboard-heavy', // Primarily keyboard-based behavior
-    MIXED_RANDOM: 'mixed-random' // Randomly switches between all modes
+    MIXED_RANDOM: 'mixed-random', // Randomly switches between all modes
+    // Advanced stealth bots - try to mimic humans but should still be detectable
+    STEALTH_BOT: 'stealth-bot', // Adds noise/jitter to robot movements but lacks true randomness
+    REPLAY_BOT: 'replay-bot', // Replays recorded patterns - too consistent across runs
+    TIMING_BOT: 'timing-bot' // Uses varied timing but mechanical movements
 };
 
 /**
@@ -1159,6 +1163,316 @@ class MixedRandomBehavior {
 }
 
 /**
+ * ========================================================================
+ * STEALTH BOT BEHAVIORS
+ * ========================================================================
+ * These bots attempt to evade detection by mimicking human patterns,
+ * but they should still be detectable due to subtle mechanical tells.
+ * 
+ * The goal is to test the monitor's ability to detect sophisticated bots
+ * that go beyond simple automation but still lack true human randomness.
+ * ========================================================================
+ */
+
+/**
+ * Stealth Bot - adds noise and jitter to movements but lacks true randomness
+ * Uses Bezier curves like humans but with mathematically predictable noise
+ */
+class StealthBotBehavior {
+    /**
+     * Move mouse with synthetic noise - looks human but noise is too regular
+     */
+    static async moveMouseWithNoise(page, targetX, targetY) {
+        // Start position (get from last known or default)
+        let currentX = 100, currentY = 100;
+        try {
+            const pos = await page.evaluate(() => ({ x: window.__lastMouseX || 100, y: window.__lastMouseY || 100 }));
+            currentX = pos.x;
+            currentY = pos.y;
+        } catch (e) { /* use defaults */ }
+
+        const steps = 30 + Math.floor(Math.random() * 20);
+        
+        // Generate Bezier control points with synthetic noise
+        const cp1x = currentX + (targetX - currentX) * 0.3 + Math.sin(Date.now() * 0.001) * 30;
+        const cp1y = currentY + (targetY - currentY) * 0.3 + Math.cos(Date.now() * 0.001) * 30;
+        const cp2x = currentX + (targetX - currentX) * 0.7 + Math.sin(Date.now() * 0.002) * 20;
+        const cp2y = currentY + (targetY - currentY) * 0.7 + Math.cos(Date.now() * 0.002) * 20;
+
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            const t2 = t * t;
+            const t3 = t2 * t;
+            const mt = 1 - t;
+            const mt2 = mt * mt;
+            const mt3 = mt2 * mt;
+
+            // Cubic Bezier interpolation
+            let x = mt3 * currentX + 3 * mt2 * t * cp1x + 3 * mt * t2 * cp2x + t3 * targetX;
+            let y = mt3 * currentY + 3 * mt2 * t * cp1y + 3 * mt * t2 * cp2y + t3 * targetY;
+
+            // Add synthetic noise - looks random but is actually deterministic (sinusoidal)
+            // Real humans have chaotic noise; this is mathematically smooth
+            const noisePhase = i * 0.5;
+            x += Math.sin(noisePhase) * 2;
+            y += Math.cos(noisePhase * 1.3) * 2;
+
+            await page.mouse.move(Math.round(x), Math.round(y));
+            // Timing with synthetic variance - Gaussian but with detectable patterns
+            await sleep(8 + Math.abs(Math.sin(i * 0.2)) * 15);
+        }
+
+        // Update last position
+        await page.evaluate((x, y) => { window.__lastMouseX = x; window.__lastMouseY = y; }, targetX, targetY);
+    }
+
+    static async performRandomActions(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+
+        let actionCount = 0;
+        let lastLoggedMinute = 0;
+
+        while (Date.now() < endTime) {
+            // Weighted random action selection (bot tries to mimic human distribution)
+            const roll = Math.random();
+            let action;
+            if (roll < 0.45) action = 'mouse';
+            else if (roll < 0.75) action = 'scroll';
+            else if (roll < 0.90) action = 'wait';
+            else action = 'key';
+
+            try {
+                switch (action) {
+                    case 'mouse': {
+                        const x = randomInt(100, viewport.width - 100);
+                        const y = randomInt(100, viewport.height - 100);
+                        await StealthBotBehavior.moveMouseWithNoise(page, x, y);
+                        break;
+                    }
+                    case 'scroll': {
+                        const direction = Math.random() > 0.3 ? 1 : -1;
+                        const steps = 4 + Math.floor(Math.random() * 4);
+                        const totalAmount = (80 + Math.random() * 150) * direction;
+                        for (let i = 0; i < steps; i++) {
+                            await page.evaluate((a) => window.scrollBy(0, a), totalAmount / steps);
+                            // Synthetic timing variance
+                            await sleep(100 + Math.sin(i) * 30);
+                        }
+                        break;
+                    }
+                    case 'wait': {
+                        // Synthetic "thinking" pause - too consistent in duration
+                        await sleep(800 + Math.sin(actionCount * 0.1) * 400);
+                        break;
+                    }
+                    case 'key': {
+                        const keys = ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'];
+                        await page.keyboard.press(keys[actionCount % keys.length]);
+                        await sleep(200 + Math.sin(actionCount * 0.3) * 100);
+                        break;
+                    }
+                }
+                actionCount++;
+            } catch (error) { /* ignore */ }
+
+            // Log progress
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const currentMinute = Math.floor(elapsed / 60);
+            if (currentMinute > lastLoggedMinute) {
+                lastLoggedMinute = currentMinute;
+                console.log(`Stealth bot progress: ${elapsed}s, ${actionCount} actions`);
+            }
+        }
+        console.log(`Stealth bot completed: ${actionCount} actions`);
+    }
+}
+
+/**
+ * Replay Bot - replays pre-recorded patterns
+ * This bot uses realistic-looking recorded sequences but they're too consistent
+ */
+class ReplayBotBehavior {
+    // Pre-defined movement patterns (would be recorded from real users in production)
+    static patterns = {
+        mousePattern: [
+            { dx: 50, dy: 30, time: 120 },
+            { dx: 30, dy: 50, time: 95 },
+            { dx: -20, dy: 40, time: 110 },
+            { dx: 60, dy: -30, time: 105 },
+            { dx: -40, dy: 20, time: 88 },
+            { dx: 70, dy: 60, time: 115 },
+            { dx: -30, dy: -40, time: 102 },
+            { dx: 45, dy: 15, time: 98 }
+        ],
+        scrollPattern: [
+            { delta: 200, time: 300 },
+            { delta: 150, time: 250 },
+            { delta: -100, time: 280 },
+            { delta: 180, time: 320 },
+            { delta: -150, time: 290 }
+        ]
+    };
+
+    static async performRandomActions(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+
+        let currentX = 300, currentY = 300;
+        let patternIndex = 0;
+        let actionCount = 0;
+        let lastLoggedMinute = 0;
+
+        while (Date.now() < endTime) {
+            const actionType = patternIndex % 3;
+
+            try {
+                switch (actionType) {
+                    case 0: { // Replay mouse pattern
+                        const mousePatterns = ReplayBotBehavior.patterns.mousePattern;
+                        for (const p of mousePatterns) {
+                            currentX = Math.max(50, Math.min(viewport.width - 50, currentX + p.dx));
+                            currentY = Math.max(50, Math.min(viewport.height - 50, currentY + p.dy));
+                            await page.mouse.move(currentX, currentY);
+                            await sleep(p.time);
+                        }
+                        break;
+                    }
+                    case 1: { // Replay scroll pattern
+                        const scrollPatterns = ReplayBotBehavior.patterns.scrollPattern;
+                        for (const p of scrollPatterns) {
+                            await page.evaluate((d) => window.scrollBy(0, d), p.delta);
+                            await sleep(p.time);
+                        }
+                        break;
+                    }
+                    case 2: { // Key sequence
+                        const keySequence = ['ArrowDown', 'ArrowDown', 'ArrowUp', 'ArrowRight'];
+                        for (const key of keySequence) {
+                            await page.keyboard.press(key);
+                            await sleep(180 + (patternIndex % 5) * 20);
+                        }
+                        break;
+                    }
+                }
+
+                patternIndex++;
+                actionCount++;
+                
+                // Inter-pattern pause (slightly varied but predictable)
+                await sleep(400 + (patternIndex % 10) * 50);
+
+            } catch (error) { /* ignore */ }
+
+            // Log progress
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const currentMinute = Math.floor(elapsed / 60);
+            if (currentMinute > lastLoggedMinute) {
+                lastLoggedMinute = currentMinute;
+                console.log(`Replay bot progress: ${elapsed}s, ${actionCount} actions`);
+            }
+        }
+        console.log(`Replay bot completed: ${actionCount} actions`);
+    }
+}
+
+/**
+ * Timing Bot - uses varied timing but mechanical movements
+ * Has human-like timing variance but movements are too direct
+ */
+class TimingBotBehavior {
+    static async performRandomActions(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+
+        let actionCount = 0;
+        let lastLoggedMinute = 0;
+
+        while (Date.now() < endTime) {
+            // Human-like weighted action selection
+            const roll = Math.random();
+            let action;
+            if (roll < 0.40) action = 'mouse';
+            else if (roll < 0.70) action = 'scroll';
+            else if (roll < 0.85) action = 'wait';
+            else action = 'key';
+
+            try {
+                // Human-like timing variance using inverse Gaussian distribution
+                const humanLikeDelay = () => {
+                    // Approximate human reaction time distribution
+                    const u = Math.random();
+                    const v = Math.random();
+                    const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+                    return Math.max(50, 200 + z * 80);
+                };
+
+                switch (action) {
+                    case 'mouse': {
+                        // Direct movement (not Bezier) - this is the detectable part
+                        const targetX = randomInt(100, viewport.width - 100);
+                        const targetY = randomInt(100, viewport.height - 100);
+                        
+                        // Move in a few steps but still too straight
+                        const steps = 5;
+                        const startX = randomInt(100, viewport.width - 100);
+                        const startY = randomInt(100, viewport.height - 100);
+                        
+                        for (let i = 0; i <= steps; i++) {
+                            const t = i / steps;
+                            const x = startX + (targetX - startX) * t;
+                            const y = startY + (targetY - startY) * t;
+                            await page.mouse.move(Math.round(x), Math.round(y));
+                            await sleep(humanLikeDelay());
+                        }
+                        break;
+                    }
+                    case 'scroll': {
+                        const direction = Math.random() > 0.3 ? 1 : -1;
+                        const steps = randomInt(3, 7);
+                        const totalAmount = randomInt(100, 300) * direction;
+                        
+                        for (let i = 0; i < steps; i++) {
+                            await page.evaluate((a) => window.scrollBy(0, a), totalAmount / steps);
+                            await sleep(humanLikeDelay());
+                        }
+                        break;
+                    }
+                    case 'wait': {
+                        // Human-like reading pause
+                        await sleep(randomBetween(500, 2500));
+                        break;
+                    }
+                    case 'key': {
+                        const keys = ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'];
+                        await page.keyboard.press(keys[randomInt(0, 3)]);
+                        await sleep(humanLikeDelay());
+                        break;
+                    }
+                }
+
+                actionCount++;
+                // Human-like inter-action delay
+                await sleep(humanLikeDelay() * 2);
+
+            } catch (error) { /* ignore */ }
+
+            // Log progress
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const currentMinute = Math.floor(elapsed / 60);
+            if (currentMinute > lastLoggedMinute) {
+                lastLoggedMinute = currentMinute;
+                console.log(`Timing bot progress: ${elapsed}s, ${actionCount} actions`);
+            }
+        }
+        console.log(`Timing bot completed: ${actionCount} actions`);
+    }
+}
+
+/**
  * Start a behavior monitor session
  * @param {import('@playwright/test').Page} page
  * @param {BehaviorMode} mode - Behavior mode for clicking
@@ -1340,6 +1654,19 @@ async function performActions(page, durationSeconds, mode) {
             await MixedRandomBehavior.performRandomActions(page, durationSeconds);
             break;
 
+        // Advanced stealth bot modes
+        case BehaviorMode.STEALTH_BOT:
+            await StealthBotBehavior.performRandomActions(page, durationSeconds);
+            break;
+
+        case BehaviorMode.REPLAY_BOT:
+            await ReplayBotBehavior.performRandomActions(page, durationSeconds);
+            break;
+
+        case BehaviorMode.TIMING_BOT:
+            await TimingBotBehavior.performRandomActions(page, durationSeconds);
+            break;
+
         default:
             throw new Error(`Unknown behavior mode: ${mode}`);
     }
@@ -1489,6 +1816,10 @@ module.exports = {
     MouseHeavyBehavior,
     KeyboardHeavyBehavior,
     MixedRandomBehavior,
+    // Advanced stealth bots
+    StealthBotBehavior,
+    ReplayBotBehavior,
+    TimingBotBehavior,
     startSession,
     stopSessionAndGetResults,
     performActions,

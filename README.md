@@ -136,6 +136,28 @@ console.log(window.__headlessDetection.summary); // Full summary
 
 The `HeadlessBehaviorMonitor` is a standalone module that analyzes user interactions over time to detect bot-like patterns. These checks are fundamentally harder to spoof than fingerprint checks because they require genuine human interaction patterns.
 
+### Detection Philosophy
+
+> **Design Goal:** Detect almost any "human" behavior mimicry as suspicious. Only extremely advanced bots should stay borderline (<0.25 score). If you want to stay unnoticed, you need to go very deep down the rabbit hole and maintain a highly sophisticated evasion system.
+
+This monitor is designed with a security-first philosophy:
+
+| Bot Type | Expected Score | Detection Status |
+|----------|----------------|------------------|
+| Naive bots (Selenium, Puppeteer defaults) | 0.40+ | ✅ Detected |
+| Medium bots (basic randomization) | 0.30-0.45 | ✅ Detected |
+| Stealth bots (noise injection, pattern replay) | 0.25-0.40 | ⚠️ Flagged for review |
+| Advanced bots (ML-based mimicry) | 0.20-0.30 | ⚠️ Borderline |
+| Genuine humans | <0.25 | ✅ Pass |
+
+**Why this approach?**
+
+1. **Cost of evasion**: Building truly undetectable bots requires significant engineering effort. This raises the barrier to entry for attackers.
+
+2. **Defense in depth**: This module is one layer of a multi-layered security strategy. Even if a bot scores borderline, combine with other signals (IP reputation, device fingerprinting, behavioral history).
+
+3. **False positive prevention**: The module includes 8 critical safeguards to prevent false positives on genuine users, including multi-channel corroboration, confidence gating, and time-based accumulation.
+
 **Key Concept:** The behavioral module is completely independent and can be used:
 - **Standalone** - For pure behavioral analysis
 - **Combined with headless detection** - Use both results in your application logic
