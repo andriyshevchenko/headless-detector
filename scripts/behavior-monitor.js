@@ -969,36 +969,62 @@ class HeadlessBehaviorMonitor {
         const hasSufficientSamples = movements.length >= 10;
         
         // SAFEGUARD 3: lowVelocityVariance must ALSO require low acceleration variance OR sub-millisecond pattern
-        const lowVelocityTriggered = velocityVariance < 0.0001 && hasSufficientSamples &&
-            (accelVariance < 0.00001 || hasSubMillisecondPattern);
-        if (lowVelocityTriggered) suspiciousScore += 0.25;
+        // Use configurable thresholds with fallbacks to defaults
+        const defaultThresholds = {
+            lowVelocityVariance: 0.01,
+            lowAngleVariance: 0.1,
+            highStraightLineRatio: 0.3,
+            highUntrustedRatio: 0.1,
+            highMouseEfficiency: 0.95,
+            lowTimingVariance: 100,
+            lowAccelVariance: 0.0001
+        };
+        const defaultWeights = {
+            lowVelocityVariance: 0.25,
+            lowAngleVariance: 0.15,
+            highStraightLineRatio: 0.25,
+            highUntrustedRatio: 0.2,
+            highMouseEfficiency: 0.15,
+            lowTimingVariance: 0.15,
+            subMillisecondPattern: 0.15,
+            lowAccelVariance: 0.15,
+            bezierPattern: 0.2,
+            pressureSuspicious: 0.15,
+            lowEntropy: 0.15,
+            fingerprintSuspicious: 0.15
+        };
+        const thresholds = (this.WEIGHTS && this.WEIGHTS.MOUSE_THRESHOLDS) || defaultThresholds;
+        const weights = (this.WEIGHTS && this.WEIGHTS.MOUSE_WEIGHTS) || defaultWeights;
+        const lowVelocityTriggered = velocityVariance < thresholds.lowVelocityVariance && hasSufficientSamples &&
+            (accelVariance < thresholds.lowAccelVariance || hasSubMillisecondPattern);
+        if (lowVelocityTriggered) suspiciousScore += weights.lowVelocityVariance;
         
         // SAFEGUARD 6: angleVariance requires sufficient samples AND another signal
-        const lowAngleTriggered = angleVariance < 0.01 && hasSufficientSamples && 
-            (lowVelocityTriggered || straightLineRatio > 0.5);
-        if (lowAngleTriggered) suspiciousScore += 0.15;
+        const lowAngleTriggered = angleVariance < thresholds.lowAngleVariance && hasSufficientSamples && 
+            (lowVelocityTriggered || straightLineRatio > thresholds.highStraightLineRatio);
+        if (lowAngleTriggered) suspiciousScore += weights.lowAngleVariance;
         
         // straightLineRatio can stand alone with sufficient samples
-        if (straightLineRatio > 0.5 && hasSufficientSamples) suspiciousScore += 0.25;
+        if (straightLineRatio > thresholds.highStraightLineRatio && hasSufficientSamples) suspiciousScore += weights.highStraightLineRatio;
         
         // Untrusted ratio is context-independent
-        if (untrustedRatio > 0.1) suspiciousScore += 0.2;
+        if (untrustedRatio > thresholds.highUntrustedRatio) suspiciousScore += weights.highUntrustedRatio;
         
         // SAFEGUARD 3: mouseEfficiency > 0.95 must ALSO require low angle variance AND low timing entropy
-        const lowTimingVarianceTriggered = timingVariance < 50 && timingIntervals.length > 5;
-        const highEfficiencyTriggered = mouseEfficiency > 0.95 && angleVariance < 0.05 && lowTimingVarianceTriggered;
-        if (highEfficiencyTriggered) suspiciousScore += 0.15;
+        const lowTimingVarianceTriggered = timingVariance < thresholds.lowTimingVariance && timingIntervals.length > 5;
+        const highEfficiencyTriggered = mouseEfficiency > thresholds.highMouseEfficiency && angleVariance < 0.05 && lowTimingVarianceTriggered;
+        if (highEfficiencyTriggered) suspiciousScore += weights.highMouseEfficiency;
         
         // SAFEGUARD 6: Very low timing variance requires sufficient samples
-        if (lowTimingVarianceTriggered && hasSufficientSamples) suspiciousScore += 0.15;
+        if (lowTimingVarianceTriggered && hasSufficientSamples) suspiciousScore += weights.lowTimingVariance;
         
-        if (hasSubMillisecondPattern && hasSufficientSamples) suspiciousScore += 0.15;
+        if (hasSubMillisecondPattern && hasSufficientSamples) suspiciousScore += weights.subMillisecondPattern;
         
         // SAFEGUARD 6: Low acceleration variance requires sufficient samples
-        const lowAccelTriggered = accelVariance < 0.00001 && accelerations.length >= 10;
-        if (lowAccelTriggered) suspiciousScore += 0.15;
+        const lowAccelTriggered = accelVariance < thresholds.lowAccelVariance && accelerations.length >= 10;
+        if (lowAccelTriggered) suspiciousScore += weights.lowAccelVariance;
         
-        if (hasBezierPattern && hasSufficientSamples) suspiciousScore += 0.2;
+        if (hasBezierPattern && hasSufficientSamples) suspiciousScore += weights.bezierPattern;
         
         // Check for lack of pointer pressure variation
         const pressureAnalysis = this._analyzePointerPressure(movements);
@@ -1036,18 +1062,18 @@ class HeadlessBehaviorMonitor {
             },
             // Detailed scoring breakdown for calibration (reflects multi-signal safeguards)
             scoringBreakdown: {
-                lowVelocityVariance: { triggered: lowVelocityTriggered, weight: 0.25, value: velocityVariance, threshold: 0.0001, requiresMultiSignal: true },
-                lowAngleVariance: { triggered: lowAngleTriggered, weight: 0.15, value: angleVariance, threshold: 0.01, requiresMultiSignal: true },
-                highStraightLineRatio: { triggered: straightLineRatio > 0.5 && hasSufficientSamples, weight: 0.25, value: straightLineRatio, threshold: 0.5 },
-                highUntrustedRatio: { triggered: untrustedRatio > 0.1, weight: 0.2, value: untrustedRatio, threshold: 0.1 },
-                highMouseEfficiency: { triggered: highEfficiencyTriggered, weight: 0.15, value: mouseEfficiency, threshold: 0.95, requiresMultiSignal: true },
-                lowTimingVariance: { triggered: lowTimingVarianceTriggered && hasSufficientSamples, weight: 0.15, value: timingVariance, threshold: 50 },
-                subMillisecondPattern: { triggered: hasSubMillisecondPattern && hasSufficientSamples, weight: 0.15, value: hasSubMillisecondPattern },
-                lowAccelVariance: { triggered: lowAccelTriggered, weight: 0.15, value: accelVariance, threshold: 0.00001 },
-                bezierPattern: { triggered: hasBezierPattern && hasSufficientSamples, weight: 0.2, value: hasBezierPattern },
-                pressureSuspicious: { triggered: pressureAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern), weight: 0.15, details: pressureAnalysis, requiresMultiSignal: true },
-                lowEntropy: { triggered: entropyAnalysis.suspicious && hasSufficientSamples, weight: 0.15, details: entropyAnalysis },
-                fingerprintSuspicious: { triggered: fingerprintAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern), weight: 0.15, details: fingerprintAnalysis, requiresMultiSignal: true }
+                lowVelocityVariance: { triggered: lowVelocityTriggered, weight: weights.lowVelocityVariance, value: velocityVariance, threshold: thresholds.lowVelocityVariance, requiresMultiSignal: true },
+                lowAngleVariance: { triggered: lowAngleTriggered, weight: weights.lowAngleVariance, value: angleVariance, threshold: thresholds.lowAngleVariance, requiresMultiSignal: true },
+                highStraightLineRatio: { triggered: straightLineRatio > thresholds.highStraightLineRatio && hasSufficientSamples, weight: weights.highStraightLineRatio, value: straightLineRatio, threshold: thresholds.highStraightLineRatio },
+                highUntrustedRatio: { triggered: untrustedRatio > thresholds.highUntrustedRatio, weight: weights.highUntrustedRatio, value: untrustedRatio, threshold: thresholds.highUntrustedRatio },
+                highMouseEfficiency: { triggered: highEfficiencyTriggered, weight: weights.highMouseEfficiency, value: mouseEfficiency, threshold: thresholds.highMouseEfficiency, requiresMultiSignal: true },
+                lowTimingVariance: { triggered: lowTimingVarianceTriggered && hasSufficientSamples, weight: weights.lowTimingVariance, value: timingVariance, threshold: thresholds.lowTimingVariance },
+                subMillisecondPattern: { triggered: hasSubMillisecondPattern && hasSufficientSamples, weight: weights.subMillisecondPattern, value: hasSubMillisecondPattern },
+                lowAccelVariance: { triggered: lowAccelTriggered, weight: weights.lowAccelVariance, value: accelVariance, threshold: thresholds.lowAccelVariance },
+                bezierPattern: { triggered: hasBezierPattern && hasSufficientSamples, weight: weights.bezierPattern, value: hasBezierPattern },
+                pressureSuspicious: { triggered: pressureAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern), weight: weights.pressureSuspicious || 0.15, details: pressureAnalysis, requiresMultiSignal: true },
+                lowEntropy: { triggered: entropyAnalysis.suspicious && hasSufficientSamples, weight: weights.lowEntropy || 0.15, details: entropyAnalysis },
+                fingerprintSuspicious: { triggered: fingerprintAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern), weight: weights.fingerprintSuspicious || 0.15, details: fingerprintAnalysis, requiresMultiSignal: true }
             }
         };
     }
