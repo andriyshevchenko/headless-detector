@@ -57,7 +57,7 @@ module.exports = {
         highStraightLineRatio: 0.5,     // Bots move in straight lines
         highUntrustedRatio: 0.1,        // Non-trusted events indicate automation
         highMouseEfficiency: 0.95,      // Bots take perfect paths (requires multi-signal)
-        lowTimingVariance: 50,          // Bots have predictable timing (ms)
+        lowTimingVariance: 100,         // Bots have predictable timing (ms) - increased from 50
         lowAccelVariance: 0.00001,      // Bots have smooth acceleration
         subMillisecondPatterns: [10, 16, 20, 33, 50, 100], // Common bot intervals (ms)
         subMillisecondTolerance: 1      // Tolerance for pattern matching (ms)
@@ -204,9 +204,12 @@ module.exports = {
 
     /**
      * Timestamp entropy analysis thresholds
+     * 
+     * Calibration iteration 2: Increased minEntropyBits from 2.0 to 1.0
+     * (entropy < 1.0 is suspicious - more lenient for bot detection)
      */
     ENTROPY_THRESHOLDS: {
-        minEntropyBits: 2.0,             // Minimum entropy for human-like timing
+        minEntropyBits: 1.0,             // Minimum entropy for human-like timing (lowered from 2.0)
         minSamplesForAnalysis: 20        // Need this many samples for reliable entropy
     },
 
@@ -219,13 +222,19 @@ module.exports = {
 
     /**
      * Global safeguard thresholds
+     * 
+     * Calibration iteration 2 (run 21719104733):
+     * - Lowered suspiciousChannelThreshold from 0.6 to 0.45 (more channels qualify as suspicious)
+     * - Increased singleChannelDownscale from 0.5 to 0.75 (less severe penalty: 25% vs 50%)
+     * - Increased maxChannelContribution from 0.4 to 0.6 (allow more per-channel contribution)
+     * - Lowered minConfidenceGate from 0.6 to 0.4 (include lower-confidence signals)
      */
     SAFEGUARDS: {
-        minConfidenceGate: 0.6,          // Channels below this confidence are ignored
-        suspiciousChannelThreshold: 0.6, // Channel score >= this is "suspicious"
+        minConfidenceGate: 0.4,          // Channels below this confidence are ignored
+        suspiciousChannelThreshold: 0.45, // Channel score >= this is "suspicious"
         minSuspiciousChannels: 2,        // Need this many suspicious channels for escalation
-        singleChannelDownscale: 0.5,     // Downscale factor when only 1 suspicious channel
-        maxChannelContribution: 0.4,     // Max contribution per channel (40%)
+        singleChannelDownscale: 0.75,    // Downscale factor when only 1 suspicious channel
+        maxChannelContribution: 0.6,     // Max contribution per channel (60%)
         minSessionDurationZero: 5000,    // Sessions < 5s get score = 0
         minSessionDurationCap: 10000,    // Sessions < 10s get score capped at 0.5
         shortSessionScoreCap: 0.5,       // Score cap for short sessions
