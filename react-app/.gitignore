@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Synced scripts (generated from parent scripts/ folder)
+public/headless-detector.js
+public/behavior-monitor.js

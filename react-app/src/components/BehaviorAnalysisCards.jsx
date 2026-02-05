@@ -179,9 +179,7 @@ function renderMetrics(metrics) {
             <div key="untrusted" className="check-item">
                 <span className="check-label">Untrusted Ratio</span>
                 <span className="check-value info">
-                    {metrics.untrustedRatio != null 
-                        ? `${(metrics.untrustedRatio * 100).toFixed(1)}%` 
-                        : '-'}
+                    {`${(metrics.untrustedRatio * 100).toFixed(1)}%`}
                 </span>
             </div>
         );
