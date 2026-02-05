@@ -89,25 +89,27 @@
     /**
      * Mouse scoring weights (must sum to <= 1.0 to avoid clamping)
      * 
-     * Calibration iteration 7:
-     * - Reduced lowVelocityVariance weight from 0.25 to 0.10 (less reliable for distinguishing slow humans from robots)
-     * - Reduced lowAngleVariance weight from 0.15 to 0.05 (same issue)
-     * - Increased highStraightLineRatio weight to 0.30 (better discriminator)
-     * - Increased subMillisecondPattern weight to 0.25 (robots have timing patterns, humans don't)
+     * Calibration iteration 9:
+     * - Reduced bezierPattern weight from 0.20 to 0.05 (false positives on human-smooth)
+     * - Reduced subMillisecondPattern weight from 0.25 to 0.10 (all Playwright tests trigger this)
+     * - Increased lowTimingVariance weight from 0.10 to 0.20 (differentiates robot from human)
+     * - Reduced pressureSuspicious from 0.15 to 0.05 (causes false positives)
+     * - Reduced fingerprintSuspicious from 0.15 to 0.05 (causes false positives)
+     * - Increased highUntrustedRatio to 0.30 (strong bot indicator)
      */
     MOUSE_WEIGHTS: {
         lowVelocityVariance: 0.10,     // Reduced from 0.25 - slow humans also have low variance
         lowAngleVariance: 0.05,        // Reduced from 0.15 - not reliable alone
         highStraightLineRatio: 0.30,   // Increased from 0.25 - good discriminator
-        highUntrustedRatio: 0.25,      // Increased from 0.2 - strong bot indicator
+        highUntrustedRatio: 0.30,      // Increased from 0.25 - strong bot indicator
         highMouseEfficiency: 0.15,
-        lowTimingVariance: 0.10,       // Reduced from 0.15
-        subMillisecondPattern: 0.25,   // Increased from 0.15 - strong timing pattern indicator
+        lowTimingVariance: 0.20,       // Increased from 0.10 - key robot differentiator (robot triggers, human-smooth doesn't)
+        subMillisecondPattern: 0.10,   // Reduced from 0.25 - all Playwright tests trigger this
         lowAccelVariance: 0.10,        // Reduced from 0.15
-        bezierPattern: 0.20,
-        pressureSuspicious: 0.15,
+        bezierPattern: 0.05,           // Reduced from 0.20 - our human simulations use bezier curves
+        pressureSuspicious: 0.05,      // Reduced from 0.15 - causes false positives
         lowEntropy: 0.15,
-        fingerprintSuspicious: 0.15
+        fingerprintSuspicious: 0.05    // Reduced from 0.15 - causes false positives
     },
 
     /**
