@@ -130,6 +130,114 @@ test.describe('Behavior Monitor E2E Tests', () => {
         console.log('✓ Robot + impulsive behavior test');
         logDetectionResult(results.overallScore);
     });
+
+    // ========================================
+    // Diversified behavior tests (for more samples)
+    // ========================================
+
+    test('5-minute human-fast behavior', async ({ page }) => {
+        // Human-like but with faster, more energetic movements
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.HUMAN_FAST,
+            { minExpectedScore: 0.2 }
+        );
+        
+        console.log('✓ Human-fast behavior test');
+        logDetectionResult(results.overallScore);
+    });
+
+    test('5-minute human-slow behavior', async ({ page }) => {
+        // Human-like but with slower, careful movements
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.HUMAN_SLOW,
+            { minExpectedScore: 0.2 }
+        );
+        
+        console.log('✓ Human-slow behavior test');
+        logDetectionResult(results.overallScore);
+    });
+
+    test('5-minute robot-slow behavior', async ({ page }) => {
+        // Robot-like but with slower timing
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.ROBOT_SLOW,
+            { minExpectedScore: 0.3 }
+        );
+        
+        console.log('✓ Robot-slow behavior test');
+        logDetectionResult(results.overallScore);
+    });
+
+    test('5-minute burst-only behavior', async ({ page }) => {
+        // Only rapid burst movements
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.BURST_ONLY,
+            { minExpectedScore: 0.2 }
+        );
+        
+        console.log('✓ Burst-only behavior test');
+        logDetectionResult(results.overallScore);
+    });
+
+    test('5-minute scroll-heavy behavior', async ({ page }) => {
+        // Primarily scroll-based behavior
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.SCROLL_HEAVY,
+            { minExpectedScore: 0.2 }
+        );
+        
+        console.log('✓ Scroll-heavy behavior test');
+        logDetectionResult(results.overallScore);
+    });
+
+    test('5-minute mouse-heavy behavior', async ({ page }) => {
+        // Primarily mouse movement-based behavior
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.MOUSE_HEAVY,
+            { minExpectedScore: 0.2 }
+        );
+        
+        console.log('✓ Mouse-heavy behavior test');
+        logDetectionResult(results.overallScore);
+    });
+
+    test('5-minute keyboard-heavy behavior', async ({ page }) => {
+        // Primarily keyboard-based behavior
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.KEYBOARD_HEAVY,
+            { minExpectedScore: 0.2 }
+        );
+        
+        console.log('✓ Keyboard-heavy behavior test');
+        logDetectionResult(results.overallScore);
+    });
+
+    test('5-minute mixed-random behavior', async ({ page }) => {
+        // Randomly switches between all behavior modes
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.MIXED_RANDOM,
+            { minExpectedScore: 0.2 }
+        );
+        
+        console.log('✓ Mixed-random behavior test');
+        logDetectionResult(results.overallScore);
+    });
 });
 
 /**

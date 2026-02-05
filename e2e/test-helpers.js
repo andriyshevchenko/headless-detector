@@ -17,7 +17,16 @@ const BehaviorMode = {
     HUMAN_IMPULSIVE: 'human-impulsive',
     ROBOT_IMPULSIVE: 'robot-impulsive',
     ALTERNATING: 'alternating', // Alternates between fast/jerky and smooth/slow with long pauses
-    ADVANCED: 'advanced' // Most advanced: alternating phases + XY jitter on Bezier curves
+    ADVANCED: 'advanced', // Most advanced: alternating phases + XY jitter on Bezier curves
+    // New diversified modes for more samples
+    HUMAN_FAST: 'human-fast', // Human-like but with faster movements
+    HUMAN_SLOW: 'human-slow', // Human-like but with slower, careful movements  
+    ROBOT_SLOW: 'robot-slow', // Robot-like but with slower timing
+    BURST_ONLY: 'burst-only', // Only burst/rapid movements
+    SCROLL_HEAVY: 'scroll-heavy', // Primarily scroll-based behavior
+    MOUSE_HEAVY: 'mouse-heavy', // Primarily mouse movement-based behavior
+    KEYBOARD_HEAVY: 'keyboard-heavy', // Primarily keyboard-based behavior
+    MIXED_RANDOM: 'mixed-random' // Randomly switches between all modes
 };
 
 /**
@@ -849,6 +858,307 @@ class AdvancedBehavior {
 }
 
 /**
+ * Human Fast behavior - human-like but with faster movements
+ */
+class HumanFastBehavior {
+    static async performRandomActions(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+
+        while (Date.now() < endTime) {
+            const actionType = randomInt(0, 3);
+
+            try {
+                switch (actionType) {
+                    case 0: // Fast Bezier mouse movement
+                        const maxX = Math.max(0, viewport.width - 100);
+                        const minX = Math.min(100, maxX);
+                        const maxY = Math.max(0, viewport.height - 100);
+                        const minY = Math.min(100, maxY);
+                        const x = randomInt(minX, maxX);
+                        const y = randomInt(minY, maxY);
+                        await HumanBehavior.humanLikeMouseMove(page, x, y, randomInt(10, 20));
+                        break;
+                    case 1: // Fast scroll
+                        await page.evaluate((a) => window.scrollBy(0, a), randomInt(-200, 200));
+                        break;
+                    case 2: // Fast key press
+                        const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+                        await page.keyboard.press(keys[randomInt(0, keys.length - 1)]);
+                        break;
+                    case 3: // Quick mouse click area
+                        const cx = randomInt(100, viewport.width - 100);
+                        const cy = randomInt(100, viewport.height - 100);
+                        await HumanBehavior.humanLikeMouseMove(page, cx, cy, 10);
+                        break;
+                }
+                await sleep(randomBetween(50, 200)); // Faster timing
+            } catch (error) { /* ignore */ }
+        }
+    }
+}
+
+/**
+ * Human Slow behavior - human-like but with slower, careful movements
+ */
+class HumanSlowBehavior {
+    static async performRandomActions(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+
+        while (Date.now() < endTime) {
+            const actionType = randomInt(0, 3);
+
+            try {
+                switch (actionType) {
+                    case 0: // Slow Bezier mouse movement
+                        const maxX = Math.max(0, viewport.width - 100);
+                        const minX = Math.min(100, maxX);
+                        const maxY = Math.max(0, viewport.height - 100);
+                        const minY = Math.min(100, maxY);
+                        const x = randomInt(minX, maxX);
+                        const y = randomInt(minY, maxY);
+                        await HumanBehavior.humanLikeMouseMove(page, x, y, randomInt(80, 120));
+                        break;
+                    case 1: // Very slow scroll
+                        for (let i = 0; i < 5; i++) {
+                            await page.evaluate((a) => window.scrollBy(0, a), randomInt(-30, 30));
+                            await sleep(randomBetween(150, 300));
+                        }
+                        break;
+                    case 2: // Long reading pause
+                        await sleep(randomBetween(2000, 5000));
+                        break;
+                    case 3: // Slow key press
+                        await page.keyboard.press('ArrowDown');
+                        await sleep(randomBetween(500, 1500));
+                        break;
+                }
+                await sleep(randomBetween(800, 2000)); // Much slower timing
+            } catch (error) { /* ignore */ }
+        }
+    }
+}
+
+/**
+ * Robot Slow behavior - robot-like but with slower timing
+ */
+class RobotSlowBehavior {
+    static async performRandomActions(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+
+        while (Date.now() < endTime) {
+            const actionType = randomInt(0, 2);
+
+            try {
+                switch (actionType) {
+                    case 0: // Straight line mouse move
+                        await page.mouse.move(randomInt(0, viewport.width), randomInt(0, viewport.height));
+                        break;
+                    case 1: // Fixed scroll
+                        await page.evaluate(() => window.scrollBy(0, 100));
+                        break;
+                    case 2: // Fixed key press
+                        await page.keyboard.press('ArrowDown');
+                        break;
+                }
+                await sleep(500); // Slower fixed timing
+            } catch (error) { /* ignore */ }
+        }
+    }
+}
+
+/**
+ * Burst Only behavior - only rapid/burst movements
+ */
+class BurstOnlyBehavior {
+    static async performRandomActions(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+
+        while (Date.now() < endTime) {
+            // Rapid bursts of activity
+            for (let burst = 0; burst < randomInt(5, 15); burst++) {
+                const actionType = randomInt(0, 2);
+                try {
+                    switch (actionType) {
+                        case 0:
+                            await page.mouse.move(randomInt(0, viewport.width), randomInt(0, viewport.height));
+                            break;
+                        case 1:
+                            await page.evaluate((a) => window.scrollBy(0, a), randomInt(-300, 300));
+                            break;
+                        case 2:
+                            await page.keyboard.press('ArrowDown');
+                            break;
+                    }
+                    await sleep(randomBetween(10, 50)); // Very fast between actions
+                } catch (error) { /* ignore */ }
+            }
+            // Short pause between bursts
+            await sleep(randomBetween(100, 500));
+        }
+    }
+}
+
+/**
+ * Scroll Heavy behavior - primarily scroll-based
+ */
+class ScrollHeavyBehavior {
+    static async performRandomActions(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+
+        while (Date.now() < endTime) {
+            const scrollType = randomInt(0, 3);
+
+            try {
+                switch (scrollType) {
+                    case 0: // Continuous scroll down
+                        for (let i = 0; i < randomInt(5, 15); i++) {
+                            await page.evaluate((a) => window.scrollBy(0, a), randomInt(50, 150));
+                            await sleep(randomBetween(30, 100));
+                        }
+                        break;
+                    case 1: // Continuous scroll up
+                        for (let i = 0; i < randomInt(5, 15); i++) {
+                            await page.evaluate((a) => window.scrollBy(0, a), randomInt(-150, -50));
+                            await sleep(randomBetween(30, 100));
+                        }
+                        break;
+                    case 2: // Jump scroll
+                        await page.evaluate((a) => window.scrollBy(0, a), randomInt(-500, 500));
+                        break;
+                    case 3: // Reading pause
+                        await sleep(randomBetween(500, 1500));
+                        break;
+                }
+                await sleep(randomBetween(200, 800));
+            } catch (error) { /* ignore */ }
+        }
+    }
+}
+
+/**
+ * Mouse Heavy behavior - primarily mouse movement-based
+ */
+class MouseHeavyBehavior {
+    static async performRandomActions(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+
+        while (Date.now() < endTime) {
+            const moveType = randomInt(0, 3);
+
+            try {
+                switch (moveType) {
+                    case 0: // Bezier curve movement
+                        const maxX = Math.max(0, viewport.width - 100);
+                        const minX = Math.min(100, maxX);
+                        const maxY = Math.max(0, viewport.height - 100);
+                        const minY = Math.min(100, maxY);
+                        await HumanBehavior.humanLikeMouseMove(page, randomInt(minX, maxX), randomInt(minY, maxY), randomInt(20, 50));
+                        break;
+                    case 1: // Small jittery movements
+                        for (let i = 0; i < randomInt(5, 10); i++) {
+                            const currentPos = { x: randomInt(100, viewport.width - 100), y: randomInt(100, viewport.height - 100) };
+                            await page.mouse.move(currentPos.x + randomInt(-20, 20), currentPos.y + randomInt(-20, 20));
+                            await sleep(randomBetween(20, 80));
+                        }
+                        break;
+                    case 2: // Long sweep
+                        await HumanBehavior.humanLikeMouseMove(page, randomInt(50, viewport.width - 50), randomInt(50, viewport.height - 50), randomInt(60, 100));
+                        break;
+                    case 3: // Hover pause
+                        await sleep(randomBetween(300, 1000));
+                        break;
+                }
+                await sleep(randomBetween(100, 400));
+            } catch (error) { /* ignore */ }
+        }
+    }
+}
+
+/**
+ * Keyboard Heavy behavior - primarily keyboard-based
+ */
+class KeyboardHeavyBehavior {
+    static async performRandomActions(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'];
+
+        while (Date.now() < endTime) {
+            const keyType = randomInt(0, 3);
+
+            try {
+                switch (keyType) {
+                    case 0: // Rapid key presses
+                        for (let i = 0; i < randomInt(3, 8); i++) {
+                            await page.keyboard.press(keys[randomInt(0, keys.length - 1)]);
+                            await sleep(randomBetween(50, 150));
+                        }
+                        break;
+                    case 1: // Slow key presses
+                        await page.keyboard.press(keys[randomInt(0, keys.length - 1)]);
+                        await sleep(randomBetween(500, 1500));
+                        break;
+                    case 2: // Key hold simulation
+                        const key = keys[randomInt(0, 3)]; // Only arrow keys
+                        for (let i = 0; i < randomInt(3, 6); i++) {
+                            await page.keyboard.press(key);
+                            await sleep(randomBetween(80, 200));
+                        }
+                        break;
+                    case 3: // Thinking pause
+                        await sleep(randomBetween(1000, 3000));
+                        break;
+                }
+                await sleep(randomBetween(200, 600));
+            } catch (error) { /* ignore */ }
+        }
+    }
+}
+
+/**
+ * Mixed Random behavior - randomly switches between all modes
+ */
+class MixedRandomBehavior {
+    static async performRandomActions(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        
+        const behaviors = [
+            HumanBehavior, RobotBehavior, ImpulsiveBehavior, 
+            SmoothBehavior, HumanFastBehavior, HumanSlowBehavior,
+            ScrollHeavyBehavior, MouseHeavyBehavior, KeyboardHeavyBehavior
+        ];
+
+        while (Date.now() < endTime) {
+            // Pick a random behavior and run it for 5-20 seconds
+            const behavior = behaviors[randomInt(0, behaviors.length - 1)];
+            const segmentDuration = randomInt(5, 20);
+            const actualDuration = Math.min(segmentDuration, (endTime - Date.now()) / 1000);
+            
+            if (actualDuration > 0) {
+                try {
+                    await behavior.performRandomActions(page, actualDuration);
+                } catch (error) { /* ignore */ }
+            }
+            
+            // Random pause between segments
+            await sleep(randomBetween(200, 1000));
+        }
+    }
+}
+
+/**
  * Start a behavior monitor session
  * @param {import('@playwright/test').Page} page
  * @param {BehaviorMode} mode - Behavior mode for clicking
@@ -860,7 +1170,11 @@ async function startSession(page, mode = BehaviorMode.HUMAN_LIKE) {
                         mode === BehaviorMode.HUMAN_SMOOTH || 
                         mode === BehaviorMode.HUMAN_IMPULSIVE ||
                         mode === BehaviorMode.ALTERNATING ||
-                        mode === BehaviorMode.ADVANCED;
+                        mode === BehaviorMode.ADVANCED ||
+                        mode === BehaviorMode.HUMAN_FAST ||
+                        mode === BehaviorMode.HUMAN_SLOW ||
+                        mode === BehaviorMode.MOUSE_HEAVY ||
+                        mode === BehaviorMode.MIXED_RANDOM;
 
     if (isHumanLike) {
         await HumanBehavior.pageLoadDelay();
@@ -903,7 +1217,11 @@ async function stopSessionAndGetResults(page, mode = BehaviorMode.HUMAN_LIKE) {
                         mode === BehaviorMode.HUMAN_SMOOTH || 
                         mode === BehaviorMode.HUMAN_IMPULSIVE ||
                         mode === BehaviorMode.ALTERNATING ||
-                        mode === BehaviorMode.ADVANCED;
+                        mode === BehaviorMode.ADVANCED ||
+                        mode === BehaviorMode.HUMAN_FAST ||
+                        mode === BehaviorMode.HUMAN_SLOW ||
+                        mode === BehaviorMode.MOUSE_HEAVY ||
+                        mode === BehaviorMode.MIXED_RANDOM;
 
     // Small pause before stopping
     if (isHumanLike) {
@@ -989,6 +1307,39 @@ async function performActions(page, durationSeconds, mode) {
             await AdvancedBehavior.performRandomActions(page, durationSeconds);
             break;
 
+        // New diversified behavior modes
+        case BehaviorMode.HUMAN_FAST:
+            await HumanFastBehavior.performRandomActions(page, durationSeconds);
+            break;
+
+        case BehaviorMode.HUMAN_SLOW:
+            await HumanSlowBehavior.performRandomActions(page, durationSeconds);
+            break;
+
+        case BehaviorMode.ROBOT_SLOW:
+            await RobotSlowBehavior.performRandomActions(page, durationSeconds);
+            break;
+
+        case BehaviorMode.BURST_ONLY:
+            await BurstOnlyBehavior.performRandomActions(page, durationSeconds);
+            break;
+
+        case BehaviorMode.SCROLL_HEAVY:
+            await ScrollHeavyBehavior.performRandomActions(page, durationSeconds);
+            break;
+
+        case BehaviorMode.MOUSE_HEAVY:
+            await MouseHeavyBehavior.performRandomActions(page, durationSeconds);
+            break;
+
+        case BehaviorMode.KEYBOARD_HEAVY:
+            await KeyboardHeavyBehavior.performRandomActions(page, durationSeconds);
+            break;
+
+        case BehaviorMode.MIXED_RANDOM:
+            await MixedRandomBehavior.performRandomActions(page, durationSeconds);
+            break;
+
         default:
             throw new Error(`Unknown behavior mode: ${mode}`);
     }
@@ -1061,7 +1412,11 @@ async function runBehaviorSession(page, durationSeconds, mode, options = {}) {
                         mode === BehaviorMode.HUMAN_SMOOTH || 
                         mode === BehaviorMode.HUMAN_IMPULSIVE ||
                         mode === BehaviorMode.ALTERNATING ||
-                        mode === BehaviorMode.ADVANCED;
+                        mode === BehaviorMode.ADVANCED ||
+                        mode === BehaviorMode.HUMAN_FAST ||
+                        mode === BehaviorMode.HUMAN_SLOW ||
+                        mode === BehaviorMode.MOUSE_HEAVY ||
+                        mode === BehaviorMode.MIXED_RANDOM;
     if (isHumanLike) {
         resetMousePosition();
     }
@@ -1093,6 +1448,19 @@ async function runBehaviorSession(page, durationSeconds, mode, options = {}) {
         console.log('\n=== CALIBRATION DATA (for weight tuning) ===');
         console.log(JSON.stringify(calibrationData, null, 2));
         console.log('==============================================\n');
+        
+        // Output calibration data in a structured format for easy parsing by CI
+        // This allows the data to be extracted and saved as an artifact
+        console.log('===CALIBRATION_JSON_START===');
+        console.log(JSON.stringify({
+            testMode: mode,
+            timestamp: new Date().toISOString(),
+            durationSeconds,
+            results,
+            status,
+            calibration: calibrationData
+        }));
+        console.log('===CALIBRATION_JSON_END===');
     }
 
     // Assert score is within expected range
@@ -1110,9 +1478,17 @@ module.exports = {
     ImpulsiveBehavior,
     AlternatingBehavior,
     AdvancedBehavior,
+    SmoothBehavior,
+    HumanFastBehavior,
+    HumanSlowBehavior,
+    RobotSlowBehavior,
+    BurstOnlyBehavior,
+    ScrollHeavyBehavior,
+    MouseHeavyBehavior,
+    KeyboardHeavyBehavior,
+    MixedRandomBehavior,
     startSession,
     stopSessionAndGetResults,
     performActions,
-    runBehaviorSession,
-    SmoothBehavior
+    runBehaviorSession
 };

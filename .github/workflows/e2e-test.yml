@@ -27,6 +27,7 @@ jobs:
       fail-fast: false  # Continue other tests if one fails
       matrix:
         test:
+          # Original tests
           - name: human-like
             grep: "5-minute human-like behavior session"
           - name: smooth-jitter
@@ -41,6 +42,23 @@ jobs:
             grep: "5-minute human-like \\+ impulsive"
           - name: robot-impulsive
             grep: "5-minute robot \\+ impulsive"
+          # New diversified tests for more samples
+          - name: human-fast
+            grep: "5-minute human-fast behavior"
+          - name: human-slow
+            grep: "5-minute human-slow behavior"
+          - name: robot-slow
+            grep: "5-minute robot-slow behavior"
+          - name: burst-only
+            grep: "5-minute burst-only behavior"
+          - name: scroll-heavy
+            grep: "5-minute scroll-heavy behavior"
+          - name: mouse-heavy
+            grep: "5-minute mouse-heavy behavior"
+          - name: keyboard-heavy
+            grep: "5-minute keyboard-heavy behavior"
+          - name: mixed-random
+            grep: "5-minute mixed-random behavior"
     
     name: E2E - ${{ matrix.test.name }}
     
@@ -60,7 +78,14 @@ jobs:
         run: npx playwright install --with-deps chromium
       
       - name: Run ${{ matrix.test.name }} test
-        run: npx playwright test --grep "${{ matrix.test.grep }}"
+        id: run_test
+        run: |
+          # Run test and capture output
+          npx playwright test --grep "${{ matrix.test.grep }}" 2>&1 | tee test-output.log
+          
+          # Extract calibration JSON from output for artifact storage
+          mkdir -p calibration-data
+          grep -A 10000 "===CALIBRATION_JSON_START===" test-output.log | grep -B 10000 "===CALIBRATION_JSON_END===" | grep -v "===CALIBRATION" > calibration-data/${{ matrix.test.name }}-calibration.json || echo '{}' > calibration-data/${{ matrix.test.name }}-calibration.json
       
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -77,13 +102,64 @@ jobs:
           name: playwright-traces-${{ matrix.test.name }}
           path: test-results/
           retention-days: 7
+      
+      # Upload calibration data as artifact for metric analysis
+      - name: Upload calibration data
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: calibration-${{ matrix.test.name }}
+          path: calibration-data/
+          retention-days: 30  # Keep metrics longer for analysis
 
   # Summary job that waits for all tests and reports overall status
+  # Also aggregates all calibration data into a single artifact
   e2e-summary:
     needs: e2e-test
     runs-on: ubuntu-latest
     if: always()
     steps:
+      - name: Download all calibration data
+        uses: actions/download-artifact@v4
+        with:
+          pattern: calibration-*
+          path: all-calibration-data
+          merge-multiple: true
+      
+      - name: Aggregate calibration data
+        run: |
+          echo "=== Aggregating calibration data from all tests ==="
+          mkdir -p aggregated-metrics
+          
+          # Create a combined JSON file with all metrics
+          echo '{"tests": [' > aggregated-metrics/all-metrics.json
+          first=true
+          for f in all-calibration-data/*.json; do
+            if [ -f "$f" ] && [ -s "$f" ]; then
+              if [ "$first" = true ]; then
+                first=false
+              else
+                echo ',' >> aggregated-metrics/all-metrics.json
+              fi
+              cat "$f" >> aggregated-metrics/all-metrics.json
+            fi
+          done
+          echo ']}' >> aggregated-metrics/all-metrics.json
+          
+          # Show summary
+          echo "=== Calibration data summary ==="
+          cat aggregated-metrics/all-metrics.json | head -100
+          echo "..."
+          echo "Full data saved to aggregated-metrics/all-metrics.json"
+      
+      # Upload aggregated metrics - this is the main artifact for analysis
+      - name: Upload aggregated metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-calibration-metrics
+          path: aggregated-metrics/
+          retention-days: 30
+      
       - name: Check test results
         run: |
           if [ "${{ needs.e2e-test.result }}" == "success" ]; then
