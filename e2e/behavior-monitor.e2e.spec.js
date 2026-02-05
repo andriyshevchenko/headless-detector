@@ -44,21 +44,10 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.HUMAN_SMOOTH,
-            { minExpectedScore: 0 } // We expect very low scores for smooth behavior
+            { minExpectedScore: 0.2 } // We expect very low scores for smooth behavior
         );
         
         console.log('✓ Smooth behavior with timing jitter test');
-        logDetectionResult(results.overallScore);
-    });
-
-    test('5-minute human-like session (alt)', async ({ page }) => {
-        const { results } = await runBehaviorSession(
-            page,
-            SESSION_SECONDS,
-            BehaviorMode.HUMAN_LIKE,
-            { minExpectedScore: 0.3 }
-        );
-        
         logDetectionResult(results.overallScore);
     });
 
