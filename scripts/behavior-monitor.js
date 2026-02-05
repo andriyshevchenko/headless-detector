@@ -1703,7 +1703,7 @@ class HeadlessBehaviorMonitor {
         const stdDev = Math.sqrt(variance);
         
         // Coefficient of Variation (CV) = stdDev / mean
-        // CV < 0.1 means very constant timing (regardless of interval length)
+        // CV < 0.15 means very constant timing (regardless of interval length)
         // Human timing typically has CV > 0.3-0.5
         const cv = mean > 0 ? stdDev / mean : 0;
         
@@ -1737,7 +1737,7 @@ class HeadlessBehaviorMonitor {
         // Combine residuals
         const residuals = xResiduals.map((xr, i) => Math.sqrt(xr * xr + yResiduals[i] * yResiduals[i]));
         
-        // Calculate autocorrelation at various lags
+        // Calculate autocorrelation at various lags (2 to maxLag)
         // Periodic signals have high autocorrelation at specific lags
         const maxLag = Math.min(20, Math.floor(residuals.length / 2));
         let maxAutocorrelation = 0;
@@ -1749,7 +1749,7 @@ class HeadlessBehaviorMonitor {
             }
         }
         
-        // High autocorrelation (> 0.5) at any lag suggests periodic pattern
+        // High autocorrelation (> 0.5) within tested lag range suggests periodic pattern
         // Math.sin() patterns typically show AC > 0.7
         return {
             periodicNoise: maxAutocorrelation > 0.5,
@@ -1759,12 +1759,15 @@ class HeadlessBehaviorMonitor {
     
     /**
      * Calculate residuals from linear regression
+     * Uses index position as x-axis and values[i] as y-axis: value = m * index + b
+     * @param {Array} values - Array of values to fit
+     * @returns {Array} Residuals (difference between actual and predicted values)
      */
     _calculateResiduals(values) {
         const n = values.length;
         if (n < 2) return values.map(() => 0);
         
-        // Linear regression: y = mx + b
+        // Linear regression: value = m * index + b
         let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
         for (let i = 0; i < n; i++) {
             sumX += i;
@@ -1773,7 +1776,13 @@ class HeadlessBehaviorMonitor {
             sumX2 += i * i;
         }
         
-        const m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        // Guard against division by zero (impossible with sequential indices, but safe)
+        const denominator = n * sumX2 - sumX * sumX;
+        if (Math.abs(denominator) < 1e-10) {
+            return values.map(() => 0);
+        }
+        
+        const m = (n * sumXY - sumX * sumY) / denominator;
         const b = (sumY - m * sumX) / n;
         
         // Calculate residuals
