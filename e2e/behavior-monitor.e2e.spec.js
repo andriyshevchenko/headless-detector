@@ -93,17 +93,20 @@ test.describe('Behavior Monitor E2E Tests', () => {
         console.log(`Overall Bot Score: ${results.overallScore}`);
         console.log(`Confidence: ${results.confidence}`);
         
-        // Assert that the Behavior Monitor returns a valid score
-        // The score should be between 0 and 1
-        expect(results.overallScore).toBeGreaterThanOrEqual(0);
+        // Assert that the Behavior Monitor detects at least some bot patterns
+        // Even with advanced human-like simulation, the monitor should detect
+        // at least 0.2 score due to timing precision and event patterns
+        // Note: 0.2 is a reasonable threshold given the sophisticated simulation
+        expect(results.overallScore).toBeGreaterThanOrEqual(0.2);
         expect(results.overallScore).toBeLessThanOrEqual(1);
         
-        // Log whether the monitor detected bot-like behavior
-        // Note: Human-like simulation may produce low scores, which is expected
+        // Log whether the monitor detected strong bot-like behavior
         if (results.overallScore >= 0.5) {
-            console.log('✓ Behavior Monitor detected bot-like behavior patterns');
+            console.log('✓ Behavior Monitor detected strong bot-like behavior patterns');
+        } else if (results.overallScore >= 0.3) {
+            console.log('✓ Behavior Monitor detected moderate automation patterns (score >= 0.3)');
         } else {
-            console.log('✓ Human-like simulation produced realistic behavior (low bot score)');
+            console.log('✓ Behavior Monitor detected minimal automation patterns (score >= 0.2)');
         }
     });
     
@@ -142,17 +145,20 @@ test.describe('Behavior Monitor E2E Tests', () => {
         expect(results).not.toBeNull();
         console.log(`Quick test completed. Score: ${results.overallScore}`);
         
-        // Assert that the Behavior Monitor returns a valid score
-        // The score should be between 0 and 1
-        expect(results.overallScore).toBeGreaterThanOrEqual(0);
+        // Assert that the Behavior Monitor detects at least some bot patterns
+        // Even with advanced human-like simulation, the monitor should detect
+        // at least 0.2 score due to timing precision and event patterns
+        // Note: 0.2 is a reasonable threshold given the sophisticated simulation
+        expect(results.overallScore).toBeGreaterThanOrEqual(0.2);
         expect(results.overallScore).toBeLessThanOrEqual(1);
         
-        // Log whether the monitor detected bot-like behavior
-        // Note: Human-like simulation may produce low scores, which is expected
+        // Log whether the monitor detected strong bot-like behavior
         if (results.overallScore >= 0.5) {
-            console.log('✓ Behavior Monitor detected bot-like behavior patterns');
+            console.log('✓ Behavior Monitor detected strong bot-like behavior patterns');
+        } else if (results.overallScore >= 0.3) {
+            console.log('✓ Behavior Monitor detected moderate automation patterns (score >= 0.3)');
         } else {
-            console.log('✓ Human-like simulation produced realistic behavior (low bot score)');
+            console.log('✓ Behavior Monitor detected minimal automation patterns (score >= 0.2)');
         }
     });
 });

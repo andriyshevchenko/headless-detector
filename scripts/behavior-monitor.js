@@ -732,15 +732,47 @@ class HeadlessBehaviorMonitor {
         // - High straight line ratio (> 0.5 means more than half of segments are straight)
         // - High untrusted event ratio
         // - Very high mouse efficiency (too direct, bot-like)
+        // - Timing precision patterns (bots often have too-perfect timing)
+        // - Bezier curve patterns (smooth but mathematical movement)
         let suspiciousScore = 0;
         
-        if (velocityVariance < 0.0001) suspiciousScore += 0.3;
-        if (angleVariance < 0.01) suspiciousScore += 0.2;
-        if (straightLineRatio > 0.5) suspiciousScore += 0.3;
+        if (velocityVariance < 0.0001) suspiciousScore += 0.25;
+        if (angleVariance < 0.01) suspiciousScore += 0.15;
+        if (straightLineRatio > 0.5) suspiciousScore += 0.25;
         if (untrustedRatio > 0.1) suspiciousScore += 0.2;
         // Bots tend to move very directly (efficiency close to 1.0)
         // Humans tend to have efficiency between 0.3-0.8
         if (mouseEfficiency > 0.95) suspiciousScore += 0.15;
+        
+        // Check for timing pattern uniformity (bots often have regular intervals)
+        const timingIntervals = [];
+        for (let i = 1; i < movements.length; i++) {
+            const interval = movements[i].timestamp - movements[i - 1].timestamp;
+            timingIntervals.push(interval);
+        }
+        const timingVariance = this._calculateVariance(timingIntervals);
+        // Very low timing variance suggests automation
+        if (timingVariance < 50 && timingIntervals.length > 5) suspiciousScore += 0.15;
+        
+        // Check for sub-millisecond precision patterns in movements
+        // Bots often generate events with unnatural timing precision
+        const hasSubMillisecondPattern = this._detectSubMillisecondPattern(movements);
+        if (hasSubMillisecondPattern) suspiciousScore += 0.15;
+        
+        // Analyze acceleration patterns - bots often have unnatural acceleration curves
+        const accelerations = [];
+        for (let i = 1; i < velocities.length; i++) {
+            const accel = Math.abs(velocities[i] - velocities[i - 1]);
+            accelerations.push(accel);
+        }
+        const accelVariance = this._calculateVariance(accelerations);
+        // Very smooth acceleration (low variance) is suspicious - human movement is jerky
+        if (accelVariance < 0.00001 && accelerations.length > 3) suspiciousScore += 0.15;
+        
+        // Detect Bezier curve smoothness - our bot uses Bezier curves
+        // Real human movement has micro-corrections and tremor that Bezier curves lack
+        const hasBezierPattern = this._detectBezierPattern(movements);
+        if (hasBezierPattern) suspiciousScore += 0.2;
         
         const confidence = Math.min(movements.length / this.options.minSamples.mouse, 1);
         
@@ -848,11 +880,16 @@ class HeadlessBehaviorMonitor {
         // - Very low delta variance (always same scroll amount)
         // - Very low interval variance (perfectly timed)
         // - Low unique delta ratio (repetitive pattern)
+        // - Bot timing pattern detection
         let suspiciousScore = 0;
         
         if (deltaVariance < 1) suspiciousScore += 0.3;
         if (intervalVariance < 10) suspiciousScore += 0.3;
-        if (uniqueDeltaRatio < 0.3) suspiciousScore += 0.4;
+        if (uniqueDeltaRatio < 0.3) suspiciousScore += 0.3;
+        
+        // Check for automation timing patterns in scroll events
+        const hasSubMillisecondPattern = this._detectSubMillisecondPattern(scrolls);
+        if (hasSubMillisecondPattern) suspiciousScore += 0.2;
         
         const confidence = Math.min(scrolls.length / this.options.minSamples.scroll, 1);
         
@@ -1018,6 +1055,91 @@ class HeadlessBehaviorMonitor {
         const variance = squaredDiffs.reduce((sum, val) => sum + val, 0) / values.length;
         
         return variance;
+    }
+    
+    /**
+     * Detect sub-millisecond timing patterns that suggest automation
+     * Bots often produce events with unnaturally precise timing intervals
+     * @param {Array} events - Array of events with timestamp property
+     * @returns {boolean} True if suspicious pattern detected
+     */
+    _detectSubMillisecondPattern(events) {
+        if (events.length < 10) return false;
+        
+        // Check if timing intervals follow a suspiciously regular pattern
+        const intervals = [];
+        for (let i = 1; i < events.length; i++) {
+            intervals.push(events[i].timestamp - events[i - 1].timestamp);
+        }
+        
+        // Count intervals that are exact multiples of common automation delays
+        // (e.g., exactly 10ms, 20ms, 50ms intervals suggest setInterval/setTimeout usage)
+        let suspiciousIntervals = 0;
+        const commonBotIntervals = [10, 16, 20, 33, 50, 100];
+        
+        for (const interval of intervals) {
+            for (const botInterval of commonBotIntervals) {
+                // Check if the interval is a near-exact multiple of a common bot interval
+                // Allowing 1ms tolerance
+                const remainder = interval % botInterval;
+                if (remainder <= 1 || remainder >= botInterval - 1) {
+                    suspiciousIntervals++;
+                    break;
+                }
+            }
+        }
+        
+        // If more than 70% of intervals match bot patterns, flag as suspicious
+        return (suspiciousIntervals / intervals.length) > 0.7;
+    }
+    
+    /**
+     * Detect Bezier curve patterns in mouse movements
+     * Bots using Bezier curves for movement produce unnaturally smooth paths
+     * that lack the micro-tremor and correction of real human movement
+     * @param {Array} movements - Array of mouse movements
+     * @returns {boolean} True if Bezier pattern detected
+     */
+    _detectBezierPattern(movements) {
+        if (movements.length < 10) return false;
+        
+        // Calculate second derivatives (acceleration of direction)
+        // Real human movement has high-frequency noise/tremor
+        // Bezier curves are mathematically smooth with low-frequency changes
+        const curvatures = [];
+        for (let i = 2; i < movements.length; i++) {
+            const p0 = movements[i - 2];
+            const p1 = movements[i - 1];
+            const p2 = movements[i];
+            
+            // First derivatives (velocity)
+            const v1x = p1.x - p0.x;
+            const v1y = p1.y - p0.y;
+            const v2x = p2.x - p1.x;
+            const v2y = p2.y - p1.y;
+            
+            // Second derivatives (acceleration)
+            const ax = v2x - v1x;
+            const ay = v2y - v1y;
+            
+            // Curvature approximation
+            const curvature = Math.sqrt(ax * ax + ay * ay);
+            curvatures.push(curvature);
+        }
+        
+        if (curvatures.length < 5) return false;
+        
+        // Bezier curves have very consistent curvature changes
+        // Human movement has erratic curvature with micro-corrections
+        const curvatureVariance = this._calculateVariance(curvatures);
+        const meanCurvature = curvatures.reduce((a, b) => a + b, 0) / curvatures.length;
+        
+        // Coefficient of variation (normalized variance)
+        const cv = meanCurvature > 0 ? Math.sqrt(curvatureVariance) / meanCurvature : 0;
+        
+        // Low CV suggests smooth Bezier-like movement
+        // Human movement typically has CV > 1.0 due to tremor
+        return cv < 0.5;
     }
     
     _calculateOverallScore(analysis) {
