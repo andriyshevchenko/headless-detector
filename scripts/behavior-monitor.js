@@ -252,7 +252,7 @@ class HeadlessBehaviorMonitor {
             touch: this._analyzeTouch(),
             events: this._analyzeEvents(),
             sensors: this._analyzeSensors(),
-            webglTiming: this.data.webglTiming,
+            webglTiming: this._analyzeWebGLTiming(),
             
             overallScore: 0,
             confidence: 0,
@@ -354,7 +354,14 @@ class HeadlessBehaviorMonitor {
             x: event.clientX,
             y: event.clientY,
             timestamp: now,
-            isTrusted: event.isTrusted
+            isTrusted: event.isTrusted,
+            // Pointer device fingerprint data
+            pressure: event.pressure !== undefined ? event.pressure : null,
+            pointerType: event.pointerType !== undefined ? event.pointerType : 'mouse',
+            width: event.width !== undefined ? event.width : null,
+            height: event.height !== undefined ? event.height : null,
+            tiltX: event.tiltX !== undefined ? event.tiltX : null,
+            tiltY: event.tiltY !== undefined ? event.tiltY : null
         };
         
         this.data.mouse.push(data);
@@ -774,6 +781,21 @@ class HeadlessBehaviorMonitor {
         const hasBezierPattern = this._detectBezierPattern(movements);
         if (hasBezierPattern) suspiciousScore += 0.2;
         
+        // Check for lack of pointer pressure variation
+        // Real humans have varying pressure when moving the mouse/touchpad
+        const pressureAnalysis = this._analyzePointerPressure(movements);
+        if (pressureAnalysis.suspicious) suspiciousScore += 0.15;
+        
+        // Analyze event timestamp entropy
+        // Bots generate events with low entropy (predictable) timing
+        const entropyAnalysis = this._analyzeTimestampEntropy(movements);
+        if (entropyAnalysis.suspicious) suspiciousScore += 0.15;
+        
+        // Check for pointer device fingerprint mismatches
+        // Bots may have inconsistent or missing pointer event properties
+        const fingerprintAnalysis = this._analyzePointerFingerprint(movements);
+        if (fingerprintAnalysis.suspicious) suspiciousScore += 0.15;
+        
         const confidence = Math.min(movements.length / this.options.minSamples.mouse, 1);
         
         return {
@@ -1142,14 +1164,180 @@ class HeadlessBehaviorMonitor {
         return cv < 0.5;
     }
     
+    /**
+     * Analyze pointer pressure variation
+     * Real humans have varying pressure when moving the mouse/touchpad
+     * Bots typically have null, 0, or constant pressure values
+     * @param {Array} movements - Array of mouse movements
+     * @returns {Object} Analysis result with suspicious flag
+     */
+    _analyzePointerPressure(movements) {
+        const pressures = movements
+            .filter(m => m.pressure !== null && m.pressure !== undefined)
+            .map(m => m.pressure);
+        
+        if (pressures.length < 5) {
+            // No pressure data available - common for bots using basic mouse events
+            // If we have many movements but no pressure, that's suspicious
+            return { suspicious: movements.length > 20 };
+        }
+        
+        const variance = this._calculateVariance(pressures);
+        const uniquePressures = new Set(pressures);
+        
+        // Suspicious if:
+        // - All pressure values are the same (variance near 0)
+        // - Very few unique pressure values relative to sample count
+        const uniqueRatio = uniquePressures.size / pressures.length;
+        
+        return {
+            suspicious: variance < 0.0001 || uniqueRatio < 0.1,
+            variance,
+            uniqueRatio
+        };
+    }
+    
+    /**
+     * Analyze event timestamp entropy
+     * Bots generate events with low entropy (predictable) timing patterns
+     * Humans have high entropy (unpredictable) timing
+     * @param {Array} events - Array of events with timestamp property
+     * @returns {Object} Analysis result with suspicious flag
+     */
+    _analyzeTimestampEntropy(events) {
+        if (events.length < 10) {
+            return { suspicious: false, entropy: 0 };
+        }
+        
+        // Calculate intervals
+        const intervals = [];
+        for (let i = 1; i < events.length; i++) {
+            intervals.push(events[i].timestamp - events[i - 1].timestamp);
+        }
+        
+        // Bucket intervals into bins (0-10ms, 10-20ms, 20-30ms, etc.)
+        const buckets = {};
+        const bucketSize = 10;
+        
+        for (const interval of intervals) {
+            const bucket = Math.floor(interval / bucketSize) * bucketSize;
+            buckets[bucket] = (buckets[bucket] || 0) + 1;
+        }
+        
+        // Calculate Shannon entropy
+        let entropy = 0;
+        const total = intervals.length;
+        
+        for (const count of Object.values(buckets)) {
+            if (count > 0) {
+                const p = count / total;
+                entropy -= p * Math.log2(p);
+            }
+        }
+        
+        // Normalize entropy (max entropy for n buckets is log2(n))
+        const maxEntropy = Math.log2(Object.keys(buckets).length || 1);
+        const normalizedEntropy = maxEntropy > 0 ? entropy / maxEntropy : 0;
+        
+        // Low entropy (< 0.5) suggests predictable, bot-like timing
+        return {
+            suspicious: normalizedEntropy < 0.5,
+            entropy: normalizedEntropy
+        };
+    }
+    
+    /**
+     * Analyze pointer device fingerprint for mismatches
+     * Bots may have inconsistent or missing pointer event properties
+     * Real pointer devices have consistent characteristics
+     * @param {Array} movements - Array of mouse movements with pointer properties
+     * @returns {Object} Analysis result with suspicious flag
+     */
+    _analyzePointerFingerprint(movements) {
+        if (movements.length < 5) {
+            return { suspicious: false };
+        }
+        
+        // Check for consistent pointer type
+        const pointerTypes = movements.map(m => m.pointerType).filter(p => p != null);
+        const uniquePointerTypes = new Set(pointerTypes);
+        
+        // Check for presence of pointer properties
+        const hasWidth = movements.some(m => m.width !== null && m.width !== undefined);
+        const hasHeight = movements.some(m => m.height !== null && m.height !== undefined);
+        const hasTilt = movements.some(m => m.tiltX !== null || m.tiltY !== null);
+        const hasPressure = movements.some(m => m.pressure !== null && m.pressure !== undefined);
+        
+        // Suspicious indicators:
+        // 1. Inconsistent pointer types (switching between mouse/pen/touch unexpectedly)
+        // 2. Missing all advanced pointer properties (width, height, tilt, pressure)
+        //    when events claim to be from a pointer device
+        
+        const hasAdvancedProperties = hasWidth || hasHeight || hasTilt || hasPressure;
+        
+        // If we have a modern browser but no advanced pointer properties, likely automation
+        const missingExpectedProperties = movements.length > 20 && !hasAdvancedProperties;
+        
+        // Switching pointer types mid-session is suspicious
+        const inconsistentPointerType = uniquePointerTypes.size > 1;
+        
+        return {
+            suspicious: missingExpectedProperties || inconsistentPointerType,
+            missingExpectedProperties,
+            inconsistentPointerType,
+            hasAdvancedProperties
+        };
+    }
+    
+    /**
+     * Analyze WebGL rendering timing for bot detection
+     * Bots often have unnaturally fast or slow WebGL operations
+     * @returns {Object} Analysis result with score and confidence
+     */
+    _analyzeWebGLTiming() {
+        if (!this.data.webglTiming) {
+            return { available: false, score: 0, confidence: 0 };
+        }
+        
+        const timing = this.data.webglTiming;
+        let suspiciousScore = 0;
+        
+        // Suspicious indicators:
+        // 1. Extremely fast compilation (< 0.1ms) - suggests cached/mocked WebGL
+        // 2. Extremely slow compilation (> 100ms) - suggests software rendering/virtualization
+        // 3. Exact round-number timing (suggests synthetic timing)
+        
+        if (timing.compilationTime < 0.1) {
+            suspiciousScore += 0.5; // Suspiciously fast
+        } else if (timing.compilationTime > 100) {
+            suspiciousScore += 0.3; // Suspiciously slow
+        }
+        
+        // Check for round-number timing (e.g., exactly 1.000ms, 2.000ms)
+        const fractionalPart = timing.compilationTime % 1;
+        if (fractionalPart === 0 || (fractionalPart > 0.999 || fractionalPart < 0.001)) {
+            suspiciousScore += 0.2; // Too precise
+        }
+        
+        return {
+            available: true,
+            score: Math.min(suspiciousScore, 1),
+            confidence: 0.6, // Moderate confidence for WebGL timing
+            metrics: {
+                compilationTime: timing.compilationTime
+            }
+        };
+    }
+    
     _calculateOverallScore(analysis) {
         const checks = [
-            { result: analysis.mouse, weight: 0.25 },
-            { result: analysis.keyboard, weight: 0.25 },
-            { result: analysis.scroll, weight: 0.15 },
-            { result: analysis.touch, weight: 0.15 },
-            { result: analysis.events, weight: 0.15 },
-            { result: analysis.sensors, weight: 0.05 }
+            { result: analysis.mouse, weight: 0.22 },
+            { result: analysis.keyboard, weight: 0.22 },
+            { result: analysis.scroll, weight: 0.13 },
+            { result: analysis.touch, weight: 0.13 },
+            { result: analysis.events, weight: 0.13 },
+            { result: analysis.sensors, weight: 0.05 },
+            { result: analysis.webglTiming, weight: 0.12 }
         ];
         
         let totalScore = 0;
@@ -1158,7 +1346,7 @@ class HeadlessBehaviorMonitor {
         let availableChecks = 0;
         
         for (const check of checks) {
-            if (check.result.available && check.result.confidence > 0) {
+            if (check.result && check.result.available && check.result.confidence > 0) {
                 totalScore += check.result.score * check.result.confidence * check.weight;
                 totalWeight += check.result.confidence * check.weight;
                 totalConfidence += check.result.confidence;

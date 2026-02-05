@@ -815,7 +815,8 @@ describe('HeadlessBehaviorMonitor', () => {
             const results = monitor.getResults();
             
             expect(results.webglTiming).toBeDefined();
-            expect(results.webglTiming.compilationTime).toBe(5.2);
+            expect(results.webglTiming.available).toBe(true);
+            expect(results.webglTiming.metrics.compilationTime).toBe(5.2);
         });
 
         test('should handle missing WebGL gracefully', () => {

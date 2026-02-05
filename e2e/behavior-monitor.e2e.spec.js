@@ -93,20 +93,17 @@ test.describe('Behavior Monitor E2E Tests', () => {
         console.log(`Overall Bot Score: ${results.overallScore}`);
         console.log(`Confidence: ${results.confidence}`);
         
-        // Assert that the Behavior Monitor detects at least some bot patterns
-        // Even with advanced human-like simulation, the monitor should detect
-        // at least 0.2 score due to timing precision and event patterns
-        // Note: 0.2 is a reasonable threshold given the sophisticated simulation
-        expect(results.overallScore).toBeGreaterThanOrEqual(0.2);
+        // Assert that the Behavior Monitor detects bot patterns
+        // With enhanced detection (pointer pressure, timestamp entropy, fingerprint, WebGL),
+        // the monitor should reliably detect automation with score >= 0.3
+        expect(results.overallScore).toBeGreaterThanOrEqual(0.3);
         expect(results.overallScore).toBeLessThanOrEqual(1);
         
         // Log whether the monitor detected strong bot-like behavior
         if (results.overallScore >= 0.5) {
             console.log('✓ Behavior Monitor detected strong bot-like behavior patterns');
-        } else if (results.overallScore >= 0.3) {
-            console.log('✓ Behavior Monitor detected moderate automation patterns (score >= 0.3)');
         } else {
-            console.log('✓ Behavior Monitor detected minimal automation patterns (score >= 0.2)');
+            console.log('✓ Behavior Monitor detected moderate automation patterns (score >= 0.3)');
         }
     });
     
@@ -145,20 +142,17 @@ test.describe('Behavior Monitor E2E Tests', () => {
         expect(results).not.toBeNull();
         console.log(`Quick test completed. Score: ${results.overallScore}`);
         
-        // Assert that the Behavior Monitor detects at least some bot patterns
-        // Even with advanced human-like simulation, the monitor should detect
-        // at least 0.2 score due to timing precision and event patterns
-        // Note: 0.2 is a reasonable threshold given the sophisticated simulation
-        expect(results.overallScore).toBeGreaterThanOrEqual(0.2);
+        // Assert that the Behavior Monitor detects bot patterns
+        // With enhanced detection (pointer pressure, timestamp entropy, fingerprint, WebGL),
+        // the monitor should reliably detect automation with score >= 0.3
+        expect(results.overallScore).toBeGreaterThanOrEqual(0.3);
         expect(results.overallScore).toBeLessThanOrEqual(1);
         
         // Log whether the monitor detected strong bot-like behavior
         if (results.overallScore >= 0.5) {
             console.log('✓ Behavior Monitor detected strong bot-like behavior patterns');
-        } else if (results.overallScore >= 0.3) {
-            console.log('✓ Behavior Monitor detected moderate automation patterns (score >= 0.3)');
         } else {
-            console.log('✓ Behavior Monitor detected minimal automation patterns (score >= 0.2)');
+            console.log('✓ Behavior Monitor detected moderate automation patterns (score >= 0.3)');
         }
     });
 });
