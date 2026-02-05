@@ -16,7 +16,8 @@ const BehaviorMode = {
     IMPULSIVE: 'impulsive',
     HUMAN_IMPULSIVE: 'human-impulsive',
     ROBOT_IMPULSIVE: 'robot-impulsive',
-    ALTERNATING: 'alternating' // Alternates between fast/jerky and smooth/slow with long pauses
+    ALTERNATING: 'alternating', // Alternates between fast/jerky and smooth/slow with long pauses
+    ADVANCED: 'advanced' // Most advanced: alternating phases + XY jitter on Bezier curves
 };
 
 /**
@@ -556,6 +557,295 @@ class AlternatingBehavior {
 }
 
 /**
+ * Advanced behavior - the most sophisticated human simulation
+ * Combines alternating phases with XY jitter on all Bezier mouse movements
+ * This adds micro-tremor to simulate human hand instability
+ */
+class AdvancedBehavior {
+    /**
+     * Add XY jitter to a position (simulates hand tremor)
+     * @param {number} x - Base X position
+     * @param {number} y - Base Y position
+     * @param {number} [maxJitter=5] - Maximum jitter in pixels
+     * @returns {{x: number, y: number}} - Position with jitter applied
+     */
+    static applyJitter(x, y, maxJitter = 5) {
+        const jitterX = randomBetween(-maxJitter, maxJitter);
+        const jitterY = randomBetween(-maxJitter, maxJitter);
+        return {
+            x: Math.max(0, x + jitterX),
+            y: Math.max(0, y + jitterY)
+        };
+    }
+
+    /**
+     * Move mouse with Bezier curve AND XY jitter applied to each step
+     * @param {import('@playwright/test').Page} page
+     * @param {number} targetX - Target X position
+     * @param {number} targetY - Target Y position
+     * @param {number} [steps=40] - Number of movement steps
+     */
+    static async moveMouseWithJitter(page, targetX, targetY, steps = 40) {
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+        
+        // Get current position (from HumanBehavior's tracking)
+        const startX = HumanBehavior.getCurrentX ? HumanBehavior.getCurrentX() : viewport.width / 2;
+        const startY = HumanBehavior.getCurrentY ? HumanBehavior.getCurrentY() : viewport.height / 2;
+
+        // Generate Bezier control points with jitter
+        const cp1 = AdvancedBehavior.applyJitter(
+            startX + (targetX - startX) * 0.3 + randomBetween(-50, 50),
+            startY + (targetY - startY) * 0.3 + randomBetween(-50, 50),
+            3
+        );
+        const cp2 = AdvancedBehavior.applyJitter(
+            startX + (targetX - startX) * 0.7 + randomBetween(-50, 50),
+            startY + (targetY - startY) * 0.7 + randomBetween(-50, 50),
+            3
+        );
+
+        // Move along Bezier curve with jitter at each step
+        for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            
+            // Cubic Bezier calculation
+            const baseX = Math.pow(1 - t, 3) * startX +
+                         3 * Math.pow(1 - t, 2) * t * cp1.x +
+                         3 * (1 - t) * Math.pow(t, 2) * cp2.x +
+                         Math.pow(t, 3) * targetX;
+            const baseY = Math.pow(1 - t, 3) * startY +
+                         3 * Math.pow(1 - t, 2) * t * cp1.y +
+                         3 * (1 - t) * Math.pow(t, 2) * cp2.y +
+                         Math.pow(t, 3) * targetY;
+
+            // Apply jitter that varies through the movement
+            // Less jitter at start and end, more in the middle
+            const jitterIntensity = Math.sin(t * Math.PI) * randomBetween(1, 5);
+            const { x: jitteredX, y: jitteredY } = AdvancedBehavior.applyJitter(baseX, baseY, jitterIntensity);
+
+            // Clamp to viewport
+            const clampedX = Math.max(0, Math.min(viewport.width - 1, jitteredX));
+            const clampedY = Math.max(0, Math.min(viewport.height - 1, jitteredY));
+
+            await page.mouse.move(clampedX, clampedY);
+
+            // Variable timing between steps with jitter
+            await sleep(randomBetween(8, 25));
+        }
+    }
+
+    /**
+     * Perform burst phase with XY jitter
+     * @param {import('@playwright/test').Page} page
+     * @param {number} durationSeconds
+     */
+    static async performBurstPhase(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+
+        while (Date.now() < endTime) {
+            const actionType = randomInt(0, 2);
+
+            try {
+                switch (actionType) {
+                    case 0: // Rapid mouse movements with jitter
+                        for (let i = 0; i < randomInt(3, 8); i++) {
+                            const maxX = Math.max(50, viewport.width - 50);
+                            const maxY = Math.max(50, viewport.height - 50);
+                            const x = randomInt(50, maxX);
+                            const y = randomInt(50, maxY);
+                            await AdvancedBehavior.moveMouseWithJitter(page, x, y, randomInt(15, 25));
+                            await sleep(randomBetween(50, 150));
+                        }
+                        break;
+
+                    case 1: // Quick scrolls with timing jitter
+                        for (let i = 0; i < randomInt(3, 6); i++) {
+                            const direction = Math.random() > 0.5 ? 1 : -1;
+                            const amount = randomInt(150, 350) * direction;
+                            await page.evaluate((a) => window.scrollBy(0, a), amount);
+                            await sleep(randomBetween(40, 120));
+                        }
+                        break;
+
+                    case 2: // Fast key presses with timing jitter
+                        const keys = ['ArrowUp', 'ArrowDown', 'Tab', 'Space'];
+                        for (let i = 0; i < randomInt(2, 4); i++) {
+                            const key = keys[randomInt(0, keys.length - 1)];
+                            await page.keyboard.press(key);
+                            await sleep(randomBetween(60, 180));
+                        }
+                        break;
+                }
+
+                await sleep(randomBetween(100, 400));
+
+            } catch (error) {
+                // Ignore errors during burst phase
+            }
+        }
+    }
+
+    /**
+     * Perform smooth phase with XY jitter on Bezier movements
+     * @param {import('@playwright/test').Page} page
+     * @param {number} durationSeconds
+     */
+    static async performSmoothPhase(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+
+        while (Date.now() < endTime) {
+            const actionType = randomInt(0, 3);
+
+            try {
+                switch (actionType) {
+                    case 0: // Slow Bezier mouse movement with XY jitter
+                        const maxX = Math.max(0, viewport.width - 100);
+                        const minX = Math.min(100, maxX);
+                        const maxY = Math.max(0, viewport.height - 100);
+                        const minY = Math.min(100, maxY);
+                        const x = randomInt(minX, maxX);
+                        const y = randomInt(minY, maxY);
+                        await AdvancedBehavior.moveMouseWithJitter(page, x, y, randomInt(50, 80));
+                        await sleep(randomBetween(300, 700));
+                        break;
+
+                    case 1: // Gentle scroll with timing jitter
+                        const direction = Math.random() > 0.4 ? 1 : -1;
+                        const totalAmount = randomInt(80, 180) * direction;
+                        const steps = randomInt(6, 12);
+                        for (let i = 0; i < steps; i++) {
+                            await page.evaluate((a) => window.scrollBy(0, a), totalAmount / steps);
+                            await sleep(randomBetween(80, 200));
+                        }
+                        break;
+
+                    case 2: // Reading pause with jitter
+                        await sleep(randomBetween(1000, 2500));
+                        break;
+
+                    case 3: // Slow key press
+                        await page.keyboard.press('ArrowDown');
+                        await sleep(randomBetween(500, 1000));
+                        break;
+                }
+
+                await sleep(randomBetween(600, 1800));
+
+            } catch (error) {
+                // Ignore errors during smooth phase
+            }
+        }
+    }
+
+    /**
+     * Perform silence phase - minimal activity with occasional tiny movements
+     * @param {import('@playwright/test').Page} page
+     * @param {number} durationSeconds
+     */
+    static async performSilencePhase(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+
+        while (Date.now() < endTime) {
+            // Mostly just wait, occasionally tiny mouse movement (like hand resting on mouse)
+            if (Math.random() < 0.1) {
+                // Very small movement (1-10 pixels)
+                const currentX = viewport.width / 2;
+                const currentY = viewport.height / 2;
+                const { x, y } = AdvancedBehavior.applyJitter(currentX, currentY, 10);
+                await page.mouse.move(x, y);
+            }
+            await sleep(randomBetween(500, 2000));
+        }
+    }
+
+    /**
+     * Perform advanced behavior - alternates between burst, smooth, and silence phases
+     * with XY jitter on all Bezier mouse movements
+     * @param {import('@playwright/test').Page} page
+     * @param {number} durationSeconds
+     */
+    static async performRandomActions(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+
+        let phaseCount = 0;
+        let lastLoggedMinute = 0;
+        const phases = ['burst', 'smooth', 'silence'];
+        let currentPhaseIndex = randomInt(0, 2);
+
+        while (Date.now() < endTime) {
+            const remainingTime = Math.max(0, (endTime - Date.now()) / 1000);
+            if (remainingTime <= 0) break;
+
+            // Phase duration varies by type
+            let phaseDuration;
+            const currentPhase = phases[currentPhaseIndex];
+            
+            switch (currentPhase) {
+                case 'burst':
+                    phaseDuration = Math.min(randomBetween(8, 15), remainingTime);
+                    break;
+                case 'smooth':
+                    phaseDuration = Math.min(randomBetween(10, 20), remainingTime);
+                    break;
+                case 'silence':
+                    phaseDuration = Math.min(randomBetween(10, 15), remainingTime);
+                    break;
+            }
+
+            try {
+                console.log(`Advanced Phase ${phaseCount + 1}: ${currentPhase.toUpperCase()} for ${phaseDuration.toFixed(1)}s`);
+
+                switch (currentPhase) {
+                    case 'burst':
+                        await AdvancedBehavior.performBurstPhase(page, phaseDuration);
+                        break;
+                    case 'smooth':
+                        await AdvancedBehavior.performSmoothPhase(page, phaseDuration);
+                        break;
+                    case 'silence':
+                        await AdvancedBehavior.performSilencePhase(page, phaseDuration);
+                        break;
+                }
+
+                phaseCount++;
+
+                // Transition pause with jitter
+                await sleep(randomBetween(300, 1500));
+
+                // Move to next phase (with some randomness)
+                if (Math.random() < 0.7) {
+                    // Usually go to next phase
+                    currentPhaseIndex = (currentPhaseIndex + 1) % phases.length;
+                } else {
+                    // Sometimes skip a phase or repeat
+                    currentPhaseIndex = randomInt(0, 2);
+                }
+
+            } catch (error) {
+                console.log(`Advanced phase ${phaseCount} failed:`, error.message || String(error));
+            }
+
+            // Log progress every minute
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const currentMinute = Math.floor(elapsed / 60);
+            if (currentMinute > lastLoggedMinute) {
+                lastLoggedMinute = currentMinute;
+                console.log(`Advanced progress: ${elapsed}s elapsed, ${phaseCount} phases completed`);
+            }
+        }
+
+        console.log(`Advanced actions completed: ${phaseCount} phases in ${durationSeconds}s`);
+    }
+}
+
+/**
  * Start a behavior monitor session
  * @param {import('@playwright/test').Page} page
  * @param {BehaviorMode} mode - Behavior mode for clicking
@@ -566,7 +856,8 @@ async function startSession(page, mode = BehaviorMode.HUMAN_LIKE) {
     const isHumanLike = mode === BehaviorMode.HUMAN_LIKE || 
                         mode === BehaviorMode.HUMAN_SMOOTH || 
                         mode === BehaviorMode.HUMAN_IMPULSIVE ||
-                        mode === BehaviorMode.ALTERNATING;
+                        mode === BehaviorMode.ALTERNATING ||
+                        mode === BehaviorMode.ADVANCED;
 
     if (isHumanLike) {
         await HumanBehavior.pageLoadDelay();
@@ -598,7 +889,8 @@ async function stopSessionAndGetResults(page, mode = BehaviorMode.HUMAN_LIKE) {
     const isHumanLike = mode === BehaviorMode.HUMAN_LIKE || 
                         mode === BehaviorMode.HUMAN_SMOOTH || 
                         mode === BehaviorMode.HUMAN_IMPULSIVE ||
-                        mode === BehaviorMode.ALTERNATING;
+                        mode === BehaviorMode.ALTERNATING ||
+                        mode === BehaviorMode.ADVANCED;
 
     // Small pause before stopping
     if (isHumanLike) {
@@ -673,6 +965,11 @@ async function performActions(page, durationSeconds, mode) {
             await AlternatingBehavior.performRandomActions(page, durationSeconds);
             break;
 
+        case BehaviorMode.ADVANCED:
+            // Most advanced: alternating phases + XY jitter on Bezier curves
+            await AdvancedBehavior.performRandomActions(page, durationSeconds);
+            break;
+
         default:
             throw new Error(`Unknown behavior mode: ${mode}`);
     }
@@ -744,7 +1041,8 @@ async function runBehaviorSession(page, durationSeconds, mode, options = {}) {
     const isHumanLike = mode === BehaviorMode.HUMAN_LIKE || 
                         mode === BehaviorMode.HUMAN_SMOOTH || 
                         mode === BehaviorMode.HUMAN_IMPULSIVE ||
-                        mode === BehaviorMode.ALTERNATING;
+                        mode === BehaviorMode.ALTERNATING ||
+                        mode === BehaviorMode.ADVANCED;
     if (isHumanLike) {
         resetMousePosition();
     }
@@ -777,6 +1075,7 @@ module.exports = {
     RobotBehavior,
     ImpulsiveBehavior,
     AlternatingBehavior,
+    AdvancedBehavior,
     startSession,
     stopSessionAndGetResults,
     performActions,

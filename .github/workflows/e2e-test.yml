@@ -36,6 +36,8 @@ jobs:
             grep: "5-minute smooth behavior with timing jitter"
           - name: alternating
             grep: "5-minute alternating burst/smooth"
+          - name: advanced
+            grep: "5-minute advanced behavior with XY jitter"
           - name: robot
             grep: "5-minute robot behavior"
           - name: human-impulsive

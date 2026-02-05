@@ -66,6 +66,23 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore);
     });
 
+    test('5-minute advanced behavior with XY jitter', async ({ page }) => {
+        // The most sophisticated human simulation:
+        // - Burst/Smooth/Silence phases
+        // - XY jitter on all Bezier mouse movements (simulates hand tremor)
+        // - Variable phase durations with timing jitter
+        // This should be the hardest for bot detection to catch
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.ADVANCED,
+            { minExpectedScore: 0.2 } // Expect low scores due to advanced simulation
+        );
+        
+        console.log('✓ Advanced behavior with XY jitter on Bezier movements');
+        logDetectionResult(results.overallScore);
+    });
+
     // ========================================
     // Robot behavior tests (no human-like)
     // ========================================
