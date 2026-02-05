@@ -15,7 +15,9 @@
  * IMPORTANT: After changing any value, run `npm test` to verify unit tests still pass.
  */
 
-module.exports = {
+// Use IIFE to support both browser and Node.js environments
+(function(global) {
+    const WEIGHTS = {
     /**
      * Per-channel weights in overall score calculation
      * These determine how much each analysis channel contributes to the final score.
@@ -279,7 +281,13 @@ module.exports = {
     }
 };
 
-// Export for browser (window global) and Node.js (module.exports)
-if (typeof window !== 'undefined') {
-    window.BehaviorMonitorWeights = module.exports;
-}
+    // Export for browser (window global)
+    if (typeof global.window !== 'undefined') {
+        global.window.BehaviorMonitorWeights = WEIGHTS;
+    }
+    
+    // Export for Node.js (module.exports)
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = WEIGHTS;
+    }
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));
