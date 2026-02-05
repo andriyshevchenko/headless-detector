@@ -1,27 +1,43 @@
 name: E2E Tests
 
 on:
+  push:
+    branches:
+      - '**'
   pull_request:
     branches:
       - '**'
   workflow_dispatch:
-    inputs:
-      test_type:
-        description: 'Test type to run'
-        required: true
-        default: 'full'
-        type: choice
-        options:
-          - full
+
+# Run tests in parallel using matrix strategy
+# Each test runs in its own isolated job (~7 min each including setup)
+# Total CI time: ~8 min instead of ~40 min sequential
 
 jobs:
   e2e-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
-    # All tests run for 5 minutes each to provide real-world validation
-    # Total: 7 tests × 5 min = 35 min + buffer
+    timeout-minutes: 12  # 5 min test + 7 min buffer for setup/teardown
     permissions:
       contents: read
+    
+    strategy:
+      fail-fast: false  # Continue other tests if one fails
+      matrix:
+        test:
+          - name: human-like
+            grep: "5-minute human-like behavior session"
+          - name: smooth-jitter
+            grep: "5-minute smooth behavior with timing jitter"
+          - name: alternating
+            grep: "5-minute alternating burst/smooth"
+          - name: robot
+            grep: "5-minute robot behavior"
+          - name: human-impulsive
+            grep: "5-minute human-like \\+ impulsive"
+          - name: robot-impulsive
+            grep: "5-minute robot \\+ impulsive"
+    
+    name: E2E - ${{ matrix.test.name }}
     
     steps:
       - name: Checkout code
@@ -38,14 +54,14 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       
-      - name: Run all E2E tests (5-minute sessions)
-        run: npm run test:e2e
+      - name: Run ${{ matrix.test.name }} test
+        run: npx playwright test --grep "${{ matrix.test.grep }}"
       
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.test.name }}
           path: playwright-report/
           retention-days: 7
       
@@ -53,6 +69,22 @@ jobs:
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-traces
+          name: playwright-traces-${{ matrix.test.name }}
           path: test-results/
           retention-days: 7
+
+  # Summary job that waits for all tests and reports overall status
+  e2e-summary:
+    needs: e2e-test
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check test results
+        run: |
+          if [ "${{ needs.e2e-test.result }}" == "success" ]; then
+            echo "✅ All E2E tests passed!"
+            exit 0
+          else
+            echo "❌ Some E2E tests failed"
+            exit 1
+          fi
