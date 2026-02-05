@@ -1029,17 +1029,17 @@ class HeadlessBehaviorMonitor {
         // Check for lack of pointer pressure variation
         const pressureAnalysis = this._analyzePointerPressure(movements);
         // SAFEGUARD 6: Pressure requires another signal
-        if (pressureAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern)) suspiciousScore += 0.15;
+        if (pressureAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern)) suspiciousScore += weights.pressureSuspicious;
         
         // Analyze event timestamp entropy
         const entropyAnalysis = this._analyzeTimestampEntropy(movements);
         // SAFEGUARD 6: Entropy requires another signal
-        if (entropyAnalysis.suspicious && hasSufficientSamples) suspiciousScore += 0.15;
+        if (entropyAnalysis.suspicious && hasSufficientSamples) suspiciousScore += weights.lowEntropy;
         
         // Check for pointer device fingerprint mismatches
         const fingerprintAnalysis = this._analyzePointerFingerprint(movements);
         // SAFEGUARD 6: Fingerprint requires another signal
-        if (fingerprintAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern)) suspiciousScore += 0.15;
+        if (fingerprintAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern)) suspiciousScore += weights.fingerprintSuspicious;
         
         const confidence = Math.min(movements.length / this.options.minSamples.mouse, 1);
         
