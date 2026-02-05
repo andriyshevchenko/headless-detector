@@ -6,12 +6,17 @@
  */
 
 const { test, expect } = require('@playwright/test');
-const { HumanBehavior } = require('./human-behavior');
+const { HumanBehavior, resetMousePosition } = require('./human-behavior');
 
 // Session duration in seconds (5 minutes)
 const SESSION_DURATION_SECONDS = 5 * 60;
 
 test.describe('Behavior Monitor E2E Tests', () => {
+    
+    // Reset mouse position tracking before each test to ensure clean state
+    test.beforeEach(() => {
+        resetMousePosition();
+    });
     
     test('5-minute human-like behavior session', async ({ page }) => {
         // Navigate to the behavior monitor page

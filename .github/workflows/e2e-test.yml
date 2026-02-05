@@ -22,7 +22,7 @@ on:
 jobs:
   e2e-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     # Note: Quick E2E tests run by default on every push/PR for CI efficiency.
     # Use the "workflow_dispatch" trigger with test_type=full to run the full
     # E2E suite periodically and before releases to ensure comprehensive coverage.

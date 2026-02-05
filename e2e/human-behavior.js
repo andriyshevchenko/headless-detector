@@ -33,8 +33,18 @@ function randomInt(min, max) {
 }
 
 // Track the current mouse position for more realistic movements
+// These are reset at the start of each test via resetMousePosition()
 let currentMouseX = null;
 let currentMouseY = null;
+
+/**
+ * Reset mouse position tracking for a new test session
+ * Call this at the start of each test to ensure clean state
+ */
+function resetMousePosition() {
+    currentMouseX = null;
+    currentMouseY = null;
+}
 
 class HumanBehavior {
     /**
@@ -251,9 +261,13 @@ class HumanBehavior {
         const viewportSize = HumanBehavior.getViewportSize(page);
 
         for (let i = 0; i < numMovements; i++) {
-            // Random point within window
-            const x = randomInt(100, viewportSize.width - 100);
-            const y = randomInt(100, viewportSize.height - 100);
+            // Random point within window, with safe bounds for small viewports
+            const maxX = Math.max(0, viewportSize.width - 100);
+            const minX = Math.min(100, maxX);
+            const maxY = Math.max(0, viewportSize.height - 100);
+            const minY = Math.min(100, maxY);
+            const x = randomInt(minX, maxX);
+            const y = randomInt(minY, maxY);
 
             // Smoothly move mouse
             await HumanBehavior.moveMouseHumanLike(page, x, y, 30);
@@ -332,20 +346,25 @@ class HumanBehavior {
                 await sleep(randomBetween(1000, 5000));
                 
             } catch (error) {
+                // Safely get error message, handling cases where error.message might not exist
+                const errorMessage = (error && typeof error.message === 'string')
+                    ? error.message
+                    : String(error);
+                
                 // Only ignore expected errors from scroll/navigation actions
                 // These can fail at page boundaries or when elements are not interactable
                 const isExpectedError = 
                     action === 'scroll' ||
-                    error.message.includes('outside of the viewport') ||
-                    error.message.includes('not visible') ||
-                    error.message.includes('detached');
+                    errorMessage.includes('outside of the viewport') ||
+                    errorMessage.includes('not visible') ||
+                    errorMessage.includes('detached');
                 
                 if (isExpectedError) {
-                    console.log(`Action ${action} failed (expected):`, error.message);
+                    console.log(`Action ${action} failed (expected):`, errorMessage);
                 } else {
                     // Log unexpected errors but don't fail the test
                     // as some actions may fail due to page state
-                    console.warn(`Action ${action} failed (unexpected):`, error.message);
+                    console.warn(`Action ${action} failed (unexpected):`, errorMessage);
                 }
             }
             
@@ -362,4 +381,4 @@ class HumanBehavior {
     }
 }
 
-module.exports = { HumanBehavior, sleep, randomBetween, randomInt };
+module.exports = { HumanBehavior, sleep, randomBetween, randomInt, resetMousePosition };

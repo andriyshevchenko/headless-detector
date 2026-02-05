@@ -8,8 +8,8 @@ const { defineConfig, devices } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: './e2e',
   
-  /* Run tests in parallel - but for the 5-minute test, we only have one */
-  fullyParallel: true,
+  /* Run tests sequentially due to single-worker behavior monitor test */
+  fullyParallel: false,
   
   /* Fail the build on CI if you accidentally left test.only in the source code */
   forbidOnly: !!process.env.CI,
