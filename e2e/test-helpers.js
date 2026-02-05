@@ -94,8 +94,8 @@ class RobotBehavior {
                         await RobotBehavior.scroll(page, -200);
                         break;
 
-                    case 3: // Key press - instant
-                        await page.keyboard.press('Tab');
+                    case 3: // Key press - instant (arrow keys only, avoid Tab/Space)
+                        await page.keyboard.press('ArrowDown');
                         break;
                 }
 
@@ -232,8 +232,8 @@ class SmoothBehavior {
                     }
 
                     case 'key': {
-                        // Occasional key press
-                        const keys = ['ArrowDown', 'ArrowUp', 'Tab'];
+                        // Occasional key press (arrow keys only, avoid Tab/Space)
+                        const keys = ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'];
                         const key = keys[randomInt(0, keys.length - 1)];
                         await page.keyboard.press(key);
                         // Pause after key press
@@ -321,7 +321,8 @@ class ImpulsiveBehavior {
      * @param {number} count
      */
     static async rapidKeyPresses(page, count = 15) {
-        const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Space'];
+        // Arrow keys only - avoid Tab/Space which can trigger focused buttons
+        const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
         for (let i = 0; i < count; i++) {
             const key = keys[randomInt(0, keys.length - 1)];
             await page.keyboard.press(key);
@@ -419,8 +420,8 @@ class AlternatingBehavior {
                         }
                         break;
 
-                    case 2: // Fast key presses
-                        const keys = ['ArrowUp', 'ArrowDown', 'Tab', 'Space'];
+                    case 2: // Fast key presses (arrow keys only, avoid Tab/Space)
+                        const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
                         for (let i = 0; i < randomInt(2, 5); i++) {
                             const key = keys[randomInt(0, keys.length - 1)];
                             await page.keyboard.press(key);
@@ -670,7 +671,9 @@ class AdvancedBehavior {
                         break;
 
                     case 2: // Fast key presses with timing jitter
-                        const keys = ['ArrowUp', 'ArrowDown', 'Tab', 'Space'];
+                        // Note: Avoid 'Space' as it can trigger focused buttons (like Stop)
+                        // Avoid 'Tab' as it can navigate to interactive elements
+                        const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
                         for (let i = 0; i < randomInt(2, 4); i++) {
                             const key = keys[randomInt(0, keys.length - 1)];
                             await page.keyboard.press(key);

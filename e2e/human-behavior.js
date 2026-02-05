@@ -332,8 +332,8 @@ class HumanBehavior {
                         break;
                     
                     case 'keypress':
-                        // Press Tab or Arrow keys occasionally
-                        const keys = ['Tab', 'ArrowDown', 'ArrowUp', 'Space'];
+                        // Arrow keys only - avoid Tab/Space which can trigger focused buttons
+                        const keys = ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'];
                         const key = keys[randomInt(0, keys.length - 1)];
                         await HumanBehavior.pressKeyHumanLike(page, key);
                         break;
