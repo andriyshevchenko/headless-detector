@@ -89,10 +89,12 @@
     /**
      * Mouse scoring weights (must sum to <= 1.0 to avoid clamping)
      * 
-     * Calibration iteration 9:
+     * Calibration iteration 12:
+     * - Increased lowTimingVariance weight from 0.20 to 0.30 (key robot differentiator - robot: 8ms timing variance vs human: 500,000+ms)
+     * 
+     * Previous iteration 9 changes:
      * - Reduced bezierPattern weight from 0.20 to 0.05 (false positives on human-smooth)
      * - Reduced subMillisecondPattern weight from 0.25 to 0.10 (all Playwright tests trigger this)
-     * - Increased lowTimingVariance weight from 0.10 to 0.20 (differentiates robot from human)
      * - Reduced pressureSuspicious from 0.15 to 0.05 (causes false positives)
      * - Reduced fingerprintSuspicious from 0.15 to 0.05 (causes false positives)
      * - Increased highUntrustedRatio to 0.30 (strong bot indicator)
@@ -103,7 +105,7 @@
         highStraightLineRatio: 0.30,   // Increased from 0.25 - good discriminator
         highUntrustedRatio: 0.30,      // Increased from 0.25 - strong bot indicator
         highMouseEfficiency: 0.15,
-        lowTimingVariance: 0.20,       // Increased from 0.10 - key robot differentiator (robot triggers, human-smooth doesn't)
+        lowTimingVariance: 0.30,       // Increased from 0.20 - key robot differentiator (robot: 8ms timing variance vs human: 500,000+ms)
         subMillisecondPattern: 0.10,   // Reduced from 0.25 - all Playwright tests trigger this
         lowAccelVariance: 0.10,        // Reduced from 0.15
         bezierPattern: 0.05,           // Reduced from 0.20 - our human simulations use bezier curves

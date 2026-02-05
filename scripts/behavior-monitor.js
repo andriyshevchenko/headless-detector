@@ -985,7 +985,7 @@ class HeadlessBehaviorMonitor {
             highStraightLineRatio: 0.30,    // Matches calibration-weights.js
             highUntrustedRatio: 0.30,       // Matches calibration-weights.js
             highMouseEfficiency: 0.15,
-            lowTimingVariance: 0.20,        // Matches calibration-weights.js
+            lowTimingVariance: 0.30,        // Matches calibration-weights.js (iteration 12)
             subMillisecondPattern: 0.10,    // Matches calibration-weights.js
             lowAccelVariance: 0.10,         // Matches calibration-weights.js
             bezierPattern: 0.05,            // Matches calibration-weights.js
