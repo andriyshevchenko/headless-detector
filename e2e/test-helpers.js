@@ -30,7 +30,8 @@ const BehaviorMode = {
     // Advanced stealth bots - try to mimic humans but should still be detectable
     STEALTH_BOT: 'stealth-bot', // Adds noise/jitter to robot movements but lacks true randomness
     REPLAY_BOT: 'replay-bot', // Replays recorded patterns - too consistent across runs
-    TIMING_BOT: 'timing-bot' // Uses varied timing but mechanical movements
+    TIMING_BOT: 'timing-bot', // Uses varied timing but mechanical movements
+    ULTIMATE_BOT: 'ultimate-bot' // The most sophisticated evasion bot - combines all techniques
 };
 
 /**
@@ -1473,6 +1474,341 @@ class TimingBotBehavior {
 }
 
 /**
+ * Ultimate Bot - THE MOST SOPHISTICATED EVASION BOT POSSIBLE
+ * 
+ * This bot combines every advanced evasion technique:
+ * 1. Perlin noise for organic-looking randomness (not just sine waves)
+ * 2. Bezier curves with chaotic (not periodic) micro-tremor
+ * 3. Human-calibrated timing distributions from real eye-tracking studies
+ * 4. Fatigue simulation (behavior degrades over time)
+ * 5. Breathing rhythm modulation
+ * 6. Context-aware actions (scrolling after reading time)
+ * 7. Occasional "mistakes" and corrections
+ * 8. Variable attention spans
+ * 9. Micro-saccade simulation for mouse movements
+ * 10. Realistic key hold time distributions
+ * 
+ * This represents what a sophisticated adversary might deploy.
+ * If this bot scores <0.25, the detection system needs improvement.
+ */
+class UltimateBotBehavior {
+    // Perlin-like noise generator (simplified 1D)
+    static perlinNoise(x, octaves = 3) {
+        let result = 0;
+        let amplitude = 1;
+        let frequency = 1;
+        let maxValue = 0;
+        
+        for (let i = 0; i < octaves; i++) {
+            // Simple hash-based pseudo-random
+            const hash = (x * frequency * 12.9898 + 78.233) % 1;
+            const noise = Math.sin(hash * 43758.5453) % 1;
+            result += noise * amplitude;
+            maxValue += amplitude;
+            amplitude *= 0.5;
+            frequency *= 2;
+        }
+        
+        return result / maxValue;
+    }
+
+    // Box-Muller transform for true Gaussian distribution
+    static gaussianRandom(mean = 0, stdDev = 1) {
+        const u1 = Math.random();
+        const u2 = Math.random();
+        const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+        return z0 * stdDev + mean;
+    }
+
+    // Human reaction time distribution (ex-Gaussian)
+    static humanReactionTime() {
+        // Based on psychology research: mean ~250ms, with long tail
+        const gaussian = this.gaussianRandom(180, 40);
+        const exponential = -Math.log(Math.random()) * 70;
+        return Math.max(50, gaussian + exponential);
+    }
+
+    // Fatigue factor - humans get slower over time
+    static fatigueFactor(elapsedSeconds) {
+        // Gradual slowdown: 1.0 at start, up to 1.3 after 5 minutes
+        return 1.0 + Math.min(0.3, elapsedSeconds / 1000);
+    }
+
+    // Breathing rhythm modulation (affects timing variance)
+    static breathingModulation(timestamp) {
+        // ~12-20 breaths per minute = ~0.2-0.33 Hz
+        const breathCycle = 0.25; // Hz
+        return 1 + 0.1 * Math.sin(timestamp * breathCycle * 2 * Math.PI / 1000);
+    }
+
+    // Micro-saccade simulation - tiny jittery movements like real eyes/hands
+    static microSaccade() {
+        // Occasional small involuntary movements (1-3 pixels)
+        if (Math.random() < 0.15) {
+            return {
+                x: this.gaussianRandom(0, 1.5),
+                y: this.gaussianRandom(0, 1.5)
+            };
+        }
+        return { x: 0, y: 0 };
+    }
+
+    // Human-like Bezier movement with organic noise
+    static async moveMouseOrganic(page, targetX, targetY, startTime) {
+        let currentX = 100, currentY = 100;
+        try {
+            const pos = await page.evaluate(() => ({
+                x: window.__lastMouseX || 100,
+                y: window.__lastMouseY || 100
+            }));
+            currentX = pos.x;
+            currentY = pos.y;
+        } catch (e) { /* use defaults */ }
+
+        const distance = Math.sqrt(
+            Math.pow(targetX - currentX, 2) +
+            Math.pow(targetY - currentY, 2)
+        );
+
+        // Fitts's Law - movement time proportional to log(distance/target_size)
+        const baseDuration = 200 + distance * 0.8;
+        const fatigue = this.fatigueFactor((Date.now() - startTime) / 1000);
+        const duration = baseDuration * fatigue;
+        
+        const steps = Math.max(15, Math.floor(distance / 8));
+        
+        // Control points with organic offset (not sinusoidal!)
+        const offsetMagnitude = distance * 0.15;
+        const cp1x = currentX + (targetX - currentX) * 0.3 + 
+            this.perlinNoise(Date.now() * 0.001, 3) * offsetMagnitude;
+        const cp1y = currentY + (targetY - currentY) * 0.3 + 
+            this.perlinNoise(Date.now() * 0.001 + 100, 3) * offsetMagnitude;
+        const cp2x = currentX + (targetX - currentX) * 0.7 + 
+            this.perlinNoise(Date.now() * 0.001 + 200, 2) * offsetMagnitude * 0.5;
+        const cp2y = currentY + (targetY - currentY) * 0.7 + 
+            this.perlinNoise(Date.now() * 0.001 + 300, 2) * offsetMagnitude * 0.5;
+
+        let lastX = currentX, lastY = currentY;
+        
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            // Ease-out curve (humans decelerate at end)
+            const eased = 1 - Math.pow(1 - t, 2.5);
+            
+            const t2 = eased * eased;
+            const t3 = t2 * eased;
+            const mt = 1 - eased;
+            const mt2 = mt * mt;
+            const mt3 = mt2 * mt;
+
+            let x = mt3 * currentX + 3 * mt2 * eased * cp1x + 
+                    3 * mt * t2 * cp2x + t3 * targetX;
+            let y = mt3 * currentY + 3 * mt2 * eased * cp1y + 
+                    3 * mt * t2 * cp2y + t3 * targetY;
+
+            // Add micro-saccade
+            const saccade = this.microSaccade();
+            x += saccade.x;
+            y += saccade.y;
+
+            // Add Perlin noise (organic, not periodic)
+            const noiseScale = Math.sin(t * Math.PI) * 2; // More noise in middle
+            x += this.perlinNoise(i * 0.3, 2) * noiseScale;
+            y += this.perlinNoise(i * 0.3 + 50, 2) * noiseScale;
+
+            // Occasional overshoot and correction near target
+            if (i === steps - 2 && Math.random() < 0.1) {
+                // Overshoot
+                x = targetX + this.gaussianRandom(0, 3);
+                y = targetY + this.gaussianRandom(0, 3);
+            }
+
+            await page.mouse.move(Math.round(x), Math.round(y));
+
+            // Calculate velocity-dependent timing
+            const velocity = Math.sqrt(
+                Math.pow(x - lastX, 2) + Math.pow(y - lastY, 2)
+            );
+            lastX = x;
+            lastY = y;
+
+            // Human timing: faster in middle, slower at ends
+            let baseDelay = (duration / steps);
+            // Speed variation based on position in movement
+            const speedCurve = 1 + 0.5 * (1 - Math.sin(t * Math.PI));
+            baseDelay *= speedCurve;
+            
+            // Breathing modulation
+            baseDelay *= this.breathingModulation(Date.now());
+            
+            // Add Gaussian jitter
+            baseDelay += this.gaussianRandom(0, baseDelay * 0.15);
+
+            await sleep(Math.max(5, baseDelay));
+        }
+
+        await page.evaluate((x, y) => {
+            window.__lastMouseX = x;
+            window.__lastMouseY = y;
+        }, targetX, targetY);
+    }
+
+    // Human-like scroll with inertia simulation
+    static async scrollOrganic(page, startTime) {
+        const direction = Math.random() > 0.3 ? 1 : -1;
+        
+        // Variable "reading time" before scroll
+        if (Math.random() < 0.4) {
+            await sleep(this.humanReactionTime() * 3);
+        }
+        
+        // Scroll with inertia (fast start, gradual slowdown)
+        const totalAmount = (150 + Math.random() * 200) * direction;
+        const steps = 4 + Math.floor(Math.random() * 5);
+        
+        for (let i = 0; i < steps; i++) {
+            // Inertia: more scroll at start, less at end
+            const progress = i / steps;
+            const inertia = 1 - progress * 0.7;
+            const stepAmount = (totalAmount / steps) * inertia;
+            
+            await page.evaluate((a) => window.scrollBy(0, a), stepAmount);
+            
+            // Variable timing with fatigue
+            const fatigue = this.fatigueFactor((Date.now() - startTime) / 1000);
+            const delay = this.humanReactionTime() * 0.3 * fatigue;
+            await sleep(delay);
+        }
+    }
+
+    // Human-like key press with realistic hold times
+    static async pressKeyOrganic(page, startTime) {
+        const keys = ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'];
+        const key = keys[Math.floor(Math.random() * keys.length)];
+        
+        // Human key hold time: mean ~100ms, with variance
+        const holdTime = Math.max(40, this.gaussianRandom(95, 25));
+        
+        await page.keyboard.down(key);
+        await sleep(holdTime);
+        await page.keyboard.up(key);
+        
+        // Post-keypress pause (cognitive processing)
+        const fatigue = this.fatigueFactor((Date.now() - startTime) / 1000);
+        await sleep(this.humanReactionTime() * fatigue);
+    }
+
+    static async performRandomActions(page, durationSeconds) {
+        const startTime = Date.now();
+        const endTime = startTime + durationSeconds * 1000;
+        const viewport = page.viewportSize() || { width: 1920, height: 1080 };
+
+        let actionCount = 0;
+        let lastLoggedMinute = 0;
+        let lastActionTime = startTime;
+        
+        // Attention span tracking (humans lose focus periodically)
+        let attentionLevel = 1.0;
+        let lastAttentionUpdate = startTime;
+
+        while (Date.now() < endTime) {
+            const now = Date.now();
+            
+            // Update attention level (decays over time, occasionally refreshes)
+            if (now - lastAttentionUpdate > 30000) {
+                if (Math.random() < 0.2) {
+                    attentionLevel = 0.8 + Math.random() * 0.2; // Attention refresh
+                } else {
+                    attentionLevel = Math.max(0.5, attentionLevel - 0.1);
+                }
+                lastAttentionUpdate = now;
+            }
+
+            // Human-like action distribution (changes based on attention)
+            const roll = Math.random();
+            let action;
+            if (attentionLevel > 0.7) {
+                // High attention: more active
+                if (roll < 0.45) action = 'mouse';
+                else if (roll < 0.75) action = 'scroll';
+                else if (roll < 0.90) action = 'wait';
+                else action = 'key';
+            } else {
+                // Low attention: more passive
+                if (roll < 0.25) action = 'mouse';
+                else if (roll < 0.50) action = 'scroll';
+                else if (roll < 0.80) action = 'wait';
+                else action = 'key';
+            }
+
+            try {
+                switch (action) {
+                    case 'mouse': {
+                        // Target selection with realistic distribution
+                        // Humans tend toward center and edges (not uniform)
+                        let targetX, targetY;
+                        if (Math.random() < 0.6) {
+                            // Toward center
+                            targetX = viewport.width / 2 + this.gaussianRandom(0, viewport.width * 0.2);
+                            targetY = viewport.height / 2 + this.gaussianRandom(0, viewport.height * 0.2);
+                        } else {
+                            // Random position
+                            targetX = randomInt(100, viewport.width - 100);
+                            targetY = randomInt(100, viewport.height - 100);
+                        }
+                        
+                        // Clamp to valid range
+                        targetX = Math.max(50, Math.min(viewport.width - 50, targetX));
+                        targetY = Math.max(50, Math.min(viewport.height - 50, targetY));
+                        
+                        await this.moveMouseOrganic(page, targetX, targetY, startTime);
+                        break;
+                    }
+                    case 'scroll': {
+                        await this.scrollOrganic(page, startTime);
+                        break;
+                    }
+                    case 'wait': {
+                        // Variable "thinking" pause based on attention
+                        const baseWait = 500 + Math.random() * 2000;
+                        const attentionWait = baseWait / attentionLevel;
+                        await sleep(attentionWait);
+                        break;
+                    }
+                    case 'key': {
+                        await this.pressKeyOrganic(page, startTime);
+                        break;
+                    }
+                }
+
+                actionCount++;
+                lastActionTime = Date.now();
+
+                // Inter-action delay with human-like variance
+                const fatigue = this.fatigueFactor((Date.now() - startTime) / 1000);
+                const interActionDelay = this.humanReactionTime() * fatigue * 0.5;
+                await sleep(interActionDelay);
+
+            } catch (error) { /* ignore */ }
+
+            // Occasional long pause (distraction simulation)
+            if (Math.random() < 0.02) {
+                await sleep(2000 + Math.random() * 3000);
+            }
+
+            // Log progress
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const currentMinute = Math.floor(elapsed / 60);
+            if (currentMinute > lastLoggedMinute) {
+                lastLoggedMinute = currentMinute;
+                console.log(`Ultimate bot progress: ${elapsed}s, ${actionCount} actions, attention: ${attentionLevel.toFixed(2)}`);
+            }
+        }
+        console.log(`Ultimate bot completed: ${actionCount} actions`);
+    }
+}
+
+/**
  * Start a behavior monitor session
  * @param {import('@playwright/test').Page} page
  * @param {BehaviorMode} mode - Behavior mode for clicking
@@ -1665,6 +2001,10 @@ async function performActions(page, durationSeconds, mode) {
 
         case BehaviorMode.TIMING_BOT:
             await TimingBotBehavior.performRandomActions(page, durationSeconds);
+            break;
+
+        case BehaviorMode.ULTIMATE_BOT:
+            await UltimateBotBehavior.performRandomActions(page, durationSeconds);
             break;
 
         default:

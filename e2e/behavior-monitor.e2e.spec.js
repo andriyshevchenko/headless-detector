@@ -286,6 +286,23 @@ test.describe('Behavior Monitor E2E Tests', () => {
         console.log('✓ Timing-bot behavior test');
         logDetectionResult(results.overallScore);
     });
+
+    test('5-minute ultimate-bot behavior', async ({ page }) => {
+        // Ultimate bot: THE MOST SOPHISTICATED EVASION BOT
+        // Combines Perlin noise, Fitts's Law, fatigue simulation, micro-saccades,
+        // attention modeling, breathing rhythm, and human-calibrated distributions.
+        // This represents the best a determined adversary could reasonably deploy.
+        // If this scores <0.20, the detection system may need enhancement.
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.ULTIMATE_BOT,
+            { minExpectedScore: 0.15, maxExpectedScore: 0.50 }
+        );
+        
+        console.log('✓ Ultimate-bot behavior test (most advanced evasion)');
+        logDetectionResult(results.overallScore);
+    });
 });
 
 /**

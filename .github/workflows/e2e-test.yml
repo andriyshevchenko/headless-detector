@@ -66,6 +66,8 @@ jobs:
             grep: "5-minute replay-bot behavior"
           - name: timing-bot
             grep: "5-minute timing-bot behavior"
+          - name: ultimate-bot
+            grep: "5-minute ultimate-bot behavior"
     
     name: E2E - ${{ matrix.test.name }}
     
