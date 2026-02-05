@@ -803,7 +803,7 @@
         }
 
         function getScoreClass(score) {
-            if (typeof score !== 'number' || score === null) return '';
+            if (typeof score !== 'number') return '';
             if (score < 0.3) return 'score-low';
             if (score < 0.6) return 'score-medium';
             return 'score-high';
