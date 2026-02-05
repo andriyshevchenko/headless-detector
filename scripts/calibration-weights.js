@@ -50,15 +50,20 @@ module.exports = {
      * - angleVariance: 0.05 - 2.0 (humans have varied movement angles)
      * - straightLineRatio: 0.0 - 0.4 (humans rarely move in perfectly straight lines)
      * - mouseEfficiency: 0.3 - 0.85 (humans take indirect paths to targets)
+     * 
+     * Calibration iteration 4 (run 21720648925):
+     * - Issue: Mouse scores dropped to 0.30 for robot tests (was 0.95)
+     * - Root cause: Thresholds were too lenient, not distinguishing bot from human
+     * - Fix: Made thresholds more sensitive (100x for velocity, 10x for angle/straight)
      */
     MOUSE_THRESHOLDS: {
-        lowVelocityVariance: 0.0001,    // Bots have unnaturally consistent speed
-        lowAngleVariance: 0.01,         // Bots move in repetitive directions
-        highStraightLineRatio: 0.5,     // Bots move in straight lines
+        lowVelocityVariance: 0.01,      // Bots have unnaturally consistent speed (was 0.0001, 100x more sensitive)
+        lowAngleVariance: 0.1,          // Bots move in repetitive directions (was 0.01, 10x more sensitive)
+        highStraightLineRatio: 0.3,     // Bots move in straight lines (was 0.5, more sensitive)
         highUntrustedRatio: 0.1,        // Non-trusted events indicate automation
         highMouseEfficiency: 0.95,      // Bots take perfect paths (requires multi-signal)
-        lowTimingVariance: 100,         // Bots have predictable timing (ms) - increased from 50
-        lowAccelVariance: 0.00001,      // Bots have smooth acceleration
+        lowTimingVariance: 100,         // Bots have predictable timing (ms)
+        lowAccelVariance: 0.0001,       // Bots have smooth acceleration (was 0.00001, 10x more sensitive)
         subMillisecondPatterns: [10, 16, 20, 33, 50, 100], // Common bot intervals (ms)
         subMillisecondTolerance: 1      // Tolerance for pattern matching (ms)
     },
