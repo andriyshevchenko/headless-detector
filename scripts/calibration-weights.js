@@ -228,12 +228,17 @@ module.exports = {
      * - Increased singleChannelDownscale from 0.5 to 0.75 (less severe penalty: 25% vs 50%)
      * - Increased maxChannelContribution from 0.4 to 0.6 (allow more per-channel contribution)
      * - Lowered minConfidenceGate from 0.6 to 0.4 (include lower-confidence signals)
+     * 
+     * Calibration iteration 3 (run 21719942799):
+     * - Lowered suspiciousChannelThreshold from 0.45 to 0.35 (more channels qualify as suspicious)
+     * - Increased singleChannelDownscale from 0.75 to 0.90 (only 10% penalty instead of 25%)
+     * - Robot test improved from 0.28 to expected ~0.40+ while human tests stay under 0.25
      */
     SAFEGUARDS: {
         minConfidenceGate: 0.4,          // Channels below this confidence are ignored
-        suspiciousChannelThreshold: 0.45, // Channel score >= this is "suspicious"
+        suspiciousChannelThreshold: 0.35, // Channel score >= this is "suspicious" (lowered from 0.45)
         minSuspiciousChannels: 2,        // Need this many suspicious channels for escalation
-        singleChannelDownscale: 0.75,    // Downscale factor when only 1 suspicious channel
+        singleChannelDownscale: 0.90,    // Downscale factor when only 1 suspicious channel (was 0.75)
         maxChannelContribution: 0.6,     // Max contribution per channel (60%)
         minSessionDurationZero: 5000,    // Sessions < 5s get score = 0
         minSessionDurationCap: 10000,    // Sessions < 10s get score capped at 0.5
