@@ -22,22 +22,32 @@
      * Per-channel weights in overall score calculation
      * These determine how much each analysis channel contributes to the final score.
      * All weights should sum to ~1.0 for consistency.
+     * 
+     * Calibration iteration 7:
+     * - Reduced mouse weight from 0.22 to 0.18 (variance-based detection causes false positives)
+     * - Increased keyboard weight from 0.22 to 0.25 (more reliable discriminator)
+     * - Increased events weight from 0.13 to 0.16 (trusted events are strong signal)
      */
     CHANNEL_WEIGHTS: {
-        mouse: 0.22,      // Primary input for desktop
-        keyboard: 0.22,   // Important for form/interaction patterns
+        mouse: 0.18,      // Reduced from 0.22 - variance detection is unreliable for slow behavior
+        keyboard: 0.25,   // Increased from 0.22 - reliable discriminator
         scroll: 0.13,     // Secondary signal
         touch: 0.13,      // Primary for mobile
-        events: 0.13,     // Trusted event detection
+        events: 0.16,     // Increased from 0.13 - trusted event detection is reliable
         sensors: 0.05,    // Device motion (noisy, permission-dependent)
-        webglTiming: 0.12 // Rendering timing fingerprint
+        webglTiming: 0.10 // Rendering timing fingerprint
     },
 
     /**
      * Minimum samples required for reliable analysis
+     * 
+     * Calibration iteration 7:
+     * - Raised mouse minimum from 20 to 50 to require more data before
+     *   triggering variance-based detection (reduces false positives on
+     *   slow/smooth human behavior)
      */
     MIN_SAMPLES: {
-        mouse: 20,
+        mouse: 50,       // Raised from 20 to reduce false positives on slow humans
         keyboard: 10,
         scroll: 5,
         touch: 5,
@@ -57,32 +67,44 @@
      * - Issue: Mouse scores dropped to 0.30 for robot tests (was 0.95)
      * - Root cause: Thresholds were too lenient, not distinguishing bot from human
      * - Fix: Made thresholds more sensitive (100x for velocity, 10x for angle/straight)
+     * 
+     * Calibration iteration 7 (run 21723308853):
+     * - Issue: False positives on human-slow (0.28) and human-smooth (0.31)
+     * - Root cause: Slow/smooth human behavior also has low variance (like robots)
+     * - Fix: Lower velocity variance threshold to be less sensitive, reduce its weight,
+     *   and rely more on multi-signal detection
      */
     MOUSE_THRESHOLDS: {
-        lowVelocityVariance: 0.01,      // Bots have unnaturally consistent speed (was 0.0001, 100x more sensitive)
-        lowAngleVariance: 0.1,          // Bots move in repetitive directions (was 0.01, 10x more sensitive)
+        lowVelocityVariance: 0.001,     // Lowered from 0.01 - only trigger on very low variance (less sensitive)
+        lowAngleVariance: 0.05,         // Lowered from 0.1 - only trigger on very low angle variance
         highStraightLineRatio: 0.3,     // Bots move in straight lines (was 0.5, more sensitive)
         highUntrustedRatio: 0.1,        // Non-trusted events indicate automation
         highMouseEfficiency: 0.95,      // Bots take perfect paths (requires multi-signal)
-        lowTimingVariance: 100,         // Bots have predictable timing (ms)
-        lowAccelVariance: 0.0001,       // Bots have smooth acceleration (was 0.00001, 10x more sensitive)
+        lowTimingVariance: 50,          // Lowered from 100 - only trigger on very uniform timing
+        lowAccelVariance: 0.00001,      // Lowered from 0.0001 - only trigger on very smooth acceleration
         subMillisecondPatterns: [10, 16, 20, 33, 50, 100], // Common bot intervals (ms)
         subMillisecondTolerance: 1      // Tolerance for pattern matching (ms)
     },
 
     /**
      * Mouse scoring weights (must sum to <= 1.0 to avoid clamping)
+     * 
+     * Calibration iteration 7:
+     * - Reduced lowVelocityVariance weight from 0.25 to 0.10 (less reliable for distinguishing slow humans from robots)
+     * - Reduced lowAngleVariance weight from 0.15 to 0.05 (same issue)
+     * - Increased highStraightLineRatio weight to 0.30 (better discriminator)
+     * - Increased subMillisecondPattern weight to 0.25 (robots have timing patterns, humans don't)
      */
     MOUSE_WEIGHTS: {
-        lowVelocityVariance: 0.25,
-        lowAngleVariance: 0.15,
-        highStraightLineRatio: 0.25,
-        highUntrustedRatio: 0.2,
+        lowVelocityVariance: 0.10,     // Reduced from 0.25 - slow humans also have low variance
+        lowAngleVariance: 0.05,        // Reduced from 0.15 - not reliable alone
+        highStraightLineRatio: 0.30,   // Increased from 0.25 - good discriminator
+        highUntrustedRatio: 0.25,      // Increased from 0.2 - strong bot indicator
         highMouseEfficiency: 0.15,
-        lowTimingVariance: 0.15,
-        subMillisecondPattern: 0.15,
-        lowAccelVariance: 0.15,
-        bezierPattern: 0.2,
+        lowTimingVariance: 0.10,       // Reduced from 0.15
+        subMillisecondPattern: 0.25,   // Increased from 0.15 - strong timing pattern indicator
+        lowAccelVariance: 0.10,        // Reduced from 0.15
+        bezierPattern: 0.20,
         pressureSuspicious: 0.15,
         lowEntropy: 0.15,
         fingerprintSuspicious: 0.15
