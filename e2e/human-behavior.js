@@ -217,7 +217,7 @@ class HumanBehavior {
         await sleep(randomBetween(200, 500));
 
         for (const char of text) {
-            await element.type(char);
+            await page.keyboard.type(char);
             // Random delay between characters
             let delay = randomBetween(50, 150);
             // Sometimes make longer pauses (like human thinking)
@@ -285,6 +285,7 @@ class HumanBehavior {
         ];
 
         let actionCount = 0;
+        let lastLoggedMinute = 0;
         
         while (Date.now() < endTime) {
             const action = actions[randomInt(0, actions.length - 1)];
@@ -327,7 +328,9 @@ class HumanBehavior {
             
             // Log progress every minute
             const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            if (elapsed > 0 && elapsed % 60 === 0) {
+            const currentMinute = Math.floor(elapsed / 60);
+            if (currentMinute > lastLoggedMinute) {
+                lastLoggedMinute = currentMinute;
                 console.log(`Progress: ${elapsed}s elapsed, ${actionCount} actions performed`);
             }
         }
