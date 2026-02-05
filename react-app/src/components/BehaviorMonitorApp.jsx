@@ -28,6 +28,7 @@ function BehaviorMonitorApp() {
         status, 
         results, 
         error, 
+        sessionEndTimestamp,
         startSession, 
         stopSession, 
         formatElapsedTime 
@@ -75,7 +76,10 @@ function BehaviorMonitorApp() {
                         <SensorAnalysisCard sensors={results.sensors} />
                     </div>
                     
-                    <SessionMetadata results={results} />
+                    <SessionMetadata 
+                        results={results} 
+                        sessionEndTimestamp={sessionEndTimestamp} 
+                    />
                 </>
             )}
             

@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 /**
  * Session Metadata component
  */
-export function SessionMetadata({ results }) {
+export function SessionMetadata({ results, sessionEndTimestamp }) {
     if (!results || !results.metadata) return null;
     
     const { duration, samplesCollected } = results.metadata;
@@ -21,6 +21,11 @@ export function SessionMetadata({ results }) {
         ? Object.values(samplesCollected).reduce((a, b) => a + b, 0)
         : 0;
     
+    // Use the captured timestamp from when session ended, not render time
+    const timestamp = sessionEndTimestamp 
+        ? sessionEndTimestamp.toLocaleString() 
+        : new Date().toLocaleString();
+    
     return (
         <div className="metadata">
             <div className="metadata-title">📋 Session Metadata</div>
@@ -31,7 +36,7 @@ export function SessionMetadata({ results }) {
                 {totalSamples}
             </MetadataItem>
             <MetadataItem label="Timestamp">
-                {new Date().toLocaleString()}
+                {timestamp}
             </MetadataItem>
         </div>
     );
@@ -43,7 +48,8 @@ SessionMetadata.propTypes = {
             duration: PropTypes.number,
             samplesCollected: PropTypes.object
         })
-    })
+    }),
+    sessionEndTimestamp: PropTypes.instanceOf(Date)
 };
 
 /**

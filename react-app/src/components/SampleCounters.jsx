@@ -1,5 +1,32 @@
 import PropTypes from 'prop-types';
 
+// Extracted constant styles for better performance
+const samplesGridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+    gap: '15px',
+    marginTop: '15px'
+};
+
+const sampleCounterStyle = {
+    textAlign: 'center',
+    padding: '15px',
+    background: '#f9fafb',
+    borderRadius: '10px'
+};
+
+const sampleValueStyle = {
+    fontSize: '2rem',
+    fontWeight: 'bold',
+    color: '#667eea'
+};
+
+const sampleLabelStyle = {
+    fontSize: '0.85rem',
+    color: '#666',
+    marginTop: '5px'
+};
+
 /**
  * Live Sample Counters component
  */
@@ -13,14 +40,9 @@ export function SampleCounters({ samples }) {
             <div 
                 className="samples-grid" 
                 role="region" 
-                aria-live="off" 
+                aria-live="polite" 
                 aria-label="Live sample counts"
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
-                    gap: '15px',
-                    marginTop: '15px'
-                }}
+                style={samplesGridStyle}
             >
                 <SampleCounter icon="🖱️" label="Mouse" value={samples.mouse} />
                 <SampleCounter icon="⌨️" label="Keyboard" value={samples.keyboard} />
@@ -47,24 +69,11 @@ SampleCounters.propTypes = {
  */
 function SampleCounter({ icon, label, value }) {
     return (
-        <div className="sample-counter" style={{
-            textAlign: 'center',
-            padding: '15px',
-            background: '#f9fafb',
-            borderRadius: '10px'
-        }}>
-            <div className="sample-value" style={{
-                fontSize: '2rem',
-                fontWeight: 'bold',
-                color: '#667eea'
-            }}>
+        <div className="sample-counter" style={sampleCounterStyle}>
+            <div className="sample-value" style={sampleValueStyle}>
                 {value || 0}
             </div>
-            <div className="sample-label" style={{
-                fontSize: '0.85rem',
-                color: '#666',
-                marginTop: '5px'
-            }}>
+            <div className="sample-label" style={sampleLabelStyle}>
                 <span aria-hidden="true">{icon}</span> {label}
             </div>
         </div>

@@ -1,5 +1,112 @@
 import PropTypes from 'prop-types';
 
+// Extracted constant styles for better performance - moved outside component
+const btnGroupStyle = {
+    display: 'flex',
+    gap: '15px',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    margin: '20px 0'
+};
+
+const sessionStatusStyle = { 
+    textAlign: 'center', 
+    margin: '20px 0' 
+};
+
+const elapsedTimeStyle = { 
+    fontSize: '0.9rem', 
+    color: '#666', 
+    marginTop: '5px' 
+};
+
+const instructionBoxStyle = {
+    background: '#f0f4ff',
+    border: '2px solid #667eea',
+    borderRadius: '12px',
+    padding: '20px',
+    margin: '20px 0',
+    textAlign: 'center'
+};
+
+const instructionTitleStyle = {
+    color: '#667eea',
+    fontWeight: 'bold',
+    fontSize: '1.1rem',
+    marginBottom: '10px'
+};
+
+const instructionTextStyle = { 
+    color: '#555', 
+    lineHeight: 1.6 
+};
+
+const navLinkStyle = {
+    display: 'inline-block',
+    color: 'white',
+    textDecoration: 'none',
+    marginTop: '10px',
+    opacity: 0.9,
+    transition: 'opacity 0.2s'
+};
+
+const statusIndicatorBaseStyle = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '12px 24px',
+    borderRadius: '25px',
+    fontWeight: 'bold',
+    fontSize: '1.1rem'
+};
+
+const pulseDotStyle = {
+    width: '12px',
+    height: '12px',
+    borderRadius: '50%',
+    background: '#10b981',
+    animation: 'pulse 1.5s infinite'
+};
+
+const staticDotStyle = {
+    width: '12px',
+    height: '12px',
+    borderRadius: '50%',
+    background: '#9ca3af'
+};
+
+// Button style function moved outside component to prevent re-creation on every render
+const baseBtnStyle = {
+    border: 'none',
+    padding: '12px 30px',
+    borderRadius: '25px',
+    fontSize: '1rem',
+    fontWeight: 'bold',
+    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+    transition: 'all 0.2s'
+};
+
+const primaryBtnStyle = {
+    ...baseBtnStyle,
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white'
+};
+
+const dangerBtnStyle = {
+    ...baseBtnStyle,
+    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+    color: 'white'
+};
+
+function getSessionBtnStyle(disabled, type) {
+    const typeStyle = type === 'primary' ? primaryBtnStyle : dangerBtnStyle;
+    return {
+        ...typeStyle,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1
+    };
+}
+
 /**
  * Behavior Monitor Header component
  */
@@ -12,14 +119,7 @@ export function BehaviorMonitorHeader() {
                 href="index.html" 
                 className="nav-link" 
                 aria-label="Navigate back to Headless Browser Detector"
-                style={{
-                    display: 'inline-block',
-                    color: 'white',
-                    textDecoration: 'none',
-                    marginTop: '10px',
-                    opacity: 0.9,
-                    transition: 'opacity 0.2s'
-                }}
+                style={navLinkStyle}
             >
                 ← Back to Headless Detector
             </a>
@@ -42,19 +142,13 @@ export function SessionControls({
         <div className="score-card">
             <div className="score-label">Session Controls</div>
             
-            <div className="btn-group" style={{
-                display: 'flex',
-                gap: '15px',
-                justifyContent: 'center',
-                flexWrap: 'wrap',
-                margin: '20px 0'
-            }}>
+            <div className="btn-group" style={btnGroupStyle}>
                 <button 
                     className="session-btn primary"
                     onClick={onStart}
                     disabled={isRunning}
                     aria-label="Start behavior monitoring session"
-                    style={sessionBtnStyle(isRunning, 'primary')}
+                    style={getSessionBtnStyle(isRunning, 'primary')}
                 >
                     ▶️ Start Session
                 </button>
@@ -63,17 +157,17 @@ export function SessionControls({
                     onClick={onStop}
                     disabled={!isRunning}
                     aria-label="End behavior monitoring session"
-                    style={sessionBtnStyle(!isRunning, 'danger')}
+                    style={getSessionBtnStyle(!isRunning, 'danger')}
                 >
                     ⏹️ End Session
                 </button>
             </div>
             
-            <div className="session-status" style={{ textAlign: 'center', margin: '20px 0' }}>
+            <div className="session-status" style={sessionStatusStyle}>
                 <StatusIndicator isRunning={isRunning} error={error} />
                 <div 
                     className="elapsed-time" 
-                    style={{ fontSize: '0.9rem', color: '#666', marginTop: '5px' }}
+                    style={elapsedTimeStyle}
                     aria-live="off"
                 >
                     {isRunning ? `Elapsed: ${formatElapsedTime(elapsedTime)}` : ''}
@@ -147,23 +241,11 @@ StatusIndicator.propTypes = {
  */
 function InstructionBox() {
     return (
-        <div className="instruction-box" style={{
-            background: '#f0f4ff',
-            border: '2px solid #667eea',
-            borderRadius: '12px',
-            padding: '20px',
-            margin: '20px 0',
-            textAlign: 'center'
-        }}>
-            <div className="instruction-title" style={{
-                color: '#667eea',
-                fontWeight: 'bold',
-                fontSize: '1.1rem',
-                marginBottom: '10px'
-            }}>
+        <div className="instruction-box" style={instructionBoxStyle}>
+            <div className="instruction-title" style={instructionTitleStyle}>
                 💡 How to Test
             </div>
-            <div className="instruction-text" style={{ color: '#555', lineHeight: 1.6 }}>
+            <div className="instruction-text" style={instructionTextStyle}>
                 1. Click <strong>Start Session</strong> to begin monitoring<br />
                 2. Move your mouse, type on keyboard, scroll the page<br />
                 3. Click <strong>End Session</strong> to see analysis results<br />
@@ -172,59 +254,5 @@ function InstructionBox() {
         </div>
     );
 }
-
-// Styles
-function sessionBtnStyle(disabled, type) {
-    const baseStyle = {
-        border: 'none',
-        padding: '12px 30px',
-        borderRadius: '25px',
-        fontSize: '1rem',
-        fontWeight: 'bold',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-        transition: 'all 0.2s',
-        opacity: disabled ? 0.5 : 1
-    };
-    
-    if (type === 'primary') {
-        return {
-            ...baseStyle,
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white'
-        };
-    }
-    
-    return {
-        ...baseStyle,
-        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-        color: 'white'
-    };
-}
-
-const statusIndicatorBaseStyle = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '12px 24px',
-    borderRadius: '25px',
-    fontWeight: 'bold',
-    fontSize: '1.1rem'
-};
-
-const pulseDotStyle = {
-    width: '12px',
-    height: '12px',
-    borderRadius: '50%',
-    background: '#10b981',
-    animation: 'pulse 1.5s infinite'
-};
-
-const staticDotStyle = {
-    width: '12px',
-    height: '12px',
-    borderRadius: '50%',
-    background: '#9ca3af'
-};
 
 export default BehaviorMonitorHeader;

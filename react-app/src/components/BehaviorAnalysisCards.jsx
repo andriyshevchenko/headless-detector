@@ -1,5 +1,73 @@
 import PropTypes from 'prop-types';
 
+// Extracted constant styles for better performance - moved outside component
+const analysisRowStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '12px',
+    borderBottom: '1px solid #f0f0f0'
+};
+
+const analysisLabelStyle = { 
+    fontWeight: 600, 
+    color: '#333' 
+};
+
+const analysisSectionStyle = { 
+    marginTop: '15px' 
+};
+
+const overallCenterStyle = { 
+    textAlign: 'center', 
+    padding: '20px 0' 
+};
+
+const confidenceContainerStyle = { 
+    marginTop: '15px' 
+};
+
+const confidenceTextStyle = { 
+    color: '#666' 
+};
+
+const confidenceValueStyle = { 
+    fontWeight: 'bold', 
+    marginLeft: '5px' 
+};
+
+const confidenceBarStyle = {
+    width: '100px',
+    height: '8px',
+    background: '#e5e7eb',
+    borderRadius: '4px',
+    overflow: 'hidden'
+};
+
+const confidenceFillBaseStyle = {
+    height: '100%',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    transition: 'width 0.3s'
+};
+
+// Score style function moved outside component to prevent re-creation on every render
+const scoreBaseStyle = {
+    fontWeight: 'bold',
+    padding: '4px 12px',
+    borderRadius: '12px'
+};
+
+const scoreStyles = {
+    'score-low': { ...scoreBaseStyle, background: '#d1fae5', color: '#065f46' },
+    'score-medium': { ...scoreBaseStyle, background: '#fef3c7', color: '#92400e' },
+    'score-high': { ...scoreBaseStyle, background: '#fee2e2', color: '#991b1b' },
+    'default': scoreBaseStyle
+};
+
+function getScoreStyle(scoreClass) {
+    return scoreStyles[scoreClass] || scoreStyles['default'];
+}
+
 /**
  * Helper function to get score CSS class
  */
@@ -20,13 +88,13 @@ export function OverallAnalysisCard({ score, confidence, status, label }) {
                 <span className="card-icon" aria-hidden="true">🎯</span>
                 Overall Analysis
             </div>
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={overallCenterStyle}>
                 <div className="score-label">Bot Likelihood Score</div>
                 <div className="score-value">{score.toFixed(2)}</div>
                 <div className={`status-badge status-${status}`}>{label}</div>
-                <div style={{ marginTop: '15px' }}>
-                    <span style={{ color: '#666' }}>Confidence:</span>
-                    <span style={{ fontWeight: 'bold', marginLeft: '5px' }}>
+                <div style={confidenceContainerStyle}>
+                    <span style={confidenceTextStyle}>Confidence:</span>
+                    <span style={confidenceValueStyle}>
                         {(confidence * 100).toFixed(0)}%
                     </span>
                 </div>
@@ -54,6 +122,7 @@ export function AnalysisCard({
     const { score, confidence, available } = analysis || {};
     const hasScore = typeof score === 'number';
     const sampleCount = metrics?.sampleCount || 0;
+    const scoreClass = available && hasScore ? getScoreClass(score) : '';
 
     return (
         <div className="card">
@@ -61,11 +130,11 @@ export function AnalysisCard({
                 <span className="card-icon" aria-hidden="true">{icon}</span>
                 {title}
             </div>
-            <div className="analysis-section" style={{ marginTop: '15px' }}>
+            <div className="analysis-section" style={analysisSectionStyle}>
                 <AnalysisRow label="Bot Score">
                     <span 
-                        className={`analysis-score ${available && hasScore ? getScoreClass(score) : ''}`}
-                        style={scoreStyle(available && hasScore ? getScoreClass(score) : '')}
+                        className={`analysis-score ${scoreClass}`}
+                        style={getScoreStyle(scoreClass)}
                     >
                         {available && hasScore ? score.toFixed(2) : 'N/A'}
                     </span>
@@ -75,7 +144,7 @@ export function AnalysisCard({
                         <div 
                             className="confidence-fill" 
                             style={{
-                                ...confidenceFillStyle,
+                                ...confidenceFillBaseStyle,
                                 width: `${((confidence || 0) * 100)}%`
                             }}
                         ></div>
@@ -285,6 +354,7 @@ export function SensorAnalysisCard({ sensors }) {
     const available = sensors?.available;
     const score = sensors?.score;
     const hasScore = typeof score === 'number';
+    const scoreClass = available && hasScore ? getScoreClass(score) : '';
 
     return (
         <div className="card">
@@ -292,11 +362,11 @@ export function SensorAnalysisCard({ sensors }) {
                 <span className="card-icon" aria-hidden="true">📡</span>
                 Sensor Analysis
             </div>
-            <div className="analysis-section" style={{ marginTop: '15px' }}>
+            <div className="analysis-section" style={analysisSectionStyle}>
                 <AnalysisRow label="Bot Score">
                     <span 
-                        className={`analysis-score ${available && hasScore ? getScoreClass(score) : ''}`}
-                        style={scoreStyle(available && hasScore ? getScoreClass(score) : '')}
+                        className={`analysis-score ${scoreClass}`}
+                        style={getScoreStyle(scoreClass)}
                     >
                         {available && hasScore ? score.toFixed(2) : 'N/A'}
                     </span>
@@ -323,14 +393,8 @@ SensorAnalysisCard.propTypes = {
  */
 function AnalysisRow({ label, children }) {
     return (
-        <div className="analysis-row" style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '12px',
-            borderBottom: '1px solid #f0f0f0'
-        }}>
-            <span className="analysis-label" style={{ fontWeight: 600, color: '#333' }}>
+        <div className="analysis-row" style={analysisRowStyle}>
+            <span className="analysis-label" style={analysisLabelStyle}>
                 {label}
             </span>
             {children}
@@ -341,40 +405,6 @@ function AnalysisRow({ label, children }) {
 AnalysisRow.propTypes = {
     label: PropTypes.string.isRequired,
     children: PropTypes.node.isRequired
-};
-
-// Styles
-function scoreStyle(scoreClass) {
-    const base = {
-        fontWeight: 'bold',
-        padding: '4px 12px',
-        borderRadius: '12px'
-    };
-    
-    if (scoreClass === 'score-low') {
-        return { ...base, background: '#d1fae5', color: '#065f46' };
-    }
-    if (scoreClass === 'score-medium') {
-        return { ...base, background: '#fef3c7', color: '#92400e' };
-    }
-    if (scoreClass === 'score-high') {
-        return { ...base, background: '#fee2e2', color: '#991b1b' };
-    }
-    return base;
-}
-
-const confidenceBarStyle = {
-    width: '100px',
-    height: '8px',
-    background: '#e5e7eb',
-    borderRadius: '4px',
-    overflow: 'hidden'
-};
-
-const confidenceFillStyle = {
-    height: '100%',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    transition: 'width 0.3s'
 };
 
 export default AnalysisCard;

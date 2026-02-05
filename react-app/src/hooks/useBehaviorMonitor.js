@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
 /**
  * Custom hook for behavior monitoring
@@ -18,6 +18,7 @@ export function useBehaviorMonitor() {
     });
     const [results, setResults] = useState(null);
     const [error, setError] = useState(null);
+    const [sessionEndTimestamp, setSessionEndTimestamp] = useState(null);
     
     const monitorRef = useRef(null);
     const elapsedIntervalRef = useRef(null);
@@ -41,32 +42,35 @@ export function useBehaviorMonitor() {
     }, []);
 
     /**
-     * Initialize the behavior monitor
+     * Initialize the behavior monitor - memoized to prevent unnecessary re-creation
      */
-    const initMonitor = useCallback(() => {
-        try {
-            if (typeof window.HeadlessBehaviorMonitor === 'undefined') {
-                throw new Error('HeadlessBehaviorMonitor class not found. Ensure behavior-monitor.js is loaded.');
+    const initMonitor = useMemo(() => {
+        return () => {
+            try {
+                if (typeof window.HeadlessBehaviorMonitor === 'undefined') {
+                    throw new Error('HeadlessBehaviorMonitor class not found. Ensure behavior-monitor.js is loaded.');
+                }
+                monitorRef.current = new window.HeadlessBehaviorMonitor({
+                    onSample: updateCounters
+                });
+                window.__behaviorMonitor = monitorRef.current;
+                return true;
+            } catch (err) {
+                console.error('Failed to initialize HeadlessBehaviorMonitor:', err);
+                setError(err.message);
+                return false;
             }
-            monitorRef.current = new window.HeadlessBehaviorMonitor({
-                onSample: updateCounters
-            });
-            window.__behaviorMonitor = monitorRef.current;
-            return true;
-        } catch (err) {
-            console.error('Failed to initialize HeadlessBehaviorMonitor:', err);
-            setError(err.message);
-            return false;
-        }
+        };
     }, [updateCounters]);
 
     /**
      * Start monitoring session
      */
     const startSession = useCallback(() => {
-        // Clear any existing intervals
-        if (elapsedIntervalRef.current !== null) {
-            clearInterval(elapsedIntervalRef.current);
+        // Clear any existing intervals - store reference to avoid race condition
+        const existingIntervalId = elapsedIntervalRef.current;
+        if (existingIntervalId !== null) {
+            clearInterval(existingIntervalId);
             elapsedIntervalRef.current = null;
         }
         
@@ -79,6 +83,7 @@ export function useBehaviorMonitor() {
         monitorRef.current.start();
         setResults(null);
         setError(null);
+        setSessionEndTimestamp(null);
         
         // Reset counters
         setStatus({
@@ -109,6 +114,9 @@ export function useBehaviorMonitor() {
         
         const monitorResults = monitorRef.current.stop();
         
+        // Capture timestamp when session actually ends
+        const endTimestamp = new Date();
+        
         // Clear intervals
         if (elapsedIntervalRef.current) {
             clearInterval(elapsedIntervalRef.current);
@@ -122,6 +130,7 @@ export function useBehaviorMonitor() {
         
         if (monitorResults && isMountedRef.current) {
             setResults(monitorResults);
+            setSessionEndTimestamp(endTimestamp);
         }
     }, []);
 
@@ -145,10 +154,12 @@ export function useBehaviorMonitor() {
             }
         };
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init, { once: true });
-        } else {
+        // Use same pattern as useHeadlessDetection.js for consistency
+        const readyState = document.readyState;
+        if (readyState === 'complete' || readyState === 'interactive') {
             init();
+        } else {
+            document.addEventListener('DOMContentLoaded', init, { once: true });
         }
         
         return () => {
@@ -163,6 +174,7 @@ export function useBehaviorMonitor() {
         status,
         results,
         error,
+        sessionEndTimestamp,
         startSession,
         stopSession,
         formatElapsedTime
