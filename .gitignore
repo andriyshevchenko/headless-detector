@@ -41,6 +41,10 @@ jspm_packages/
 coverage/
 *.lcov
 
+# Playwright test results
+test-results/
+playwright-report/
+
 # Temporary files
 *.tmp
 .cache/
