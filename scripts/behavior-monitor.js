@@ -828,14 +828,6 @@ class HeadlessBehaviorMonitor {
         // - Bezier curve patterns (smooth but mathematical movement)
         let suspiciousScore = 0;
         
-        if (velocityVariance < 0.0001) suspiciousScore += 0.25;
-        if (angleVariance < 0.01) suspiciousScore += 0.15;
-        if (straightLineRatio > 0.5) suspiciousScore += 0.25;
-        if (untrustedRatio > 0.1) suspiciousScore += 0.2;
-        // Bots tend to move very directly (efficiency close to 1.0)
-        // Humans tend to have efficiency between 0.3-0.8
-        if (mouseEfficiency > 0.95) suspiciousScore += 0.15;
-        
         // Check for timing pattern uniformity (bots often have regular intervals)
         const timingIntervals = [];
         for (let i = 1; i < movements.length; i++) {
@@ -843,13 +835,6 @@ class HeadlessBehaviorMonitor {
             timingIntervals.push(interval);
         }
         const timingVariance = this._calculateVariance(timingIntervals);
-        // Very low timing variance suggests automation
-        if (timingVariance < 50 && timingIntervals.length > 5) suspiciousScore += 0.15;
-        
-        // Check for sub-millisecond precision patterns in movements
-        // Bots often generate events with unnatural timing precision
-        const hasSubMillisecondPattern = this._detectSubMillisecondPattern(movements);
-        if (hasSubMillisecondPattern) suspiciousScore += 0.15;
         
         // Analyze acceleration patterns - bots often have unnatural acceleration curves
         const accelerations = [];
@@ -858,28 +843,62 @@ class HeadlessBehaviorMonitor {
             accelerations.push(accel);
         }
         const accelVariance = this._calculateVariance(accelerations);
-        // Very smooth acceleration (low variance) is suspicious - human movement is jerky
-        if (accelVariance < 0.00001 && accelerations.length > 3) suspiciousScore += 0.15;
         
-        // Detect Bezier curve smoothness - our bot uses Bezier curves
-        // Real human movement has micro-corrections and tremor that Bezier curves lack
+        // Check for sub-millisecond precision patterns in movements
+        const hasSubMillisecondPattern = this._detectSubMillisecondPattern(movements);
+        
+        // Detect Bezier curve smoothness
         const hasBezierPattern = this._detectBezierPattern(movements);
-        if (hasBezierPattern) suspiciousScore += 0.2;
+        
+        // SAFEGUARD 6: Require sufficient samples (>=10) for variance-based checks
+        const hasSufficientSamples = movements.length >= 10;
+        
+        // SAFEGUARD 3: lowVelocityVariance must ALSO require low acceleration variance OR sub-millisecond pattern
+        const lowVelocityTriggered = velocityVariance < 0.0001 && hasSufficientSamples &&
+            (accelVariance < 0.00001 || hasSubMillisecondPattern);
+        if (lowVelocityTriggered) suspiciousScore += 0.25;
+        
+        // SAFEGUARD 6: angleVariance requires sufficient samples AND another signal
+        const lowAngleTriggered = angleVariance < 0.01 && hasSufficientSamples && 
+            (lowVelocityTriggered || straightLineRatio > 0.5);
+        if (lowAngleTriggered) suspiciousScore += 0.15;
+        
+        // straightLineRatio can stand alone with sufficient samples
+        if (straightLineRatio > 0.5 && hasSufficientSamples) suspiciousScore += 0.25;
+        
+        // Untrusted ratio is context-independent
+        if (untrustedRatio > 0.1) suspiciousScore += 0.2;
+        
+        // SAFEGUARD 3: mouseEfficiency > 0.95 must ALSO require low angle variance AND low timing entropy
+        const lowTimingVarianceTriggered = timingVariance < 50 && timingIntervals.length > 5;
+        const highEfficiencyTriggered = mouseEfficiency > 0.95 && angleVariance < 0.05 && lowTimingVarianceTriggered;
+        if (highEfficiencyTriggered) suspiciousScore += 0.15;
+        
+        // SAFEGUARD 6: Very low timing variance requires sufficient samples
+        if (lowTimingVarianceTriggered && hasSufficientSamples) suspiciousScore += 0.15;
+        
+        if (hasSubMillisecondPattern && hasSufficientSamples) suspiciousScore += 0.15;
+        
+        // SAFEGUARD 6: Low acceleration variance requires sufficient samples
+        const lowAccelTriggered = accelVariance < 0.00001 && accelerations.length >= 10;
+        if (lowAccelTriggered) suspiciousScore += 0.15;
+        
+        if (hasBezierPattern && hasSufficientSamples) suspiciousScore += 0.2;
         
         // Check for lack of pointer pressure variation
-        // Real humans have varying pressure when moving the mouse/touchpad
         const pressureAnalysis = this._analyzePointerPressure(movements);
-        if (pressureAnalysis.suspicious) suspiciousScore += 0.15;
+        // SAFEGUARD 6: Pressure requires another signal
+        if (pressureAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern)) suspiciousScore += 0.15;
         
         // Analyze event timestamp entropy
-        // Bots generate events with low entropy (predictable) timing
         const entropyAnalysis = this._analyzeTimestampEntropy(movements);
-        if (entropyAnalysis.suspicious) suspiciousScore += 0.15;
+        // SAFEGUARD 6: Entropy requires another signal
+        if (entropyAnalysis.suspicious && hasSufficientSamples) suspiciousScore += 0.15;
         
         // Check for pointer device fingerprint mismatches
-        // Bots may have inconsistent or missing pointer event properties
         const fingerprintAnalysis = this._analyzePointerFingerprint(movements);
-        if (fingerprintAnalysis.suspicious) suspiciousScore += 0.15;
+        // SAFEGUARD 6: Fingerprint requires another signal
+        if (fingerprintAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern)) suspiciousScore += 0.15;
         
         const confidence = Math.min(movements.length / this.options.minSamples.mouse, 1);
         
@@ -900,20 +919,20 @@ class HeadlessBehaviorMonitor {
                 timingVariance: timingVariance,
                 accelVariance: accelVariance
             },
-            // Detailed scoring breakdown for calibration
+            // Detailed scoring breakdown for calibration (reflects multi-signal safeguards)
             scoringBreakdown: {
-                lowVelocityVariance: { triggered: velocityVariance < 0.0001, weight: 0.25, value: velocityVariance, threshold: 0.0001 },
-                lowAngleVariance: { triggered: angleVariance < 0.01, weight: 0.15, value: angleVariance, threshold: 0.01 },
-                highStraightLineRatio: { triggered: straightLineRatio > 0.5, weight: 0.25, value: straightLineRatio, threshold: 0.5 },
+                lowVelocityVariance: { triggered: lowVelocityTriggered, weight: 0.25, value: velocityVariance, threshold: 0.0001, requiresMultiSignal: true },
+                lowAngleVariance: { triggered: lowAngleTriggered, weight: 0.15, value: angleVariance, threshold: 0.01, requiresMultiSignal: true },
+                highStraightLineRatio: { triggered: straightLineRatio > 0.5 && hasSufficientSamples, weight: 0.25, value: straightLineRatio, threshold: 0.5 },
                 highUntrustedRatio: { triggered: untrustedRatio > 0.1, weight: 0.2, value: untrustedRatio, threshold: 0.1 },
-                highMouseEfficiency: { triggered: mouseEfficiency > 0.95, weight: 0.15, value: mouseEfficiency, threshold: 0.95 },
-                lowTimingVariance: { triggered: timingVariance < 50 && timingIntervals.length > 5, weight: 0.15, value: timingVariance, threshold: 50 },
-                subMillisecondPattern: { triggered: hasSubMillisecondPattern, weight: 0.15, value: hasSubMillisecondPattern },
-                lowAccelVariance: { triggered: accelVariance < 0.00001 && accelerations.length > 3, weight: 0.15, value: accelVariance, threshold: 0.00001 },
-                bezierPattern: { triggered: hasBezierPattern, weight: 0.2, value: hasBezierPattern },
-                pressureSuspicious: { triggered: pressureAnalysis.suspicious, weight: 0.15, details: pressureAnalysis },
-                lowEntropy: { triggered: entropyAnalysis.suspicious, weight: 0.15, details: entropyAnalysis },
-                fingerprintSuspicious: { triggered: fingerprintAnalysis.suspicious, weight: 0.15, details: fingerprintAnalysis }
+                highMouseEfficiency: { triggered: highEfficiencyTriggered, weight: 0.15, value: mouseEfficiency, threshold: 0.95, requiresMultiSignal: true },
+                lowTimingVariance: { triggered: lowTimingVarianceTriggered && hasSufficientSamples, weight: 0.15, value: timingVariance, threshold: 50 },
+                subMillisecondPattern: { triggered: hasSubMillisecondPattern && hasSufficientSamples, weight: 0.15, value: hasSubMillisecondPattern },
+                lowAccelVariance: { triggered: lowAccelTriggered, weight: 0.15, value: accelVariance, threshold: 0.00001 },
+                bezierPattern: { triggered: hasBezierPattern && hasSufficientSamples, weight: 0.2, value: hasBezierPattern },
+                pressureSuspicious: { triggered: pressureAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern), weight: 0.15, details: pressureAnalysis, requiresMultiSignal: true },
+                lowEntropy: { triggered: entropyAnalysis.suspicious && hasSufficientSamples, weight: 0.15, details: entropyAnalysis },
+                fingerprintSuspicious: { triggered: fingerprintAnalysis.suspicious && (lowVelocityTriggered || hasBezierPattern), weight: 0.15, details: fingerprintAnalysis, requiresMultiSignal: true }
             }
         };
     }
@@ -1508,34 +1527,97 @@ class HeadlessBehaviorMonitor {
     }
     
     _calculateOverallScore(analysis) {
-        const checks = [
-            { result: analysis.mouse, weight: 0.22 },
-            { result: analysis.keyboard, weight: 0.22 },
-            { result: analysis.scroll, weight: 0.13 },
-            { result: analysis.touch, weight: 0.13 },
-            { result: analysis.events, weight: 0.13 },
-            { result: analysis.sensors, weight: 0.05 },
-            { result: analysis.webglTiming, weight: 0.12 }
+        // Define channel groups for independence checking
+        const inputChannels = [
+            { name: 'mouse', result: analysis.mouse, weight: 0.22, isSensor: false, isWebgl: false },
+            { name: 'keyboard', result: analysis.keyboard, weight: 0.22, isSensor: false, isWebgl: false },
+            { name: 'scroll', result: analysis.scroll, weight: 0.13, isSensor: false, isWebgl: false },
+            { name: 'touch', result: analysis.touch, weight: 0.13, isSensor: false, isWebgl: false },
+            { name: 'events', result: analysis.events, weight: 0.13, isSensor: false, isWebgl: false }
         ];
+        const sensorChannel = { name: 'sensors', result: analysis.sensors, weight: 0.05, isSensor: true, isWebgl: false };
+        const webglChannel = { name: 'webglTiming', result: analysis.webglTiming, weight: 0.12, isSensor: false, isWebgl: true };
+        
+        const allChannels = [...inputChannels, sensorChannel, webglChannel];
+        
+        // SAFEGUARD 2: Minimum confidence gate - skip channels with confidence < 0.6
+        const confidentChannels = allChannels.filter(ch => 
+            ch.result && ch.result.available && ch.result.confidence >= 0.6
+        );
+        
+        // SAFEGUARD 1: Count suspicious channels (score >= 0.6) for multi-channel corroboration
+        const suspiciousInputChannels = confidentChannels.filter(ch => 
+            !ch.isSensor && !ch.isWebgl && ch.result.score >= 0.6
+        );
+        const suspiciousCount = suspiciousInputChannels.length;
+        
+        // SAFEGUARD 7: Sensors only contribute if another non-sensor channel is suspicious
+        const hasNonSensorSuspicion = suspiciousInputChannels.length > 0;
         
         let totalScore = 0;
         let totalWeight = 0;
         let totalConfidence = 0;
         let availableChecks = 0;
         
-        for (const check of checks) {
-            if (check.result && check.result.available && check.result.confidence > 0) {
-                totalScore += check.result.score * check.result.confidence * check.weight;
-                totalWeight += check.result.confidence * check.weight;
-                totalConfidence += check.result.confidence;
-                availableChecks++;
+        for (const ch of confidentChannels) {
+            // SAFEGUARD 7: Skip sensors if no other channel is suspicious
+            if (ch.isSensor && !hasNonSensorSuspicion) {
+                continue;
             }
+            
+            // SAFEGUARD 8: WebGL timing can add suspicion but never be decisive
+            // If webgl is the only suspicious channel, downweight it significantly
+            if (ch.isWebgl && suspiciousCount === 0 && ch.result.score >= 0.6) {
+                // WebGL alone cannot trigger bot - cap its contribution
+                const cappedScore = Math.min(ch.result.score, 0.4);
+                const contribution = cappedScore * ch.result.confidence * ch.weight;
+                // SAFEGUARD 4: Cap per-channel contribution to 40% of its weight
+                const maxContribution = 0.4 * ch.weight;
+                totalScore += Math.min(contribution, maxContribution);
+                totalWeight += ch.result.confidence * ch.weight;
+                totalConfidence += ch.result.confidence;
+                availableChecks++;
+                continue;
+            }
+            
+            const contribution = ch.result.score * ch.result.confidence * ch.weight;
+            // SAFEGUARD 4: Cap per-channel contribution to 40% of total weight
+            const maxContribution = 0.4 * ch.weight * ch.result.score;
+            totalScore += Math.min(contribution, maxContribution * ch.result.confidence);
+            totalWeight += ch.result.confidence * ch.weight;
+            totalConfidence += ch.result.confidence;
+            availableChecks++;
         }
         
-        const score = totalWeight > 0 ? totalScore / totalWeight : 0;
+        let score = totalWeight > 0 ? totalScore / totalWeight : 0;
         const confidence = availableChecks > 0 ? totalConfidence / availableChecks : 0;
         
+        // SAFEGUARD 1: Multi-channel corroboration - downscale if < 2 suspicious channels
+        if (suspiciousCount < 2 && score >= 0.5) {
+            score *= 0.5; // Downscale by 50% if only single-channel suspicion
+        }
+        
+        // SAFEGUARD 5: Time accumulation before escalation
+        const sessionDuration = this._getSessionDuration();
+        if (sessionDuration < 5000) {
+            // Sessions < 5s: force score = 0
+            score = 0;
+        } else if (sessionDuration < 10000) {
+            // Sessions < 10s: cap score at 0.5
+            score = Math.min(score, 0.5);
+        }
+        
         return { score, confidence };
+    }
+    
+    /**
+     * Get session duration in milliseconds
+     */
+    _getSessionDuration() {
+        if (!this.startTime) {
+            return 0;
+        }
+        return Date.now() - this.startTime;
     }
 }
 
