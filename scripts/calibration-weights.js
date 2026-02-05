@@ -29,8 +29,8 @@
      * - Increased events weight from 0.13 to 0.16 (trusted events are strong signal)
      */
     CHANNEL_WEIGHTS: {
-        mouse: 0.18,      // Reduced from 0.22 - variance detection is unreliable for slow behavior
-        keyboard: 0.25,   // Increased from 0.22 - reliable discriminator
+        mouse: 0.22,      // Increased from 0.18 - boost robot detection (iteration 13)
+        keyboard: 0.28,   // Increased from 0.25 - reliable discriminator (iteration 13)
         scroll: 0.13,     // Secondary signal
         touch: 0.13,      // Primary for mobile
         events: 0.16,     // Increased from 0.13 - trusted event detection is reliable
@@ -105,7 +105,7 @@
         highStraightLineRatio: 0.30,   // Increased from 0.25 - good discriminator
         highUntrustedRatio: 0.30,      // Increased from 0.25 - strong bot indicator
         highMouseEfficiency: 0.15,
-        lowTimingVariance: 0.30,       // Increased from 0.20 - key robot differentiator (robot: 8ms timing variance vs human: 500,000+ms)
+        lowTimingVariance: 0.35,       // Increased from 0.30 - key robot differentiator (robot: 42ms timing variance vs human: 500,000+ms) - iteration 13
         subMillisecondPattern: 0.10,   // Reduced from 0.25 - all Playwright tests trigger this
         lowAccelVariance: 0.10,        // Reduced from 0.15
         bezierPattern: 0.05,           // Reduced from 0.20 - our human simulations use bezier curves
