@@ -1,6 +1,6 @@
 /**
- * Human-like behavior emulation for Playwright browser automation
- * Adapted from Python implementation for bypassing headless detection
+ * Human-like behavior emulation for testing Playwright browser automation detection
+ * Adapted from a Python implementation for behavior-monitoring test purposes
  */
 
 /**
