@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ♿ **Accessibility Improvements**
   - Added `aria-label` attributes to buttons and navigation links
   - Added `role="status"` and `aria-live="polite"` to session status indicator
-  - Added `aria-live="polite"` region for live sample counters
+  - Added `aria-live="off"` region for live sample counters (to avoid excessive announcements)
   - Added keyboard `:focus` styles for buttons
 - 🛡️ **Error Handling** - Added defensive checks and try-catch for monitor initialization
 

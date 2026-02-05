@@ -547,12 +547,10 @@
     <script src="scripts/behavior-monitor.js"></script>
     <script>
         // Configuration constants
-        const UPDATE_INTERVAL_MS = 500;  // Counter update interval
         const ELAPSED_TIME_UPDATE_MS = 1000;  // Elapsed time update interval (1 second)
         
         // Global monitor instance for automation access
         let monitor = null;
-        let updateInterval = null;
         let elapsedInterval = null;
 
         // Initialize monitor with error handling
@@ -575,10 +573,6 @@
 
         function startSession() {
             // Clear any existing intervals to prevent memory leaks
-            if (updateInterval !== null) {
-                clearInterval(updateInterval);
-                updateInterval = null;
-            }
             if (elapsedInterval !== null) {
                 clearInterval(elapsedInterval);
                 elapsedInterval = null;
@@ -586,7 +580,12 @@
             
             if (!monitor) {
                 if (!initMonitor()) {
-                    return; // Initialization failed
+                    // Initialization failed - provide user feedback
+                    const statusText = document.getElementById('status-text');
+                    if (statusText) {
+                        statusText.textContent = 'Error: Failed to initialize monitor';
+                    }
+                    return;
                 }
             }
             
@@ -634,10 +633,6 @@
             document.getElementById('status-text').textContent = 'Session Stopped';
             
             // Clear intervals
-            if (updateInterval) {
-                clearInterval(updateInterval);
-                updateInterval = null;
-            }
             if (elapsedInterval) {
                 clearInterval(elapsedInterval);
                 elapsedInterval = null;
