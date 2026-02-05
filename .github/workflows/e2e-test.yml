@@ -9,6 +9,12 @@ on:
       - '**'
   workflow_dispatch:
 
+# Prevent cancellation of in-progress runs when new commits are pushed
+# Each run gets its own unique group to avoid cancellation
+concurrency:
+  group: e2e-${{ github.run_id }}-${{ github.run_attempt }}
+  cancel-in-progress: false
+
 # Run tests in parallel using matrix strategy
 # Each test runs in its own isolated job (~7 min each including setup)
 # Total CI time: ~8 min instead of ~40 min sequential
