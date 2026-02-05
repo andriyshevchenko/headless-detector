@@ -6,8 +6,120 @@
  * they require genuine human interaction patterns accumulated over time.
  * 
  * @module HeadlessBehaviorMonitor
- * @version 2.0.0
+ * @version 2.1.0
+ * 
+ * CALIBRATION: All detection weights are in scripts/calibration-weights.js
+ * To override weights, load calibration-weights.js before this script, or set
+ * window.BehaviorMonitorWeights = { ... } with your custom configuration.
  */
+
+// Default weights (used if window.BehaviorMonitorWeights is not defined)
+const DEFAULT_WEIGHTS = {
+    CHANNEL_WEIGHTS: {
+        mouse: 0.22,
+        keyboard: 0.22,
+        scroll: 0.13,
+        touch: 0.13,
+        events: 0.13,
+        sensors: 0.05,
+        webglTiming: 0.12
+    },
+    MOUSE_THRESHOLDS: {
+        lowVelocityVariance: 0.0001,
+        lowAngleVariance: 0.01,
+        highStraightLineRatio: 0.5,
+        highUntrustedRatio: 0.1,
+        highMouseEfficiency: 0.95,
+        lowTimingVariance: 50,
+        lowAccelVariance: 0.00001
+    },
+    MOUSE_WEIGHTS: {
+        lowVelocityVariance: 0.25,
+        lowAngleVariance: 0.15,
+        highStraightLineRatio: 0.25,
+        highUntrustedRatio: 0.2,
+        highMouseEfficiency: 0.15,
+        lowTimingVariance: 0.15,
+        subMillisecondPattern: 0.15,
+        lowAccelVariance: 0.15,
+        bezierPattern: 0.2,
+        pressureSuspicious: 0.15,
+        lowEntropy: 0.15,
+        fingerprintSuspicious: 0.15
+    },
+    KEYBOARD_THRESHOLDS: {
+        lowHoldTimeVariance: 10,
+        lowInterKeyVariance: 100,
+        highUntrustedRatio: 0.1
+    },
+    KEYBOARD_WEIGHTS: {
+        lowHoldTimeVariance: 0.3,
+        lowInterKeyVariance: 0.3,
+        highUntrustedRatio: 0.4
+    },
+    SCROLL_THRESHOLDS: {
+        lowDeltaVariance: 1,
+        lowIntervalVariance: 10,
+        lowUniqueDeltaRatio: 0.3,
+        highDeltaVariance: 3000,
+        highEventsPerSecond: 100
+    },
+    SCROLL_WEIGHTS: {
+        lowDeltaVariance: 0.2,
+        lowIntervalVariance: 0.2,
+        lowUniqueDeltaRatio: 0.2,
+        highDeltaVariance: 0.15,
+        highEventsPerSecond: 0.15,
+        subMillisecondPattern: 0.1
+    },
+    TOUCH_THRESHOLDS: {
+        lowForceVariance: 0.001,
+        lowPositionVariance: 0.01,
+        highForceVariance: 0.15,
+        highEventsPerSecond: 50
+    },
+    TOUCH_WEIGHTS: {
+        lowForceVariance: 0.25,
+        lowPositionVariance: 0.25,
+        highForceVariance: 0.15,
+        highEventsPerSecond: 0.15,
+        subMillisecondPattern: 0.1
+    },
+    SAFEGUARDS: {
+        minConfidenceGate: 0.6,
+        suspiciousChannelThreshold: 0.6,
+        minSuspiciousChannels: 2,
+        singleChannelDownscale: 0.5,
+        maxChannelContribution: 0.4,
+        minSessionDurationZero: 5000,
+        minSessionDurationCap: 10000,
+        shortSessionScoreCap: 0.5,
+        botThreshold: 0.5,
+        minSamplesForVariance: 10
+    }
+};
+
+// Get weights from window.BehaviorMonitorWeights if available, otherwise use defaults
+const getWeights = () => {
+    if (typeof window !== 'undefined' && window.BehaviorMonitorWeights) {
+        // Deep merge with defaults to ensure all keys exist
+        return {
+            ...DEFAULT_WEIGHTS,
+            ...window.BehaviorMonitorWeights,
+            CHANNEL_WEIGHTS: { ...DEFAULT_WEIGHTS.CHANNEL_WEIGHTS, ...(window.BehaviorMonitorWeights.CHANNEL_WEIGHTS || {}) },
+            MOUSE_THRESHOLDS: { ...DEFAULT_WEIGHTS.MOUSE_THRESHOLDS, ...(window.BehaviorMonitorWeights.MOUSE_THRESHOLDS || {}) },
+            MOUSE_WEIGHTS: { ...DEFAULT_WEIGHTS.MOUSE_WEIGHTS, ...(window.BehaviorMonitorWeights.MOUSE_WEIGHTS || {}) },
+            KEYBOARD_THRESHOLDS: { ...DEFAULT_WEIGHTS.KEYBOARD_THRESHOLDS, ...(window.BehaviorMonitorWeights.KEYBOARD_THRESHOLDS || {}) },
+            KEYBOARD_WEIGHTS: { ...DEFAULT_WEIGHTS.KEYBOARD_WEIGHTS, ...(window.BehaviorMonitorWeights.KEYBOARD_WEIGHTS || {}) },
+            SCROLL_THRESHOLDS: { ...DEFAULT_WEIGHTS.SCROLL_THRESHOLDS, ...(window.BehaviorMonitorWeights.SCROLL_THRESHOLDS || {}) },
+            SCROLL_WEIGHTS: { ...DEFAULT_WEIGHTS.SCROLL_WEIGHTS, ...(window.BehaviorMonitorWeights.SCROLL_WEIGHTS || {}) },
+            TOUCH_THRESHOLDS: { ...DEFAULT_WEIGHTS.TOUCH_THRESHOLDS, ...(window.BehaviorMonitorWeights.TOUCH_THRESHOLDS || {}) },
+            TOUCH_WEIGHTS: { ...DEFAULT_WEIGHTS.TOUCH_WEIGHTS, ...(window.BehaviorMonitorWeights.TOUCH_WEIGHTS || {}) },
+            SAFEGUARDS: { ...DEFAULT_WEIGHTS.SAFEGUARDS, ...(window.BehaviorMonitorWeights.SAFEGUARDS || {}) }
+        };
+    }
+    return DEFAULT_WEIGHTS;
+};
 
 class HeadlessBehaviorMonitor {
     constructor(options = {}) {
@@ -33,6 +145,9 @@ class HeadlessBehaviorMonitor {
             onReady: options.onReady || null,
             onSample: options.onSample || null
         };
+        
+        // Load calibration weights (from window.BehaviorMonitorWeights or defaults)
+        this.weights = getWeights();
         
         // Data storage
         this.data = {
@@ -1527,27 +1642,31 @@ class HeadlessBehaviorMonitor {
     }
     
     _calculateOverallScore(analysis) {
+        const W = this.weights;
+        const S = W.SAFEGUARDS;
+        const CW = W.CHANNEL_WEIGHTS;
+        
         // Define channel groups for independence checking
         const inputChannels = [
-            { name: 'mouse', result: analysis.mouse, weight: 0.22, isSensor: false, isWebgl: false },
-            { name: 'keyboard', result: analysis.keyboard, weight: 0.22, isSensor: false, isWebgl: false },
-            { name: 'scroll', result: analysis.scroll, weight: 0.13, isSensor: false, isWebgl: false },
-            { name: 'touch', result: analysis.touch, weight: 0.13, isSensor: false, isWebgl: false },
-            { name: 'events', result: analysis.events, weight: 0.13, isSensor: false, isWebgl: false }
+            { name: 'mouse', result: analysis.mouse, weight: CW.mouse, isSensor: false, isWebgl: false },
+            { name: 'keyboard', result: analysis.keyboard, weight: CW.keyboard, isSensor: false, isWebgl: false },
+            { name: 'scroll', result: analysis.scroll, weight: CW.scroll, isSensor: false, isWebgl: false },
+            { name: 'touch', result: analysis.touch, weight: CW.touch, isSensor: false, isWebgl: false },
+            { name: 'events', result: analysis.events, weight: CW.events, isSensor: false, isWebgl: false }
         ];
-        const sensorChannel = { name: 'sensors', result: analysis.sensors, weight: 0.05, isSensor: true, isWebgl: false };
-        const webglChannel = { name: 'webglTiming', result: analysis.webglTiming, weight: 0.12, isSensor: false, isWebgl: true };
+        const sensorChannel = { name: 'sensors', result: analysis.sensors, weight: CW.sensors, isSensor: true, isWebgl: false };
+        const webglChannel = { name: 'webglTiming', result: analysis.webglTiming, weight: CW.webglTiming, isSensor: false, isWebgl: true };
         
         const allChannels = [...inputChannels, sensorChannel, webglChannel];
         
-        // SAFEGUARD 2: Minimum confidence gate - skip channels with confidence < 0.6
+        // SAFEGUARD 2: Minimum confidence gate - skip channels with confidence < threshold
         const confidentChannels = allChannels.filter(ch => 
-            ch.result && ch.result.available && ch.result.confidence >= 0.6
+            ch.result && ch.result.available && ch.result.confidence >= S.minConfidenceGate
         );
         
-        // SAFEGUARD 1: Count suspicious channels (score >= 0.6) for multi-channel corroboration
+        // SAFEGUARD 1: Count suspicious channels (score >= threshold) for multi-channel corroboration
         const suspiciousInputChannels = confidentChannels.filter(ch => 
-            !ch.isSensor && !ch.isWebgl && ch.result.score >= 0.6
+            !ch.isSensor && !ch.isWebgl && ch.result.score >= S.suspiciousChannelThreshold
         );
         const suspiciousCount = suspiciousInputChannels.length;
         
@@ -1567,12 +1686,12 @@ class HeadlessBehaviorMonitor {
             
             // SAFEGUARD 8: WebGL timing can add suspicion but never be decisive
             // If webgl is the only suspicious channel, downweight it significantly
-            if (ch.isWebgl && suspiciousCount === 0 && ch.result.score >= 0.6) {
+            if (ch.isWebgl && suspiciousCount === 0 && ch.result.score >= S.suspiciousChannelThreshold) {
                 // WebGL alone cannot trigger bot - cap its contribution
-                const cappedScore = Math.min(ch.result.score, 0.4);
+                const cappedScore = Math.min(ch.result.score, S.maxChannelContribution);
                 const contribution = cappedScore * ch.result.confidence * ch.weight;
-                // SAFEGUARD 4: Cap per-channel contribution to 40% of its weight
-                const maxContribution = 0.4 * ch.weight;
+                // SAFEGUARD 4: Cap per-channel contribution
+                const maxContribution = S.maxChannelContribution * ch.weight;
                 totalScore += Math.min(contribution, maxContribution);
                 totalWeight += ch.result.confidence * ch.weight;
                 totalConfidence += ch.result.confidence;
@@ -1581,8 +1700,8 @@ class HeadlessBehaviorMonitor {
             }
             
             const contribution = ch.result.score * ch.result.confidence * ch.weight;
-            // SAFEGUARD 4: Cap per-channel contribution to 40% of total weight
-            const maxContribution = 0.4 * ch.weight * ch.result.score;
+            // SAFEGUARD 4: Cap per-channel contribution to maxChannelContribution of total weight
+            const maxContribution = S.maxChannelContribution * ch.weight * ch.result.score;
             totalScore += Math.min(contribution, maxContribution * ch.result.confidence);
             totalWeight += ch.result.confidence * ch.weight;
             totalConfidence += ch.result.confidence;
@@ -1592,19 +1711,19 @@ class HeadlessBehaviorMonitor {
         let score = totalWeight > 0 ? totalScore / totalWeight : 0;
         const confidence = availableChecks > 0 ? totalConfidence / availableChecks : 0;
         
-        // SAFEGUARD 1: Multi-channel corroboration - downscale if < 2 suspicious channels
-        if (suspiciousCount < 2 && score >= 0.5) {
-            score *= 0.5; // Downscale by 50% if only single-channel suspicion
+        // SAFEGUARD 1: Multi-channel corroboration - downscale if < minSuspiciousChannels
+        if (suspiciousCount < S.minSuspiciousChannels && score >= S.botThreshold) {
+            score *= S.singleChannelDownscale;
         }
         
         // SAFEGUARD 5: Time accumulation before escalation
         const sessionDuration = this._getSessionDuration();
-        if (sessionDuration < 5000) {
+        if (sessionDuration < S.minSessionDurationZero) {
             // Sessions < 5s: force score = 0
             score = 0;
-        } else if (sessionDuration < 10000) {
-            // Sessions < 10s: cap score at 0.5
-            score = Math.min(score, 0.5);
+        } else if (sessionDuration < S.minSessionDurationCap) {
+            // Sessions < 10s: cap score at shortSessionScoreCap
+            score = Math.min(score, S.shortSessionScoreCap);
         }
         
         return { score, confidence };
