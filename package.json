@@ -36,6 +36,7 @@
   "homepage": "https://github.com/andriyshevchenko/headless-detector#readme",
   "devDependencies": {
     "@playwright/test": "^1.58.1",
+    "http-server": "^14.1.1",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0"
   },

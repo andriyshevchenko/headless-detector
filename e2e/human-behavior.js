@@ -32,6 +32,10 @@ function randomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+// Track the current mouse position for more realistic movements
+let currentMouseX = null;
+let currentMouseY = null;
+
 class HumanBehavior {
     /**
      * Get viewport size with fallback to default
@@ -109,8 +113,9 @@ class HumanBehavior {
     static async moveMouseHumanLike(page, targetX, targetY, steps = 50) {
         const viewportSize = HumanBehavior.getViewportSize(page);
         
-        const startX = viewportSize.width / 2;
-        const startY = viewportSize.height / 2;
+        // Use tracked position or default to viewport center for first movement
+        const startX = currentMouseX !== null ? currentMouseX : viewportSize.width / 2;
+        const startY = currentMouseY !== null ? currentMouseY : viewportSize.height / 2;
 
         for (let i = 0; i <= steps; i++) {
             const t = i / steps;
@@ -136,6 +141,10 @@ class HumanBehavior {
 
         // Final position without jitter
         await page.mouse.move(targetX, targetY);
+        
+        // Update tracked position
+        currentMouseX = targetX;
+        currentMouseY = targetY;
     }
 
     /**
@@ -197,7 +206,8 @@ class HumanBehavior {
             // Click
             await element.click();
         } else {
-            // If coordinates unavailable, just click
+            // If coordinates unavailable, wait for visibility and then click
+            await element.waitFor({ state: 'visible' });
             await element.click();
         }
     }
@@ -322,8 +332,21 @@ class HumanBehavior {
                 await sleep(randomBetween(1000, 5000));
                 
             } catch (error) {
-                // Ignore errors from actions (e.g., scroll at page end)
-                console.log(`Action ${action} failed:`, error.message);
+                // Only ignore expected errors from scroll/navigation actions
+                // These can fail at page boundaries or when elements are not interactable
+                const isExpectedError = 
+                    action === 'scroll' ||
+                    error.message.includes('outside of the viewport') ||
+                    error.message.includes('not visible') ||
+                    error.message.includes('detached');
+                
+                if (isExpectedError) {
+                    console.log(`Action ${action} failed (expected):`, error.message);
+                } else {
+                    // Log unexpected errors but don't fail the test
+                    // as some actions may fail due to page state
+                    console.warn(`Action ${action} failed (unexpected):`, error.message);
+                }
             }
             
             // Log progress every minute

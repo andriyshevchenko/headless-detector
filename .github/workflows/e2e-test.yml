@@ -3,7 +3,8 @@ name: E2E Tests
 on:
   push:
     branches:
-      - '**'
+      - main
+      - master
   pull_request:
     branches:
       - '**'
@@ -22,6 +23,9 @@ jobs:
   e2e-test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Note: Quick E2E tests run by default on every push/PR for CI efficiency.
+    # Use the "workflow_dispatch" trigger with test_type=full to run the full
+    # E2E suite periodically and before releases to ensure comprehensive coverage.
     permissions:
       contents: read
     
@@ -38,7 +42,7 @@ jobs:
         run: npm install
       
       - name: Install Playwright browsers
-        run: npx playwright install chromium
+        run: npx playwright install --with-deps chromium
       
       - name: Run quick E2E test (default)
         if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.test_type == 'quick' }}
