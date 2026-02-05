@@ -1,158 +1,115 @@
 /**
- * Playwright E2E test for behavior monitor with human-like behavior
+ * Playwright E2E tests for behavior monitor
  * 
- * This test connects to the behavioral monitor, initiates a 5-minute session,
- * and performs human-like actions to verify the behavior monitor correctly
- * detects automated behavior patterns.
+ * Tests different automation behavior patterns:
+ * - Human-like behavior (Bezier curves, delays, jitter)
+ * - Robot behavior (instant, uniform, predictable)
+ * - Impulsive behavior (rapid, erratic movements)
+ * - Mixed behaviors (combinations)
  */
 
 const { test, expect } = require('@playwright/test');
-const { HumanBehavior, resetMousePosition } = require('./human-behavior');
+const { resetMousePosition } = require('./human-behavior');
+const { BehaviorMode, runBehaviorSession } = require('./test-helpers');
 
-// Session duration in seconds (5 minutes)
-const SESSION_DURATION_SECONDS = 5 * 60;
+// Session durations
+const FULL_SESSION_SECONDS = 5 * 60; // 5 minutes
+const QUICK_SESSION_SECONDS = 30;    // 30 seconds
 
 test.describe('Behavior Monitor E2E Tests', () => {
     
-    // Reset mouse position tracking before each test to ensure clean state
+    // Reset mouse position tracking before each test
     test.beforeEach(() => {
         resetMousePosition();
     });
-    
+
+    // ========================================
+    // Human-like behavior tests
+    // ========================================
+
     test('5-minute human-like behavior session', async ({ page }) => {
-        // Navigate to the behavior monitor page
-        await page.goto('/behavior-monitor.html');
+        const { results } = await runBehaviorSession(
+            page,
+            FULL_SESSION_SECONDS,
+            BehaviorMode.HUMAN_LIKE,
+            { minExpectedScore: 0.3 }
+        );
         
-        // Wait for page to be fully loaded
-        await HumanBehavior.pageLoadDelay();
-        
-        // Verify the page loaded correctly
-        await expect(page.locator('h1')).toContainText('Headless Behavior Monitor');
-        
-        // Verify the start button is available
-        const startButton = page.locator('#start-btn');
-        await expect(startButton).toBeVisible();
-        await expect(startButton).toBeEnabled();
-        
-        console.log('Starting behavior monitor session...');
-        
-        // Click the start button with human-like behavior
-        await HumanBehavior.clickWithHumanBehavior(page, '#start-btn');
-        
-        // Verify session started
-        await expect(page.locator('#status-text')).toHaveText('Session Running');
-        await expect(page.locator('#stop-btn')).toBeEnabled();
-        
-        console.log(`Running human-like behavior for ${SESSION_DURATION_SECONDS} seconds (5 minutes)...`);
-        
-        // Perform random human-like actions for 5 minutes
-        await HumanBehavior.performRandomActions(page, SESSION_DURATION_SECONDS);
-        
-        // Small pause before stopping
-        await HumanBehavior.randomDelay(1, 2);
-        
-        console.log('Stopping session...');
-        
-        // Click the stop button
-        await HumanBehavior.clickWithHumanBehavior(page, '#stop-btn');
-        
-        // Wait for results to be displayed
-        await expect(page.locator('#results-grid')).toBeVisible({ timeout: 5000 });
-        
-        // Get the final results from the monitor
-        const results = await page.evaluate(() => {
-            if (window.__behaviorMonitor) {
-                return window.__behaviorMonitor.getResults();
-            }
-            return null;
-        });
-        
-        console.log('Session Results:', JSON.stringify(results, null, 2));
-        
-        // Verify we collected samples
-        expect(results).not.toBeNull();
-        expect(results.metadata).toBeDefined();
-        
-        // Log sample counts
-        const status = await page.evaluate(() => {
-            if (window.__behaviorMonitor) {
-                return window.__behaviorMonitor.getStatus();
-            }
-            return null;
-        });
-        
-        console.log('Final Status:', JSON.stringify(status, null, 2));
-        
-        // Verify we collected meaningful samples
-        // Due to 5 minutes of activity, we should have plenty
-        expect(status.samples.mouse).toBeGreaterThan(0);
-        expect(status.samples.keyboard).toBeGreaterThanOrEqual(0);
-        expect(status.samples.scroll).toBeGreaterThan(0);
-        
-        // Log the overall score
-        console.log(`Overall Bot Score: ${results.overallScore}`);
-        console.log(`Confidence: ${results.confidence}`);
-        
-        // Assert that the Behavior Monitor detects bot patterns
-        // With enhanced detection (pointer pressure, timestamp entropy, fingerprint, WebGL),
-        // the monitor should reliably detect automation with score >= 0.3
-        expect(results.overallScore).toBeGreaterThanOrEqual(0.3);
-        expect(results.overallScore).toBeLessThanOrEqual(1);
-        
-        // Log whether the monitor detected strong bot-like behavior
-        if (results.overallScore >= 0.5) {
-            console.log('✓ Behavior Monitor detected strong bot-like behavior patterns');
-        } else {
-            console.log('✓ Behavior Monitor detected moderate automation patterns (score >= 0.3)');
-        }
+        logDetectionResult(results.overallScore);
     });
-    
-    test('quick sanity check (30 seconds)', async ({ page }) => {
-        // A shorter test for quick validation
-        const QUICK_DURATION = 30;
+
+    test('quick human-like sanity check (30s)', async ({ page }) => {
+        const { results } = await runBehaviorSession(
+            page,
+            QUICK_SESSION_SECONDS,
+            BehaviorMode.HUMAN_LIKE,
+            { minExpectedScore: 0.3 }
+        );
         
-        await page.goto('/behavior-monitor.html');
-        await HumanBehavior.pageLoadDelay();
+        logDetectionResult(results.overallScore);
+    });
+
+    // ========================================
+    // Robot behavior tests (no human-like)
+    // ========================================
+
+    test('robot behavior - regular Playwright API (30s)', async ({ page }) => {
+        // Robot behavior should be easily detected - expect higher scores
+        const { results } = await runBehaviorSession(
+            page,
+            QUICK_SESSION_SECONDS,
+            BehaviorMode.ROBOT,
+            { minExpectedScore: 0.4 }
+        );
         
-        await expect(page.locator('h1')).toContainText('Headless Behavior Monitor');
+        console.log('✓ Robot behavior test - using regular Playwright API');
+        logDetectionResult(results.overallScore);
+    });
+
+    // ========================================
+    // Impulsive behavior tests
+    // ========================================
+
+    test('human-like + impulsive fast movements (30s)', async ({ page }) => {
+        // Mix of human-like behavior with rapid impulsive bursts
+        const { results } = await runBehaviorSession(
+            page,
+            QUICK_SESSION_SECONDS,
+            BehaviorMode.HUMAN_IMPULSIVE,
+            { minExpectedScore: 0.3 }
+        );
         
-        // Start session
-        await HumanBehavior.clickWithHumanBehavior(page, '#start-btn');
-        await expect(page.locator('#status-text')).toHaveText('Session Running');
+        console.log('✓ Human + impulsive behavior test');
+        logDetectionResult(results.overallScore);
+    });
+
+    test('robot + impulsive fast movements (30s)', async ({ page }) => {
+        // Robot behavior combined with rapid impulsive movements
+        // This should produce the highest bot scores
+        const { results } = await runBehaviorSession(
+            page,
+            QUICK_SESSION_SECONDS,
+            BehaviorMode.ROBOT_IMPULSIVE,
+            { minExpectedScore: 0.4 }
+        );
         
-        console.log(`Quick sanity check: ${QUICK_DURATION} seconds of human-like behavior...`);
-        
-        // Perform actions for 30 seconds
-        await HumanBehavior.performRandomActions(page, QUICK_DURATION);
-        
-        // Stop session
-        await HumanBehavior.clickWithHumanBehavior(page, '#stop-btn');
-        
-        // Wait for results
-        await expect(page.locator('#results-grid')).toBeVisible({ timeout: 5000 });
-        
-        // Get results
-        const results = await page.evaluate(() => {
-            if (window.__behaviorMonitor) {
-                return window.__behaviorMonitor.getResults();
-            }
-            return null;
-        });
-        
-        expect(results).not.toBeNull();
-        console.log(`Quick test completed. Score: ${results.overallScore}`);
-        
-        // Assert that the Behavior Monitor detects bot patterns
-        // With enhanced detection (pointer pressure, timestamp entropy, fingerprint, WebGL),
-        // the monitor should reliably detect automation with score >= 0.3
-        expect(results.overallScore).toBeGreaterThanOrEqual(0.3);
-        expect(results.overallScore).toBeLessThanOrEqual(1);
-        
-        // Log whether the monitor detected strong bot-like behavior
-        if (results.overallScore >= 0.5) {
-            console.log('✓ Behavior Monitor detected strong bot-like behavior patterns');
-        } else {
-            console.log('✓ Behavior Monitor detected moderate automation patterns (score >= 0.3)');
-        }
+        console.log('✓ Robot + impulsive behavior test');
+        logDetectionResult(results.overallScore);
     });
 });
+
+/**
+ * Log detection result with appropriate message
+ * @param {number} score 
+ */
+function logDetectionResult(score) {
+    if (score >= 0.7) {
+        console.log(`✓ Strong bot detection (score: ${score.toFixed(2)})`);
+    } else if (score >= 0.5) {
+        console.log(`✓ Moderate bot detection (score: ${score.toFixed(2)})`);
+    } else if (score >= 0.3) {
+        console.log(`✓ Weak bot detection (score: ${score.toFixed(2)})`);
+    } else {
+        console.log(`✓ Minimal detection (score: ${score.toFixed(2)})`);
+    }
+}
