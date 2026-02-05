@@ -22,7 +22,7 @@ concurrency:
 jobs:
   e2e-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 12  # 5 min test + 7 min buffer for setup/teardown
+    timeout-minutes: 15  # 5 min test + 10 min buffer for setup/teardown/retries
     permissions:
       contents: read
     

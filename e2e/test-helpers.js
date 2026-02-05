@@ -868,6 +868,10 @@ async function startSession(page, mode = BehaviorMode.HUMAN_LIKE) {
     // Verify page loaded
     await expect(page.locator('h1')).toContainText('Headless Behavior Monitor');
 
+    // Wait for start button to be enabled before clicking
+    const startBtn = page.locator('#start-btn');
+    await expect(startBtn).toBeEnabled({ timeout: 10000 });
+
     // Click start button
     if (isHumanLike) {
         await HumanBehavior.clickWithHumanBehavior(page, '#start-btn');
@@ -875,8 +879,14 @@ async function startSession(page, mode = BehaviorMode.HUMAN_LIKE) {
         await RobotBehavior.click(page, '#start-btn');
     }
 
-    // Verify session started
-    await expect(page.locator('#status-text')).toHaveText('Session Running');
+    // Verify session started - wait for status text to change
+    await expect(page.locator('#status-text')).toHaveText('Session Running', { timeout: 10000 });
+
+    // Also verify the stop button is now enabled (session is truly running)
+    const stopBtn = page.locator('#stop-btn');
+    await expect(stopBtn).toBeEnabled({ timeout: 10000 });
+    
+    console.log('✅ Session started successfully');
 }
 
 /**
@@ -896,6 +906,12 @@ async function stopSessionAndGetResults(page, mode = BehaviorMode.HUMAN_LIKE) {
     if (isHumanLike) {
         await HumanBehavior.randomDelay(0.5, 1);
     }
+
+    // Wait for stop button to be enabled before clicking
+    const stopBtn = page.locator('#stop-btn');
+    await expect(stopBtn).toBeEnabled({ timeout: 30000 });
+    
+    console.log('✅ Stop button is enabled, clicking to stop session');
 
     // Click stop button
     if (isHumanLike) {
