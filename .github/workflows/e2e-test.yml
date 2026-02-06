@@ -29,7 +29,7 @@ jobs:
       matrix:
         test:
           # =============================================
-          # LEVEL 1-2: BOT classification (≥0.40) - 5 tests
+          # LEVEL 1-2: TRIVIAL/CHEAP bots (<30 min to implement) - 11 tests
           # =============================================
           - name: L1-naive-robot
             grep: "5-minute L1-naive-robot behavior"
@@ -39,84 +39,81 @@ jobs:
             grep: "5-minute L2-fast-robot behavior"
           - name: L2-fast-robot-v2
             grep: "5-minute L2-fast-robot-v2 behavior"
+          - name: L2-interleaved-actions
+            grep: "5-minute L2-interleaved-actions behavior"
+          - name: L2-interleaved-actions-v2
+            grep: "5-minute L2-interleaved-actions-v2 behavior"
+          - name: L2-interleaved-actions-v3
+            grep: "5-minute L2-interleaved-actions-v3 behavior"
+          - name: L2-burst-pattern
+            grep: "5-minute L2-burst-pattern behavior"
+          - name: L2-burst-pattern-v2
+            grep: "5-minute L2-burst-pattern-v2 behavior"
+          - name: L2-burst-pattern-v3
+            grep: "5-minute L2-burst-pattern-v3 behavior"
+          - name: L2-scroll-focused
+            grep: "5-minute L2-scroll-focused behavior"
+          - name: L2-scroll-focused-v2
+            grep: "5-minute L2-scroll-focused-v2 behavior"
+          - name: L2-keyboard-focused
+            grep: "5-minute L2-keyboard-focused behavior"
+          - name: L2-keyboard-focused-v2
+            grep: "5-minute L2-keyboard-focused-v2 behavior"
           # =============================================
-          # LEVEL 4: SUSPICIOUS classification (0.25-0.50) - 6 tests
+          # LEVEL 3-4: BUDGET bots (30min-2hr) - 7 tests
           # =============================================
-          - name: L4-impulsive-robot
-            grep: "5-minute L4-impulsive-robot behavior"
-          - name: L4-impulsive-robot-v2
-            grep: "5-minute L4-impulsive-robot-v2 behavior"
-          - name: L4-impulsive-robot-v3
-            grep: "5-minute L4-impulsive-robot-v3 behavior"
-          - name: L4-burst-pattern
-            grep: "5-minute L4-burst-pattern behavior"
-          - name: L4-burst-pattern-v2
-            grep: "5-minute L4-burst-pattern-v2 behavior"
-          - name: L4-burst-pattern-v3
-            grep: "5-minute L4-burst-pattern-v3 behavior"
+          - name: L3-impulsive-robot
+            grep: "5-minute L3-impulsive-robot behavior"
+          - name: L3-impulsive-robot-v2
+            grep: "5-minute L3-impulsive-robot-v2 behavior"
+          - name: L3-impulsive-robot-v3
+            grep: "5-minute L3-impulsive-robot-v3 behavior"
+          - name: L3-replay-pattern
+            grep: "5-minute L3-replay-pattern behavior"
+          - name: L3-replay-pattern-v2
+            grep: "5-minute L3-replay-pattern-v2 behavior"
+          - name: L3-replay-pattern-v3
+            grep: "5-minute L3-replay-pattern-v3 behavior"
+          - name: L4-gaussian-timing
+            grep: "5-minute L4-gaussian-timing behavior"
+          - name: L4-gaussian-timing-v2
+            grep: "5-minute L4-gaussian-timing-v2 behavior"
           # =============================================
-          # LEVEL 5: SUSPICIOUS classification (0.25-0.50) - 6 tests
+          # LEVEL 5-6: MODERATE bots (2-8hr) - 17 tests
           # =============================================
-          - name: L5-scroll-focused
-            grep: "5-minute L5-scroll-focused behavior"
-          - name: L5-scroll-focused-v2
-            grep: "5-minute L5-scroll-focused-v2 behavior"
-          - name: L5-keyboard-focused
-            grep: "5-minute L5-keyboard-focused behavior"
-          - name: L5-keyboard-focused-v2
-            grep: "5-minute L5-keyboard-focused-v2 behavior"
-          - name: L5-gaussian-timing
-            grep: "5-minute L5-gaussian-timing behavior"
-          - name: L5-gaussian-timing-v2
-            grep: "5-minute L5-gaussian-timing-v2 behavior"
-          # =============================================
-          # LEVEL 6: SUSPICIOUS classification (0.25-0.50) - 11 tests
-          # =============================================
+          - name: L5-fast-bezier
+            grep: "5-minute L5-fast-bezier behavior"
+          - name: L5-fast-bezier-v2
+            grep: "5-minute L5-fast-bezier-v2 behavior"
+          - name: L5-fast-bezier-v3
+            grep: "5-minute L5-fast-bezier-v3 behavior"
+          - name: L5-slow-bezier
+            grep: "5-minute L5-slow-bezier behavior"
+          - name: L5-slow-bezier-v2
+            grep: "5-minute L5-slow-bezier-v2 behavior"
+          - name: L5-mouse-focused
+            grep: "5-minute L5-mouse-focused behavior"
+          - name: L5-mouse-focused-v2
+            grep: "5-minute L5-mouse-focused-v2 behavior"
+          - name: L5-mouse-focused-v3
+            grep: "5-minute L5-mouse-focused-v3 behavior"
+          - name: L5-impulsive-bezier
+            grep: "5-minute L5-impulsive-bezier behavior"
+          - name: L5-impulsive-bezier-v2
+            grep: "5-minute L5-impulsive-bezier-v2 behavior"
           - name: L6-bezier-with-noise
             grep: "5-minute L6-bezier-with-noise behavior"
           - name: L6-bezier-with-noise-v2
             grep: "5-minute L6-bezier-with-noise-v2 behavior"
           - name: L6-bezier-with-noise-v3
             grep: "5-minute L6-bezier-with-noise-v3 behavior"
-          - name: L6-mouse-focused
-            grep: "5-minute L6-mouse-focused behavior"
-          - name: L6-mouse-focused-v2
-            grep: "5-minute L6-mouse-focused-v2 behavior"
-          - name: L6-mouse-focused-v3
-            grep: "5-minute L6-mouse-focused-v3 behavior"
-          - name: L6-fast-bezier
-            grep: "5-minute L6-fast-bezier behavior"
-          - name: L6-fast-bezier-v2
-            grep: "5-minute L6-fast-bezier-v2 behavior"
-          - name: L6-fast-bezier-v3
-            grep: "5-minute L6-fast-bezier-v3 behavior"
-          - name: L6-slow-bezier
-            grep: "5-minute L6-slow-bezier behavior"
-          - name: L6-slow-bezier-v2
-            grep: "5-minute L6-slow-bezier-v2 behavior"
+          - name: L6-mixed-behaviors
+            grep: "5-minute L6-mixed-behaviors"
+          - name: L6-mixed-behaviors-v2
+            grep: "5-minute L6-mixed-behaviors-v2 behavior"
           # =============================================
-          # LEVEL 7: LIKELY_HUMAN classification (0.10-0.35) - 16 tests
+          # LEVEL 7: EXPENSIVE bots (days of work) - 12 tests
           # =============================================
-          - name: L7-replay-pattern
-            grep: "5-minute L7-replay-pattern behavior"
-          - name: L7-replay-pattern-v2
-            grep: "5-minute L7-replay-pattern-v2 behavior"
-          - name: L7-replay-pattern-v3
-            grep: "5-minute L7-replay-pattern-v3 behavior"
-          - name: L7-interleaved-actions
-            grep: "5-minute L7-interleaved-actions behavior"
-          - name: L7-interleaved-actions-v2
-            grep: "5-minute L7-interleaved-actions-v2 behavior"
-          - name: L7-interleaved-actions-v3
-            grep: "5-minute L7-interleaved-actions-v3 behavior"
-          - name: L7-mixed-behaviors
-            grep: "5-minute L7-mixed-behaviors"
-          - name: L7-mixed-behaviors-v2
-            grep: "5-minute L7-mixed-behaviors-v2 behavior"
-          - name: L7-impulsive-bezier
-            grep: "5-minute L7-impulsive-bezier behavior"
-          - name: L7-impulsive-bezier-v2
-            grep: "5-minute L7-impulsive-bezier-v2 behavior"
           - name: L7-phase-alternating
             grep: "5-minute L7-phase-alternating behavior"
           - name: L7-phase-alternating-v2
@@ -136,7 +133,7 @@ jobs:
           - name: L7-smooth-bezier-v3
             grep: "5-minute L7-smooth-bezier-v3 behavior"
           # =============================================
-          # LEVEL 9-10: VERIFIED classification (<0.15) - 4 tests
+          # LEVEL 9-10: EXPERT bots (weeks+ of work) - 4 tests
           # =============================================
           - name: L9-advanced-human
             grep: "5-minute L9-advanced-human behavior"
