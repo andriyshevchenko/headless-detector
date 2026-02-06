@@ -1219,6 +1219,7 @@ class HeadlessBehaviorMonitor {
         const highInterKeyTriggered = interKeyVariance > highInterKeyThreshold;
         if (highInterKeyTriggered) suspiciousScore -= highInterKeyWeight;
         
+        // Clamp to [0, 1]: human-like signals (highInterKeyVariance) can push score negative
         suspiciousScore = Math.max(suspiciousScore, 0);
         
         const confidence = Math.min(keystrokes.length / this.options.minSamples.keyboard, 1);
@@ -1330,6 +1331,7 @@ class HeadlessBehaviorMonitor {
         const highIntervalTriggered = intervalVariance > highIntervalThreshold;
         if (highIntervalTriggered) suspiciousScore -= highIntervalWeight;
         
+        // Clamp to [0, 1]: human-like signals (highIntervalVariance) can push score negative
         suspiciousScore = Math.max(suspiciousScore, 0);
         
         const confidence = Math.min(scrolls.length / this.options.minSamples.scroll, 1);
