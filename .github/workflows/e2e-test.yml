@@ -173,13 +173,13 @@ jobs:
       - name: Run ${{ matrix.test.name }} test
         id: run_test
         run: |
-          set -o pipefail
-          # Run test and capture output
+          set +e
           npx playwright test --grep "${{ matrix.test.grep }}" 2>&1 | tee test-output.log
-          
-          # Extract calibration JSON from output for artifact storage
+          TEST_EXIT_CODE=$?
+          set -e
           mkdir -p calibration-data
           grep -A 10000 "===CALIBRATION_JSON_START===" test-output.log | grep -B 10000 "===CALIBRATION_JSON_END===" | grep -v "===CALIBRATION" > calibration-data/${{ matrix.test.name }}-calibration.json || echo '{}' > calibration-data/${{ matrix.test.name }}-calibration.json
+          exit $TEST_EXIT_CODE
       
       - name: Upload test results
         uses: actions/upload-artifact@v4
