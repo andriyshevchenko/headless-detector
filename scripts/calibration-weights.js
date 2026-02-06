@@ -29,11 +29,11 @@
      * - Increased events weight from 0.13 to 0.16 (trusted events are strong signal)
      */
     CHANNEL_WEIGHTS: {
-        mouse: 0.22,      // Increased from 0.18 - boost robot detection (iteration 13)
-        keyboard: 0.28,   // Increased from 0.25 - reliable discriminator (iteration 13)
-        scroll: 0.13,     // Secondary signal
+        mouse: 0.35,      // Increased from 0.30 - primary bot detection signal (iteration 18)
+        keyboard: 0.40,   // Increased from 0.35 - critical for keyboard-heavy tests (iteration 19)
+        scroll: 0.40,     // Increased from 0.25 - critical for scroll-heavy tests (iteration 19)
         touch: 0.13,      // Primary for mobile
-        events: 0.16,     // Increased from 0.13 - trusted event detection is reliable
+        events: 0.16,     // Trusted event detection is reliable
         sensors: 0.05,    // Device motion (noisy, permission-dependent)
         webglTiming: 0.10 // Rendering timing fingerprint
     },
@@ -87,31 +87,56 @@
     },
 
     /**
-     * Mouse scoring weights (must sum to <= 1.0 to avoid clamping)
+     * Mouse scoring weights
      * 
-     * Calibration iteration 12:
-     * - Increased lowTimingVariance weight from 0.20 to 0.30 (key robot differentiator - robot: 8ms timing variance vs human: 500,000+ms)
+     * CALIBRATION PHILOSOPHY: Scores should be INVERSELY proportional to bot sophistication.
+     * Naive bots (cheap to build) → HIGH scores
+     * Sophisticated bots (expensive to maintain) → LOW scores
      * 
-     * Previous iteration 9 changes:
-     * - Reduced bezierPattern weight from 0.20 to 0.05 (false positives on human-smooth)
-     * - Reduced subMillisecondPattern weight from 0.25 to 0.10 (all Playwright tests trigger this)
-     * - Reduced pressureSuspicious from 0.15 to 0.05 (causes false positives)
-     * - Reduced fingerprintSuspicious from 0.15 to 0.05 (causes false positives)
-     * - Increased highUntrustedRatio to 0.30 (strong bot indicator)
+     * Iteration 14 (inverse-sophistication scoring):
+     * - highStraightLineRatio: 0.30→0.50 (MAJOR boost - straight lines are the #1 naive bot tell)
+     * - constantTiming: 0.40 (NEW - catches robot-slow's 500ms fixed intervals that bypass lowTimingVariance)
+     * - periodicNoise: 0.25 (NEW - catches stealth-bot's Math.sin patterns)
+     * - lowTimingVariance: 0.35 (key for fast naive bots like robot)
+     * - Added naiveSignalMultiplier logic in behavior-monitor.js
+     * 
+     * Previous iteration 12:
+     * - lowTimingVariance weight from 0.20 to 0.35 (robot: 42ms timing variance vs human: 500,000+ms)
      */
     MOUSE_WEIGHTS: {
-        lowVelocityVariance: 0.10,     // Reduced from 0.25 - slow humans also have low variance
-        lowAngleVariance: 0.05,        // Reduced from 0.15 - not reliable alone
-        highStraightLineRatio: 0.30,   // Increased from 0.25 - good discriminator
-        highUntrustedRatio: 0.30,      // Increased from 0.25 - strong bot indicator
+        lowVelocityVariance: 0.10,     // Slow humans also have low variance - not reliable alone
+        lowAngleVariance: 0.05,        // Not reliable alone
+        highStraightLineRatio: 0.55,   // MAJOR - straight lines are the #1 naive bot tell (iteration 18: 0.50→0.55)
+        highUntrustedRatio: 0.30,      // Strong bot indicator
         highMouseEfficiency: 0.15,
-        lowTimingVariance: 0.35,       // Increased from 0.30 - key robot differentiator (robot: 42ms timing variance vs human: 500,000+ms) - iteration 13
-        subMillisecondPattern: 0.10,   // Reduced from 0.25 - all Playwright tests trigger this
-        lowAccelVariance: 0.10,        // Reduced from 0.15
-        bezierPattern: 0.05,           // Reduced from 0.20 - our human simulations use bezier curves
-        pressureSuspicious: 0.05,      // Reduced from 0.15 - causes false positives
+        lowTimingVariance: 0.45,       // Key for fast naive bots (iteration 18: 0.35→0.45)
+        constantTiming: 0.50,          // Catches constant intervals at ANY speed (iteration 18: 0.40→0.50)
+        periodicNoise: 0.00,           // DISABLED (iteration 19) - too many Bezier false positives
+        subMillisecondPattern: 0.10,   // All Playwright tests trigger this
+        lowAccelVariance: 0.10,
+        bezierPattern: 0.05,           // Our human simulations use bezier curves
+        pressureSuspicious: 0.05,      // Causes false positives
         lowEntropy: 0.15,
-        fingerprintSuspicious: 0.05    // Reduced from 0.15 - causes false positives
+        fingerprintSuspicious: 0.05    // Causes false positives
+    },
+    
+    /**
+     * Thresholds for new inverse-sophistication detectors
+     */
+    SOPHISTICATION_THRESHOLDS: {
+        // Constant timing: coefficient of variation threshold
+        // CV < 0.15 = constant timing (catches robot-slow's 500ms)
+        // Humans typically have CV > 0.3
+        constantTimingCV: 0.15,
+        
+        // Periodic noise: autocorrelation threshold
+        // AC > 0.5 = periodic pattern (catches stealth-bot's Math.sin)
+        // Perlin noise (ultimate-bot) typically has AC < 0.3
+        periodicNoiseAC: 0.5,
+        
+        // Naive signal multiplier: when multiple naive signals fire, multiply score
+        // This compounds detection of obvious bots
+        naiveSignalMultiplier: 1.5
     },
 
     /**
@@ -131,9 +156,9 @@
      * Keyboard scoring weights (sum = 1.0)
      */
     KEYBOARD_WEIGHTS: {
-        lowHoldTimeVariance: 0.3,
-        lowInterKeyVariance: 0.3,
-        highUntrustedRatio: 0.4
+        lowHoldTimeVariance: 0.5,   // Increased from 0.3 - primary signal for keyboard bots (iteration 20)
+        lowInterKeyVariance: 0.2,   // Reduced from 0.3 - less reliable due to interleaved actions
+        highUntrustedRatio: 0.3     // Reduced from 0.4
     },
 
     /**
@@ -161,9 +186,9 @@
         lowDeltaVariance: 0.2,
         lowIntervalVariance: 0.2,
         lowUniqueDeltaRatio: 0.2,
-        highDeltaVariance: 0.15,
-        highEventsPerSecond: 0.15,
-        subMillisecondPattern: 0.1
+        highDeltaVariance: 0.25,      // Increased from 0.15 - catches scroll-heavy (iteration 20)
+        highEventsPerSecond: 0.10,    // Reduced from 0.15
+        subMillisecondPattern: 0.05   // Reduced from 0.10
     },
 
     /**
@@ -269,7 +294,7 @@
      */
     SAFEGUARDS: {
         minConfidenceGate: 0.4,          // Channels below this confidence are ignored
-        suspiciousChannelThreshold: 0.35, // Channel score >= this is "suspicious" (lowered from 0.45)
+        suspiciousChannelThreshold: 0.25, // Channel score >= this is "suspicious" (lowered from 0.35 - iteration 20)
         minSuspiciousChannels: 2,        // Need this many suspicious channels for escalation
         singleChannelDownscale: 0.90,    // Downscale factor when only 1 suspicious channel (was 0.75)
         maxChannelContribution: 0.6,     // Max contribution per channel (60%)
