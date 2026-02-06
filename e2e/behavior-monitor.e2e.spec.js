@@ -71,9 +71,8 @@ const SESSION_SECONDS = 5 * 60; // 5 minutes
  * detection classification. Each level has a target detection class and
  * expected score range based on the tier-to-category system.
  * 
- * Tests may override score ranges for known DETECTION_GAPS (single-channel
- * bots or high-variance Bezier patterns), but the CLASS shows what the
- * detection system SHOULD achieve for each difficulty level.
+ * Every test asserts its score falls within the exact class range for its
+ * level. No overrides — if a test fails, it's a detection gap to fix.
  */
 const LEVEL_TO_CLASS = {
     1:  { class: 'BOT',         emoji: '🤖', min: 0.40, max: 1.00 },
@@ -198,8 +197,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
 
     test('5-minute L2-mouse-focused behavior', async ({ page }) => {
         // CM=5 × R=0.4 = L2 (💰 CHEAP): mouse-only, impractical for real automation
-        // DETECTION_GAP: mouse-only bots lack keyboard/scroll signals for multi-channel detection.
-        const minExp = 0.0, maxExp = 1.0;
+        const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -314,9 +312,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
     test('5-minute L7-full-human-sim behavior', async ({ page }) => {
         // LEVEL 7 (💵💵💵 EXPENSIVE): Core HumanBehavior class
         // Code: Full Bezier simulation with weighted actions, timing jitter
-        // NOTE: Score varies significantly with randomization seeds.
-        // Some seeds produce very evasive patterns (DETECTION_GAP).
-        const minExp = 0.05, maxExp = 0.25;
+        const minExp = 0.12, maxExp = 0.25;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -445,8 +441,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
 
     test('5-minute L1-scroll-focused-v2 behavior', async ({ page }) => {
         // CM=2 × R=0.3 = L1 variant: scroll-only, impractical
-        // DETECTION_GAP: scroll-only bots lack mouse/keyboard signals.
-        const minExp = 0.0, maxExp = 0.50;
+        const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.SCROLL_HEAVY,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -518,8 +513,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
 
     test('5-minute L2-mouse-focused-v2 behavior', async ({ page }) => {
         // CM=5 × R=0.4 = L2 variant: mouse-only, impractical
-        // DETECTION_GAP: mouse-only bots lack keyboard/scroll signals.
-        const minExp = 0.0, maxExp = 1.0;
+        const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.MOUSE_HEAVY,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -529,8 +523,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
 
     test('5-minute L2-mouse-focused-v3 behavior', async ({ page }) => {
         // CM=5 × R=0.4 = L2 variant: mouse-only, impractical
-        // DETECTION_GAP: mouse-only bots lack keyboard/scroll signals.
-        const minExp = 0.0, maxExp = 1.0;
+        const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.MOUSE_HEAVY,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -572,8 +565,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
 
     test('5-minute L4-impulsive-bezier-v2 behavior', async ({ page }) => {
         // CM=5 × R=0.7 = L4 variant
-        // DETECTION_GAP: Bezier + impulsive creates unpredictable patterns.
-        const minExp = 0.05, maxExp = 0.40;
+        const minExp = 0.25, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_IMPULSIVE,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
