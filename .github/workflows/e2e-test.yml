@@ -40,38 +40,23 @@ jobs:
           - name: L2-fast-robot-v2
             grep: "5-minute L2-fast-robot-v2 behavior"
           # =============================================
-          # LEVEL 3: BOT classification (≥0.40) - 3 tests
+          # LEVEL 4: SUSPICIOUS classification (0.25-0.50) - 6 tests
           # =============================================
-          - name: L3-impulsive-robot
-            grep: "5-minute L3-impulsive-robot behavior"
-          - name: L3-impulsive-robot-v2
-            grep: "5-minute L3-impulsive-robot-v2 behavior"
-          - name: L3-impulsive-robot-v3
-            grep: "5-minute L3-impulsive-robot-v3 behavior"
-          # =============================================
-          # LEVEL 4: SUSPICIOUS classification (0.30-0.40) - 6 tests
-          # =============================================
+          - name: L4-impulsive-robot
+            grep: "5-minute L4-impulsive-robot behavior"
+          - name: L4-impulsive-robot-v2
+            grep: "5-minute L4-impulsive-robot-v2 behavior"
+          - name: L4-impulsive-robot-v3
+            grep: "5-minute L4-impulsive-robot-v3 behavior"
           - name: L4-burst-pattern
             grep: "5-minute L4-burst-pattern behavior"
           - name: L4-burst-pattern-v2
             grep: "5-minute L4-burst-pattern-v2 behavior"
           - name: L4-burst-pattern-v3
             grep: "5-minute L4-burst-pattern-v3 behavior"
-          - name: L4-replay-pattern
-            grep: "5-minute L4-replay-pattern behavior"
-          - name: L4-replay-pattern-v2
-            grep: "5-minute L4-replay-pattern-v2 behavior"
-          - name: L4-replay-pattern-v3
-            grep: "5-minute L4-replay-pattern-v3 behavior"
           # =============================================
-          # LEVEL 5: SUSPICIOUS classification (0.30-0.40) - 11 tests
+          # LEVEL 5: SUSPICIOUS classification (0.25-0.50) - 6 tests
           # =============================================
-          - name: L5-interleaved-actions
-            grep: "5-minute L5-interleaved-actions behavior"
-          - name: L5-interleaved-actions-v2
-            grep: "5-minute L5-interleaved-actions-v2 behavior"
-          - name: L5-interleaved-actions-v3
-            grep: "5-minute L5-interleaved-actions-v3 behavior"
           - name: L5-scroll-focused
             grep: "5-minute L5-scroll-focused behavior"
           - name: L5-scroll-focused-v2
@@ -84,12 +69,8 @@ jobs:
             grep: "5-minute L5-gaussian-timing behavior"
           - name: L5-gaussian-timing-v2
             grep: "5-minute L5-gaussian-timing-v2 behavior"
-          - name: L5-mixed-behaviors
-            grep: "5-minute L5-mixed-behaviors"
-          - name: L5-mixed-behaviors-v2
-            grep: "5-minute L5-mixed-behaviors-v2 behavior"
           # =============================================
-          # LEVEL 6: SUSPICIOUS classification (0.30-0.40) - 6 tests
+          # LEVEL 6: SUSPICIOUS classification (0.25-0.50) - 11 tests
           # =============================================
           - name: L6-bezier-with-noise
             grep: "5-minute L6-bezier-with-noise behavior"
@@ -103,44 +84,57 @@ jobs:
             grep: "5-minute L6-mouse-focused-v2 behavior"
           - name: L6-mouse-focused-v3
             grep: "5-minute L6-mouse-focused-v3 behavior"
+          - name: L6-fast-bezier
+            grep: "5-minute L6-fast-bezier behavior"
+          - name: L6-fast-bezier-v2
+            grep: "5-minute L6-fast-bezier-v2 behavior"
+          - name: L6-fast-bezier-v3
+            grep: "5-minute L6-fast-bezier-v3 behavior"
+          - name: L6-slow-bezier
+            grep: "5-minute L6-slow-bezier behavior"
+          - name: L6-slow-bezier-v2
+            grep: "5-minute L6-slow-bezier-v2 behavior"
           # =============================================
-          # LEVEL 7: LIKELY_HUMAN classification (0.15-0.30) - 10 tests
+          # LEVEL 7: LIKELY_HUMAN classification (0.10-0.35) - 16 tests
           # =============================================
-          - name: L7-fast-bezier
-            grep: "5-minute L7-fast-bezier behavior"
-          - name: L7-fast-bezier-v2
-            grep: "5-minute L7-fast-bezier-v2 behavior"
-          - name: L7-fast-bezier-v3
-            grep: "5-minute L7-fast-bezier-v3 behavior"
+          - name: L7-replay-pattern
+            grep: "5-minute L7-replay-pattern behavior"
+          - name: L7-replay-pattern-v2
+            grep: "5-minute L7-replay-pattern-v2 behavior"
+          - name: L7-replay-pattern-v3
+            grep: "5-minute L7-replay-pattern-v3 behavior"
+          - name: L7-interleaved-actions
+            grep: "5-minute L7-interleaved-actions behavior"
+          - name: L7-interleaved-actions-v2
+            grep: "5-minute L7-interleaved-actions-v2 behavior"
+          - name: L7-interleaved-actions-v3
+            grep: "5-minute L7-interleaved-actions-v3 behavior"
+          - name: L7-mixed-behaviors
+            grep: "5-minute L7-mixed-behaviors"
+          - name: L7-mixed-behaviors-v2
+            grep: "5-minute L7-mixed-behaviors-v2 behavior"
           - name: L7-impulsive-bezier
             grep: "5-minute L7-impulsive-bezier behavior"
           - name: L7-impulsive-bezier-v2
             grep: "5-minute L7-impulsive-bezier-v2 behavior"
-          - name: L7-slow-bezier
-            grep: "5-minute L7-slow-bezier behavior"
-          - name: L7-slow-bezier-v2
-            grep: "5-minute L7-slow-bezier-v2 behavior"
           - name: L7-phase-alternating
             grep: "5-minute L7-phase-alternating behavior"
           - name: L7-phase-alternating-v2
             grep: "5-minute L7-phase-alternating-v2 behavior"
           - name: L7-phase-alternating-v3
             grep: "5-minute L7-phase-alternating-v3 behavior"
-          # =============================================
-          # LEVEL 8: LIKELY_HUMAN classification (0.15-0.30) - 6 tests
-          # =============================================
-          - name: L8-full-human-sim
-            grep: "5-minute L8-full-human-sim behavior"
-          - name: L8-full-human-sim-v2
-            grep: "5-minute L8-full-human-sim-v2 behavior"
-          - name: L8-full-human-sim-v3
-            grep: "5-minute L8-full-human-sim-v3 behavior"
-          - name: L8-smooth-bezier
-            grep: "5-minute L8-smooth-bezier behavior"
-          - name: L8-smooth-bezier-v2
-            grep: "5-minute L8-smooth-bezier-v2 behavior"
-          - name: L8-smooth-bezier-v3
-            grep: "5-minute L8-smooth-bezier-v3 behavior"
+          - name: L7-full-human-sim
+            grep: "5-minute L7-full-human-sim behavior"
+          - name: L7-full-human-sim-v2
+            grep: "5-minute L7-full-human-sim-v2 behavior"
+          - name: L7-full-human-sim-v3
+            grep: "5-minute L7-full-human-sim-v3 behavior"
+          - name: L7-smooth-bezier
+            grep: "5-minute L7-smooth-bezier behavior"
+          - name: L7-smooth-bezier-v2
+            grep: "5-minute L7-smooth-bezier-v2 behavior"
+          - name: L7-smooth-bezier-v3
+            grep: "5-minute L7-smooth-bezier-v3 behavior"
           # =============================================
           # LEVEL 9-10: VERIFIED classification (<0.15) - 4 tests
           # =============================================
