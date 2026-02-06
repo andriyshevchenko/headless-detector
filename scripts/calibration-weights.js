@@ -306,7 +306,10 @@
         minSessionDurationZero: 5000,    // Sessions < 5s get score = 0
         minSessionDurationCap: 10000,    // Sessions < 10s get score capped at 0.5
         shortSessionScoreCap: 0.5,       // Score cap for short sessions
-        botThreshold: 0.5,               // Score >= this is classified as BOT
+        botThreshold: 0.40,              // Score >= this is classified as BOT
+        suspiciousThreshold: 0.25,       // Score >= this is classified as SUSPICIOUS
+        likelyHumanThreshold: 0.12,      // Score >= this is classified as LIKELY_HUMAN
+        // Below likelyHumanThreshold → VERIFIED_HUMAN
         minSamplesForVariance: 10,       // Need this many samples for variance checks
         sophisticationMouseThreshold: 0.40, // Mouse score below this + human kb/scroll patterns → apply discount
         sophisticationDiscount: 0.60,    // Multiply score by this when sophistication evidence found

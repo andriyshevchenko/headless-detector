@@ -98,7 +98,9 @@ const DEFAULT_WEIGHTS = {
         minSessionDurationZero: 5000,
         minSessionDurationCap: 10000,
         shortSessionScoreCap: 0.5,
-        botThreshold: 0.5,
+        botThreshold: 0.40,
+        suspiciousThreshold: 0.25,
+        likelyHumanThreshold: 0.12,
         minSamplesForVariance: 10,
         sophisticationMouseThreshold: 0.40,
         sophisticationDiscount: 0.60
@@ -395,8 +397,39 @@ class HeadlessBehaviorMonitor {
         const scoreData = this._calculateOverallScore(analysis);
         analysis.overallScore = scoreData.score;
         analysis.confidence = scoreData.confidence;
+        analysis.classification = this._classify(scoreData.score);
         
         return analysis;
+    }
+    
+    /**
+     * Classify a score into one of 4 detection categories.
+     * 
+     * Categories map to bot implementation cost tiers:
+     * - BOT (≥0.40): Trivial/cheap bots that are easy to build and maintain
+     * - SUSPICIOUS (0.25-0.40): Budget/moderate bots requiring some investment
+     * - LIKELY_HUMAN (0.12-0.25): Expensive bots requiring days of development
+     * - VERIFIED_HUMAN (≤0.12): Expert-level bots requiring weeks of research
+     * 
+     * @param {number} score - Overall behavior score (0-1)
+     * @returns {Object} Classification with verdict, label, and description
+     * @private
+     */
+    _classify(score) {
+        const S = this.weights.SAFEGUARDS || {};
+        const botThreshold = S.botThreshold ?? 0.40;
+        const suspiciousThreshold = S.suspiciousThreshold ?? 0.25;
+        const likelyHumanThreshold = S.likelyHumanThreshold ?? 0.12;
+        
+        if (score >= botThreshold) {
+            return { verdict: 'BOT', label: '🤖 BOT', description: 'Automated behavior detected' };
+        } else if (score >= suspiciousThreshold) {
+            return { verdict: 'SUSPICIOUS', label: '⚠️ SUSPICIOUS', description: 'Suspicious patterns detected' };
+        } else if (score >= likelyHumanThreshold) {
+            return { verdict: 'LIKELY_HUMAN', label: '👤 LIKELY_HUMAN', description: 'Likely human with some anomalies' };
+        } else {
+            return { verdict: 'VERIFIED_HUMAN', label: '✅ VERIFIED_HUMAN', description: 'Behavior consistent with human' };
+        }
     }
     
     /**
@@ -427,7 +460,9 @@ class HeadlessBehaviorMonitor {
             classification: {
                 overallScore: results.overallScore,
                 confidence: results.confidence,
-                verdict: results.overallScore >= 0.5 ? 'BOT' : 'HUMAN',
+                verdict: results.classification.verdict,
+                label: results.classification.label,
+                description: results.classification.description,
                 verdictConfidence: results.confidence
             },
             
