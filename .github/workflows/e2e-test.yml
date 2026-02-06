@@ -256,6 +256,14 @@ jobs:
           path: aggregated-metrics/
           retention-days: 30
       
+      # Provide full raw calibration data in a single archive for easy download
+      - name: Upload merged calibration data
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-calibration-data
+          path: all-calibration-data/
+          retention-days: 30
+      
       - name: Check test results
         run: |
           if [ "${{ needs.e2e-test.result }}" == "success" ]; then
