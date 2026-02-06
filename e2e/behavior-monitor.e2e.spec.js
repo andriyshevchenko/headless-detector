@@ -362,6 +362,337 @@ test.describe('Behavior Monitor E2E Tests', () => {
         
         logDetectionResult(results.overallScore, 'L10_ULTIMATE_EVASION', 10, minExp, maxExp);
     });
+
+    // ========================================
+    // RANDOMIZED VARIANTS - 31 additional tests for 50 total
+    // Each variant uses different random seeds for statistical validation
+    // ========================================
+
+    // --- LEVEL 1-2: Additional BOT variants (3 more) ---
+    
+    test('5-minute L1-naive-robot-v2 behavior', async ({ page }) => {
+        // LEVEL 1 variant with different random seed → 🤖 BOT (≥0.40)
+        const minExp = 0.40, maxExp = 1.0;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.ROBOT,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L1_NAIVE_ROBOT_V2', 1, minExp, maxExp);
+    });
+
+    test('5-minute L2-fast-robot behavior', async ({ page }) => {
+        // LEVEL 2: Impulsive without Bezier → 🤖 BOT (≥0.40)
+        const minExp = 0.40, maxExp = 1.0;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.IMPULSIVE,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L2_FAST_ROBOT', 2, minExp, maxExp);
+    });
+
+    test('5-minute L2-fast-robot-v2 behavior', async ({ page }) => {
+        // LEVEL 2 variant → 🤖 BOT (≥0.40)
+        const minExp = 0.40, maxExp = 1.0;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.IMPULSIVE,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L2_FAST_ROBOT_V2', 2, minExp, maxExp);
+    });
+
+    // --- LEVEL 3: Additional BOT variants (2 more) ---
+    
+    test('5-minute L3-impulsive-robot-v2 behavior', async ({ page }) => {
+        // LEVEL 3 variant → 🤖 BOT (≥0.40)
+        const minExp = 0.40, maxExp = 1.0;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.ROBOT_IMPULSIVE,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L3_IMPULSIVE_ROBOT_V2', 3, minExp, maxExp);
+    });
+
+    test('5-minute L3-impulsive-robot-v3 behavior', async ({ page }) => {
+        // LEVEL 3 variant → 🤖 BOT (≥0.40)
+        const minExp = 0.40, maxExp = 1.0;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.ROBOT_IMPULSIVE,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L3_IMPULSIVE_ROBOT_V3', 3, minExp, maxExp);
+    });
+
+    // --- LEVEL 4: Additional SUSPICIOUS variants (4 more) ---
+    
+    test('5-minute L4-burst-pattern-v2 behavior', async ({ page }) => {
+        // LEVEL 4 variant → ⚠️ SUSPICIOUS (0.30-0.40)
+        const minExp = 0.30, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.BURST_ONLY,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L4_BURST_PATTERN_V2', 4, minExp, maxExp);
+    });
+
+    test('5-minute L4-burst-pattern-v3 behavior', async ({ page }) => {
+        // LEVEL 4 variant → ⚠️ SUSPICIOUS (0.30-0.40)
+        const minExp = 0.30, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.BURST_ONLY,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L4_BURST_PATTERN_V3', 4, minExp, maxExp);
+    });
+
+    test('5-minute L4-replay-pattern-v2 behavior', async ({ page }) => {
+        // LEVEL 4 variant → ⚠️ SUSPICIOUS (0.30-0.40)
+        const minExp = 0.30, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.REPLAY_BOT,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L4_REPLAY_PATTERN_V2', 4, minExp, maxExp);
+    });
+
+    test('5-minute L4-replay-pattern-v3 behavior', async ({ page }) => {
+        // LEVEL 4 variant → ⚠️ SUSPICIOUS (0.30-0.40)
+        const minExp = 0.30, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.REPLAY_BOT,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L4_REPLAY_PATTERN_V3', 4, minExp, maxExp);
+    });
+
+    // --- LEVEL 5: Additional SUSPICIOUS variants (6 more) ---
+    
+    test('5-minute L5-interleaved-actions-v2 behavior', async ({ page }) => {
+        // LEVEL 5 variant → ⚠️ SUSPICIOUS (0.30-0.40)
+        const minExp = 0.30, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.ROBOT_SLOW,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L5_INTERLEAVED_V2', 5, minExp, maxExp);
+    });
+
+    test('5-minute L5-interleaved-actions-v3 behavior', async ({ page }) => {
+        // LEVEL 5 variant → ⚠️ SUSPICIOUS (0.30-0.40)
+        const minExp = 0.30, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.ROBOT_SLOW,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L5_INTERLEAVED_V3', 5, minExp, maxExp);
+    });
+
+    test('5-minute L5-gaussian-timing-v2 behavior', async ({ page }) => {
+        // LEVEL 5 variant → ⚠️ SUSPICIOUS (0.30-0.40)
+        const minExp = 0.30, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.TIMING_BOT,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L5_GAUSSIAN_TIMING_V2', 5, minExp, maxExp);
+    });
+
+    test('5-minute L5-mixed-behaviors-v2 behavior', async ({ page }) => {
+        // LEVEL 5 variant → ⚠️ SUSPICIOUS (0.30-0.40)
+        const minExp = 0.30, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.MIXED_RANDOM,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L5_MIXED_V2', 5, minExp, maxExp);
+    });
+
+    test('5-minute L5-keyboard-focused-v2 behavior', async ({ page }) => {
+        // LEVEL 5 variant → ⚠️ SUSPICIOUS (0.30-0.40)
+        const minExp = 0.30, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.KEYBOARD_HEAVY,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L5_KEYBOARD_V2', 5, minExp, maxExp);
+    });
+
+    test('5-minute L5-scroll-focused-v2 behavior', async ({ page }) => {
+        // LEVEL 5 variant → ⚠️ SUSPICIOUS (0.30-0.40)
+        const minExp = 0.30, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.SCROLL_HEAVY,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L5_SCROLL_V2', 5, minExp, maxExp);
+    });
+
+    // --- LEVEL 6: Additional SUSPICIOUS variants (4 more) ---
+    
+    test('5-minute L6-bezier-with-noise-v2 behavior', async ({ page }) => {
+        // LEVEL 6 variant → ⚠️ SUSPICIOUS (0.30-0.40)
+        const minExp = 0.30, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.STEALTH_BOT,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L6_BEZIER_NOISE_V2', 6, minExp, maxExp);
+    });
+
+    test('5-minute L6-bezier-with-noise-v3 behavior', async ({ page }) => {
+        // LEVEL 6 variant → ⚠️ SUSPICIOUS (0.30-0.40)
+        const minExp = 0.30, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.STEALTH_BOT,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L6_BEZIER_NOISE_V3', 6, minExp, maxExp);
+    });
+
+    test('5-minute L6-mouse-focused-v2 behavior', async ({ page }) => {
+        // LEVEL 6 variant → ⚠️ SUSPICIOUS (0.30-0.40)
+        const minExp = 0.30, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.MOUSE_HEAVY,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L6_MOUSE_V2', 6, minExp, maxExp);
+    });
+
+    test('5-minute L6-mouse-focused-v3 behavior', async ({ page }) => {
+        // LEVEL 6 variant → ⚠️ SUSPICIOUS (0.30-0.40)
+        const minExp = 0.30, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.MOUSE_HEAVY,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L6_MOUSE_V3', 6, minExp, maxExp);
+    });
+
+    // --- LEVEL 7: Additional LIKELY_HUMAN variants (6 more) ---
+    
+    test('5-minute L7-fast-bezier-v2 behavior', async ({ page }) => {
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.30)
+        const minExp = 0.15, maxExp = 0.30;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.HUMAN_FAST,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L7_FAST_BEZIER_V2', 7, minExp, maxExp);
+    });
+
+    test('5-minute L7-fast-bezier-v3 behavior', async ({ page }) => {
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.30)
+        const minExp = 0.15, maxExp = 0.30;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.HUMAN_FAST,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L7_FAST_BEZIER_V3', 7, minExp, maxExp);
+    });
+
+    test('5-minute L7-slow-bezier-v2 behavior', async ({ page }) => {
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.30)
+        const minExp = 0.15, maxExp = 0.30;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.HUMAN_SLOW,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L7_SLOW_BEZIER_V2', 7, minExp, maxExp);
+    });
+
+    test('5-minute L7-impulsive-bezier-v2 behavior', async ({ page }) => {
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.30)
+        const minExp = 0.15, maxExp = 0.30;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.HUMAN_IMPULSIVE,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L7_IMPULSIVE_BEZIER_V2', 7, minExp, maxExp);
+    });
+
+    test('5-minute L7-phase-alternating-v2 behavior', async ({ page }) => {
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.30)
+        const minExp = 0.15, maxExp = 0.30;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.ALTERNATING,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L7_ALTERNATING_V2', 7, minExp, maxExp);
+    });
+
+    test('5-minute L7-phase-alternating-v3 behavior', async ({ page }) => {
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.30)
+        const minExp = 0.15, maxExp = 0.30;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.ALTERNATING,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L7_ALTERNATING_V3', 7, minExp, maxExp);
+    });
+
+    // --- LEVEL 8: Additional LIKELY_HUMAN variants (4 more) ---
+    
+    test('5-minute L8-full-human-sim-v2 behavior', async ({ page }) => {
+        // LEVEL 8 variant → 👤 LIKELY_HUMAN (0.15-0.30)
+        const minExp = 0.15, maxExp = 0.30;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.HUMAN_LIKE,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L8_HUMAN_SIM_V2', 8, minExp, maxExp);
+    });
+
+    test('5-minute L8-full-human-sim-v3 behavior', async ({ page }) => {
+        // LEVEL 8 variant → 👤 LIKELY_HUMAN (0.15-0.30)
+        const minExp = 0.15, maxExp = 0.30;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.HUMAN_LIKE,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L8_HUMAN_SIM_V3', 8, minExp, maxExp);
+    });
+
+    test('5-minute L8-smooth-bezier-v2 behavior', async ({ page }) => {
+        // LEVEL 8 variant → 👤 LIKELY_HUMAN (0.15-0.30)
+        const minExp = 0.15, maxExp = 0.30;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.HUMAN_SMOOTH,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L8_SMOOTH_V2', 8, minExp, maxExp);
+    });
+
+    test('5-minute L8-smooth-bezier-v3 behavior', async ({ page }) => {
+        // LEVEL 8 variant → 👤 LIKELY_HUMAN (0.15-0.30)
+        const minExp = 0.15, maxExp = 0.30;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.HUMAN_SMOOTH,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L8_SMOOTH_V3', 8, minExp, maxExp);
+    });
+
+    // --- LEVEL 9-10: Additional VERIFIED variants (2 more) ---
+    
+    test('5-minute L9-advanced-human-v2 behavior', async ({ page }) => {
+        // LEVEL 9 variant → ✅ VERIFIED (<0.15)
+        const minExp = 0.00, maxExp = 0.15;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.ADVANCED,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L9_ADVANCED_V2', 9, minExp, maxExp);
+    });
+
+    test('5-minute L10-ultimate-evasion-v2 behavior', async ({ page }) => {
+        // LEVEL 10 variant → ✅ VERIFIED (<0.15)
+        const minExp = 0.00, maxExp = 0.15;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.ULTIMATE_BOT,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L10_ULTIMATE_V2', 10, minExp, maxExp);
+    });
 });
 
 /**
