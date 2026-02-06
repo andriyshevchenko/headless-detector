@@ -64,6 +64,30 @@ const { BehaviorMode, runBehaviorSession } = require('./test-helpers');
 // Session durations - all tests run for 5 minutes for real-world validation
 const SESSION_SECONDS = 5 * 60; // 5 minutes
 
+/**
+ * Canonical level-to-detection-class mapping.
+ * 
+ * This is the authoritative mapping from bot difficulty level to expected
+ * detection classification. Each level has a target detection class and
+ * expected score range based on the tier-to-category system.
+ * 
+ * Tests may override score ranges for known DETECTION_GAPs (single-channel
+ * bots or high-variance Bezier patterns), but the CLASS shows what the
+ * detection system SHOULD achieve for each difficulty level.
+ */
+const LEVEL_TO_CLASS = {
+    1:  { class: 'BOT',         emoji: '🤖', min: 0.40, max: 1.00 },
+    2:  { class: 'BOT',         emoji: '🤖', min: 0.40, max: 1.00 },
+    3:  { class: 'SUSPICIOUS',  emoji: '⚠️',  min: 0.25, max: 0.40 },
+    4:  { class: 'SUSPICIOUS',  emoji: '⚠️',  min: 0.25, max: 0.40 },
+    5:  { class: 'SUSPICIOUS',  emoji: '⚠️',  min: 0.25, max: 0.40 },
+    6:  { class: 'SUSPICIOUS',  emoji: '⚠️',  min: 0.25, max: 0.40 },
+    7:  { class: 'LIKELY_HUMAN', emoji: '👤', min: 0.12, max: 0.25 },
+    8:  { class: 'LIKELY_HUMAN', emoji: '👤', min: 0.12, max: 0.25 },
+    9:  { class: 'VERIFIED',    emoji: '✅', min: 0.00, max: 0.12 },
+    10: { class: 'VERIFIED',    emoji: '✅', min: 0.00, max: 0.12 },
+};
+
 test.describe('Behavior Monitor E2E Tests', () => {
     
     // Reset mouse position tracking before each test
@@ -724,11 +748,17 @@ function logDetectionResult(score, testName, sophisticationLevel, minExpected, m
         detectionClass = '✅ VERIFIED';
     }
     
+    // Expected class from level-to-class mapping
+    const expected = LEVEL_TO_CLASS[sophisticationLevel];
+    const expectedClassLabel = expected ? `${expected.emoji} ${expected.class}` : '?';
+    const classMatch = expected && detectionClass.includes(expected.class);
+    const gapLabel = classMatch ? '' : ` ⚠️ DETECTION_GAP(expected: ${expectedClassLabel})`;
+    
     const tier = costTier[sophisticationLevel] || '?';
     const inRange = score >= minExpected && score <= maxExpected;
     const inRangeSymbol = inRange ? '✓' : '❌';
     
-    console.log(`[${testName}] Level=${sophisticationLevel} (${tier}) | Score=${score.toFixed(2)} | Expected=[${minExpected.toFixed(2)}-${maxExpected.toFixed(2)}] ${inRangeSymbol} | Detection=${detectionClass}`);
+    console.log(`[${testName}] Level=${sophisticationLevel} (${tier}) | Score=${score.toFixed(2)} | Expected=[${minExpected.toFixed(2)}-${maxExpected.toFixed(2)}] ${inRangeSymbol} | Detection=${detectionClass}${gapLabel}`);
     
     // ASSERT: Fail the test if score is outside expected range
     if (!inRange) {
