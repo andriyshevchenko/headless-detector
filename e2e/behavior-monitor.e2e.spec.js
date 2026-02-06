@@ -418,7 +418,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
         // NOTE: ROBOT_IMPULSIVE has naive timing signals (constant timing CV)
         // that push detection scores into BOT range despite moderate code complexity.
         // With multi-channel rescue (SAFEGUARD 10), scores reliably reach ≥0.40.
-        const minExp = 0.40, maxExp = 1.0;
+        const minExp = 0.40, maxExp = 0.60;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.ROBOT_IMPULSIVE,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -524,8 +524,8 @@ test.describe('Behavior Monitor E2E Tests', () => {
         // LEVEL 2 (💰 CHEAP) variant
         // NOTE: SCROLL_HEAVY only produces scroll events (no mouse/keyboard).
         // Without mouse/keyboard signals, detection relies on scroll channel alone.
-        // Score varies significantly — scroll-only bots can evade detection (DETECTION_GAP).
-        const minExp = 0.0, maxExp = 1.0;
+        // Known DETECTION_GAP: scroll-only bots may score anywhere from 0 to 0.50.
+        const minExp = 0.0, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.SCROLL_HEAVY,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
