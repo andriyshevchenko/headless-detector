@@ -202,7 +202,7 @@ jobs:
       # Upload calibration data as artifact for metric analysis
       - name: Upload calibration data
         uses: actions/upload-artifact@v4
-        if: always()
+        if: failure()
         with:
           name: calibration-${{ matrix.test.name }}
           path: calibration-data/
