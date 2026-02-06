@@ -1020,9 +1020,9 @@ class HeadlessBehaviorMonitor {
             periodicNoiseAC: 0.5,           // Autocorrelation threshold
             naiveSignalMultiplier: 1.5      // Multiplier when multiple naive signals fire
         };
-        const thresholds = (this.WEIGHTS && this.WEIGHTS.MOUSE_THRESHOLDS) || defaultThresholds;
-        const weights = (this.WEIGHTS && this.WEIGHTS.MOUSE_WEIGHTS) || defaultWeights;
-        const sophThresholds = (this.WEIGHTS && this.WEIGHTS.SOPHISTICATION_THRESHOLDS) || defaultSophisticationThresholds;
+        const thresholds = (this.weights && this.weights.MOUSE_THRESHOLDS) || defaultThresholds;
+        const weights = (this.weights && this.weights.MOUSE_WEIGHTS) || defaultWeights;
+        const sophThresholds = (this.weights && this.weights.SOPHISTICATION_THRESHOLDS) || defaultSophisticationThresholds;
         
         // Track naive signals for multiplier
         let naiveSignalCount = 0;
@@ -1176,15 +1176,43 @@ class HeadlessBehaviorMonitor {
         const interKeyVariance = this._calculateVariance(interKeyTimes);
         const untrustedRatio = untrustedCount / keystrokes.length;
         
+        // Use configurable thresholds and weights from calibration
+        const kbThresholds = (this.weights && this.weights.KEYBOARD_THRESHOLDS) || {
+            lowHoldTimeVariance: 10,
+            lowInterKeyVariance: 100,
+            highUntrustedRatio: 0.1,
+            highInterKeyVariance: 5000000
+        };
+        const kbWeights = (this.weights && this.weights.KEYBOARD_WEIGHTS) || {
+            lowHoldTimeVariance: 0.3,
+            lowInterKeyVariance: 0.3,
+            highUntrustedRatio: 0.4,
+            highInterKeyVariance: 0.30
+        };
+        
         // Suspicious indicators:
         // - Very low hold time variance (too consistent)
         // - Very low inter-key time variance (robotic typing)
         // - High untrusted event ratio
+        // - High inter-key variance indicates human-like reading pauses (REDUCES score)
         let suspiciousScore = 0;
         
-        if (holdTimeVariance < 10) suspiciousScore += 0.3;
-        if (interKeyVariance < 100) suspiciousScore += 0.3;
-        if (untrustedRatio > 0.1) suspiciousScore += 0.4;
+        const lowHoldTimeTriggered = holdTimeVariance < kbThresholds.lowHoldTimeVariance;
+        if (lowHoldTimeTriggered) suspiciousScore += kbWeights.lowHoldTimeVariance;
+        
+        const lowInterKeyTriggered = interKeyVariance < kbThresholds.lowInterKeyVariance;
+        if (lowInterKeyTriggered) suspiciousScore += kbWeights.lowInterKeyVariance;
+        
+        if (untrustedRatio > kbThresholds.highUntrustedRatio) suspiciousScore += kbWeights.highUntrustedRatio;
+        
+        // Human-like inter-key variance: very high variance indicates reading/thinking pauses
+        // This REDUCES the score because it's evidence of human-like behavior
+        const highInterKeyThreshold = kbThresholds.highInterKeyVariance ?? 5000000;
+        const highInterKeyWeight = kbWeights.highInterKeyVariance ?? 0.30;
+        const highInterKeyTriggered = interKeyVariance > highInterKeyThreshold;
+        if (highInterKeyTriggered) suspiciousScore -= highInterKeyWeight;
+        
+        suspiciousScore = Math.max(suspiciousScore, 0);
         
         const confidence = Math.min(keystrokes.length / this.options.minSamples.keyboard, 1);
         
@@ -1200,9 +1228,10 @@ class HeadlessBehaviorMonitor {
             },
             // Detailed scoring breakdown for calibration
             scoringBreakdown: {
-                lowHoldTimeVariance: { triggered: holdTimeVariance < 10, weight: 0.3, value: holdTimeVariance, threshold: 10 },
-                lowInterKeyVariance: { triggered: interKeyVariance < 100, weight: 0.3, value: interKeyVariance, threshold: 100 },
-                highUntrustedRatio: { triggered: untrustedRatio > 0.1, weight: 0.4, value: untrustedRatio, threshold: 0.1 }
+                lowHoldTimeVariance: { triggered: lowHoldTimeTriggered, weight: kbWeights.lowHoldTimeVariance, value: holdTimeVariance, threshold: kbThresholds.lowHoldTimeVariance },
+                lowInterKeyVariance: { triggered: lowInterKeyTriggered, weight: kbWeights.lowInterKeyVariance, value: interKeyVariance, threshold: kbThresholds.lowInterKeyVariance },
+                highUntrustedRatio: { triggered: untrustedRatio > kbThresholds.highUntrustedRatio, weight: kbWeights.highUntrustedRatio, value: untrustedRatio, threshold: kbThresholds.highUntrustedRatio },
+                highInterKeyVariance: { triggered: highInterKeyTriggered, weight: highInterKeyWeight, value: interKeyVariance, threshold: highInterKeyThreshold, isNegative: true }
             }
         };
     }
