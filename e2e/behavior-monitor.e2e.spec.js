@@ -20,10 +20,8 @@
  * LEVEL 1 (🤖 BOT): True naive - fixed timing, straight lines
  *   - robot: 100ms fixed interval, page.mouse.move() straight lines
  * 
- * LEVEL 4 (⚠️ SUSPICIOUS): Variable timing defeats constantTiming
+ * LEVEL 4 (⚠️ SUSPICIOUS): Variable timing or burst patterns
  *   - robot-impulsive: straight lines but random timing (CV > 0.15)
- * 
- * LEVEL 4 (⚠️ SUSPICIOUS): Burst patterns
  *   - burst-only: Burst pattern with random gaps
  * 
  * LEVEL 5 (⚠️ SUSPICIOUS): Limited signals or sophisticated timing
