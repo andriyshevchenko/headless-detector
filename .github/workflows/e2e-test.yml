@@ -29,7 +29,7 @@ jobs:
       matrix:
         test:
           # =============================================
-          # LEVEL 1-2: TRIVIAL/CHEAP bots (<30 min to implement) - 11 tests
+          # LEVEL 1-2: TRIVIAL/CHEAP → 🤖 BOT (≥0.40) - 14 tests
           # =============================================
           - name: L1-naive-robot
             grep: "5-minute L1-naive-robot behavior"
@@ -60,7 +60,7 @@ jobs:
           - name: L2-keyboard-focused-v2
             grep: "5-minute L2-keyboard-focused-v2 behavior"
           # =============================================
-          # LEVEL 3-4: BUDGET bots (30min-2hr) - 7 tests
+          # LEVEL 3-4: BUDGET → ⚠️ SUSPICIOUS (0.25-0.40) - 8 tests
           # =============================================
           - name: L3-impulsive-robot
             grep: "5-minute L3-impulsive-robot behavior"
@@ -79,7 +79,7 @@ jobs:
           - name: L4-gaussian-timing-v2
             grep: "5-minute L4-gaussian-timing-v2 behavior"
           # =============================================
-          # LEVEL 5-6: MODERATE bots (2-8hr) - 17 tests
+          # LEVEL 5-6: MODERATE → ⚠️ SUSPICIOUS (0.25-0.40) - 15 tests
           # =============================================
           - name: L5-fast-bezier
             grep: "5-minute L5-fast-bezier behavior"
@@ -112,7 +112,7 @@ jobs:
           - name: L6-mixed-behaviors-v2
             grep: "5-minute L6-mixed-behaviors-v2 behavior"
           # =============================================
-          # LEVEL 7: EXPENSIVE bots (days of work) - 12 tests
+          # LEVEL 7: EXPENSIVE → 👤 LIKELY_HUMAN (0.12-0.25) - 9 tests
           # =============================================
           - name: L7-phase-alternating
             grep: "5-minute L7-phase-alternating behavior"
@@ -133,7 +133,7 @@ jobs:
           - name: L7-smooth-bezier-v3
             grep: "5-minute L7-smooth-bezier-v3 behavior"
           # =============================================
-          # LEVEL 9-10: EXPERT bots (weeks+ of work) - 4 tests
+          # LEVEL 9-10: EXPERT → ✅ VERIFIED (≤0.12) - 4 tests
           # =============================================
           - name: L9-advanced-human
             grep: "5-minute L9-advanced-human behavior"
