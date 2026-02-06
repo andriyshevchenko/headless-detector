@@ -50,19 +50,22 @@ const DEFAULT_WEIGHTS = {
     KEYBOARD_THRESHOLDS: {
         lowHoldTimeVariance: 10,
         lowInterKeyVariance: 100,
-        highUntrustedRatio: 0.1
+        highUntrustedRatio: 0.1,
+        highInterKeyVariance: 5000000
     },
     KEYBOARD_WEIGHTS: {
         lowHoldTimeVariance: 0.3,
         lowInterKeyVariance: 0.3,
-        highUntrustedRatio: 0.4
+        highUntrustedRatio: 0.4,
+        highInterKeyVariance: 0.30
     },
     SCROLL_THRESHOLDS: {
         lowDeltaVariance: 1,
         lowIntervalVariance: 10,
         lowUniqueDeltaRatio: 0.3,
         highDeltaVariance: 3000,
-        highEventsPerSecond: 100
+        highEventsPerSecond: 100,
+        highIntervalVariance: 1000000
     },
     SCROLL_WEIGHTS: {
         lowDeltaVariance: 0.2,
@@ -70,7 +73,8 @@ const DEFAULT_WEIGHTS = {
         lowUniqueDeltaRatio: 0.2,
         highDeltaVariance: 0.15,
         highEventsPerSecond: 0.15,
-        subMillisecondPattern: 0.1
+        subMillisecondPattern: 0.1,
+        highIntervalVariance: 0.20
     },
     TOUCH_THRESHOLDS: {
         lowForceVariance: 0.001,
@@ -95,7 +99,9 @@ const DEFAULT_WEIGHTS = {
         minSessionDurationCap: 10000,
         shortSessionScoreCap: 0.5,
         botThreshold: 0.5,
-        minSamplesForVariance: 10
+        minSamplesForVariance: 10,
+        sophisticationMouseThreshold: 0.40,
+        sophisticationDiscount: 0.60
     }
 };
 
@@ -115,6 +121,7 @@ const getWeights = () => {
             SCROLL_WEIGHTS: { ...DEFAULT_WEIGHTS.SCROLL_WEIGHTS, ...(window.BehaviorMonitorWeights.SCROLL_WEIGHTS || {}) },
             TOUCH_THRESHOLDS: { ...DEFAULT_WEIGHTS.TOUCH_THRESHOLDS, ...(window.BehaviorMonitorWeights.TOUCH_THRESHOLDS || {}) },
             TOUCH_WEIGHTS: { ...DEFAULT_WEIGHTS.TOUCH_WEIGHTS, ...(window.BehaviorMonitorWeights.TOUCH_WEIGHTS || {}) },
+            SOPHISTICATION_THRESHOLDS: { ...(DEFAULT_WEIGHTS.SOPHISTICATION_THRESHOLDS || {}), ...(window.BehaviorMonitorWeights.SOPHISTICATION_THRESHOLDS || {}) },
             SAFEGUARDS: { ...DEFAULT_WEIGHTS.SAFEGUARDS, ...(window.BehaviorMonitorWeights.SAFEGUARDS || {}) }
         };
     }
@@ -1268,6 +1275,25 @@ class HeadlessBehaviorMonitor {
             : 1;
         const eventsPerSecond = scrolls.length / Math.max(totalDuration, 0.001);
         
+        // Use configurable thresholds and weights from calibration
+        const scThresholds = (this.weights && this.weights.SCROLL_THRESHOLDS) || {
+            lowDeltaVariance: 1,
+            lowIntervalVariance: 10,
+            lowUniqueDeltaRatio: 0.3,
+            highDeltaVariance: 3000,
+            highEventsPerSecond: 100,
+            highIntervalVariance: 1000000
+        };
+        const scWeights = (this.weights && this.weights.SCROLL_WEIGHTS) || {
+            lowDeltaVariance: 0.2,
+            lowIntervalVariance: 0.2,
+            lowUniqueDeltaRatio: 0.2,
+            highDeltaVariance: 0.15,
+            highEventsPerSecond: 0.15,
+            subMillisecondPattern: 0.1,
+            highIntervalVariance: 0.20
+        };
+        
         // Suspicious indicators:
         // - Very low delta variance (always same scroll amount)
         // - Very low interval variance (perfectly timed)
@@ -1275,26 +1301,36 @@ class HeadlessBehaviorMonitor {
         // - Bot timing pattern detection
         // - EXTREMELY HIGH delta variance (unnaturally erratic)
         // - HIGH event frequency (too many events per second)
+        // - HIGH interval variance indicates human-like reading pauses (REDUCES score)
         let suspiciousScore = 0;
         
-        // Low variance = bot-like repetitive patterns (weights: 0.2 each)
-        if (deltaVariance < 1) suspiciousScore += 0.2;
-        if (intervalVariance < 10) suspiciousScore += 0.2;
-        if (uniqueDeltaRatio < 0.3) suspiciousScore += 0.2;
+        // Low variance = bot-like repetitive patterns
+        if (deltaVariance < scThresholds.lowDeltaVariance) suspiciousScore += scWeights.lowDeltaVariance;
+        if (intervalVariance < scThresholds.lowIntervalVariance) suspiciousScore += scWeights.lowIntervalVariance;
+        if (uniqueDeltaRatio < scThresholds.lowUniqueDeltaRatio) suspiciousScore += scWeights.lowUniqueDeltaRatio;
         
-        // EXTREMELY HIGH variance = unnaturally erratic (weights: 0.15 each)
+        // EXTREMELY HIGH variance = unnaturally erratic
         // Normal human scroll variance is typically 100-1000
         // Variance > 3000 suggests artificially erratic behavior
-        if (deltaVariance > 3000) suspiciousScore += 0.15;
+        if (deltaVariance > scThresholds.highDeltaVariance) suspiciousScore += scWeights.highDeltaVariance;
         
-        // HIGH event frequency = too many events per second (weight: 0.15)
+        // HIGH event frequency = too many events per second
         // Normal human scrolling is 10-50 events/sec
         // > 100 events/sec suggests automation or scripted rapid scrolling
-        if (eventsPerSecond > 100) suspiciousScore += 0.15;
+        if (eventsPerSecond > scThresholds.highEventsPerSecond) suspiciousScore += scWeights.highEventsPerSecond;
         
         // Check for automation timing patterns in scroll events
         const hasSubMillisecondPattern = this._detectSubMillisecondPattern(scrolls);
-        if (hasSubMillisecondPattern) suspiciousScore += 0.1;
+        if (hasSubMillisecondPattern) suspiciousScore += scWeights.subMillisecondPattern;
+        
+        // Human-like interval variance: very high variance indicates reading/thinking pauses
+        // This REDUCES the score because it's evidence of human-like behavior
+        const highIntervalThreshold = scThresholds.highIntervalVariance ?? 1000000;
+        const highIntervalWeight = scWeights.highIntervalVariance ?? 0.20;
+        const highIntervalTriggered = intervalVariance > highIntervalThreshold;
+        if (highIntervalTriggered) suspiciousScore -= highIntervalWeight;
+        
+        suspiciousScore = Math.max(suspiciousScore, 0);
         
         const confidence = Math.min(scrolls.length / this.options.minSamples.scroll, 1);
         
@@ -1311,12 +1347,13 @@ class HeadlessBehaviorMonitor {
             },
             // Detailed scoring breakdown for calibration
             scoringBreakdown: {
-                lowDeltaVariance: { triggered: deltaVariance < 1, weight: 0.2, value: deltaVariance, threshold: 1 },
-                lowIntervalVariance: { triggered: intervalVariance < 10, weight: 0.2, value: intervalVariance, threshold: 10 },
-                lowUniqueDeltaRatio: { triggered: uniqueDeltaRatio < 0.3, weight: 0.2, value: uniqueDeltaRatio, threshold: 0.3 },
-                highDeltaVariance: { triggered: deltaVariance > 3000, weight: 0.15, value: deltaVariance, threshold: 3000 },
-                highEventFrequency: { triggered: eventsPerSecond > 100, weight: 0.15, value: eventsPerSecond, threshold: 100 },
-                subMillisecondPattern: { triggered: hasSubMillisecondPattern, weight: 0.1, value: hasSubMillisecondPattern }
+                lowDeltaVariance: { triggered: deltaVariance < scThresholds.lowDeltaVariance, weight: scWeights.lowDeltaVariance, value: deltaVariance, threshold: scThresholds.lowDeltaVariance },
+                lowIntervalVariance: { triggered: intervalVariance < scThresholds.lowIntervalVariance, weight: scWeights.lowIntervalVariance, value: intervalVariance, threshold: scThresholds.lowIntervalVariance },
+                lowUniqueDeltaRatio: { triggered: uniqueDeltaRatio < scThresholds.lowUniqueDeltaRatio, weight: scWeights.lowUniqueDeltaRatio, value: uniqueDeltaRatio, threshold: scThresholds.lowUniqueDeltaRatio },
+                highDeltaVariance: { triggered: deltaVariance > scThresholds.highDeltaVariance, weight: scWeights.highDeltaVariance, value: deltaVariance, threshold: scThresholds.highDeltaVariance },
+                highEventFrequency: { triggered: eventsPerSecond > scThresholds.highEventsPerSecond, weight: scWeights.highEventsPerSecond, value: eventsPerSecond, threshold: scThresholds.highEventsPerSecond },
+                subMillisecondPattern: { triggered: hasSubMillisecondPattern, weight: scWeights.subMillisecondPattern, value: hasSubMillisecondPattern },
+                highIntervalVariance: { triggered: highIntervalTriggered, weight: highIntervalWeight, value: intervalVariance, threshold: highIntervalThreshold, isNegative: true }
             }
         };
     }
@@ -1973,6 +2010,25 @@ class HeadlessBehaviorMonitor {
         // SAFEGUARD 1: Multi-channel corroboration - downscale if < minSuspiciousChannels
         if (suspiciousCount < S.minSuspiciousChannels && score >= S.botThreshold) {
             score *= S.singleChannelDownscale;
+        }
+        
+        // SAFEGUARD 9: Sophistication-aware modulation
+        // When keyboard and/or scroll show human-like timing patterns (high variance)
+        // AND mouse is not strongly flagged, this indicates a sophisticated bot that
+        // leaks only through automation tool artifacts, not through behavioral patterns.
+        // Apply a discount to reflect lower detection confidence.
+        const mouseScore = analysis.mouse && analysis.mouse.available ? analysis.mouse.score : 0;
+        const kbBreakdown = analysis.keyboard && analysis.keyboard.scoringBreakdown;
+        const scrollBreakdown = analysis.scroll && analysis.scroll.scoringBreakdown;
+        const hasHumanKeyboard = kbBreakdown && kbBreakdown.highInterKeyVariance && kbBreakdown.highInterKeyVariance.triggered;
+        const hasHumanScroll = scrollBreakdown && scrollBreakdown.highIntervalVariance && scrollBreakdown.highIntervalVariance.triggered;
+        
+        // Only apply discount when mouse isn't strongly detecting the bot
+        // (if mouse score >= 0.40, the bot is detectable through mouse regardless of kb/scroll patterns)
+        const sophisticationThreshold = S.sophisticationMouseThreshold ?? 0.40;
+        const sophisticationDiscount = S.sophisticationDiscount ?? 0.60;
+        if (mouseScore < sophisticationThreshold && (hasHumanKeyboard || hasHumanScroll)) {
+            score *= sophisticationDiscount;
         }
         
         // SAFEGUARD 5: Time accumulation before escalation
