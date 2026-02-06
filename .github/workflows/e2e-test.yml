@@ -214,7 +214,7 @@ jobs:
   e2e-summary:
     needs: e2e-test
     runs-on: ubuntu-latest
-    if: ${{ always() }}
+    if: always()
     steps:
       # Ensure directory exists even if no calibration artifacts were produced
       - name: Prepare calibration data directory
