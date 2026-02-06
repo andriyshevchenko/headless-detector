@@ -224,7 +224,8 @@ test.describe('Behavior Monitor E2E Tests', () => {
     // ========================================
     // HUMAN SIMULATIONS (Level 5-7)
     // Uses HumanBehavior.humanLikeMouseMove (Bezier curves)
-    // Should score as LIKELY HUMAN (0.15-0.30) - stricter than before
+    // Should score as LIKELY_HUMAN (0.15-0.30)
+    // Min >= 0.15 to stay OUT of VERIFIED_HUMAN category
     // ========================================
 
     test('5-minute human-fast behavior', async ({ page }) => {
@@ -234,7 +235,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.HUMAN_FAST,
-            { minExpectedScore: 0.10, maxExpectedScore: 0.30 }
+            { minExpectedScore: 0.15, maxExpectedScore: 0.30 }
         );
         
         logDetectionResult(results.overallScore, 'HUMAN_FAST', 5);
@@ -247,7 +248,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.HUMAN_IMPULSIVE,
-            { minExpectedScore: 0.10, maxExpectedScore: 0.30 }
+            { minExpectedScore: 0.15, maxExpectedScore: 0.30 }
         );
         
         logDetectionResult(results.overallScore, 'HUMAN_IMPULSIVE', 5);
@@ -260,7 +261,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.HUMAN_SLOW,
-            { minExpectedScore: 0.05, maxExpectedScore: 0.25 }
+            { minExpectedScore: 0.15, maxExpectedScore: 0.25 }
         );
         
         logDetectionResult(results.overallScore, 'HUMAN_SLOW', 6);
@@ -273,7 +274,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.ALTERNATING,
-            { minExpectedScore: 0.05, maxExpectedScore: 0.25 }
+            { minExpectedScore: 0.15, maxExpectedScore: 0.25 }
         );
         
         logDetectionResult(results.overallScore, 'ALTERNATING', 6);
@@ -286,7 +287,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.HUMAN_LIKE,
-            { minExpectedScore: 0.00, maxExpectedScore: 0.20 }
+            { minExpectedScore: 0.15, maxExpectedScore: 0.25 }
         );
         
         logDetectionResult(results.overallScore, 'HUMAN_LIKE', 7);
@@ -299,7 +300,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.HUMAN_SMOOTH,
-            { minExpectedScore: 0.00, maxExpectedScore: 0.20 }
+            { minExpectedScore: 0.15, maxExpectedScore: 0.25 }
         );
         
         logDetectionResult(results.overallScore, 'HUMAN_SMOOTH', 7);
