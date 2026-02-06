@@ -421,6 +421,11 @@ class HeadlessBehaviorMonitor {
         const suspiciousThreshold = S.suspiciousThreshold ?? 0.25;
         const likelyHumanThreshold = S.likelyHumanThreshold ?? 0.12;
         
+        // Thresholds must be in descending order for correct classification
+        if (botThreshold <= suspiciousThreshold || suspiciousThreshold <= likelyHumanThreshold) {
+            return { verdict: 'ERROR', label: '❓ ERROR', description: 'Invalid classification thresholds' };
+        }
+        
         if (score >= botThreshold) {
             return { verdict: 'BOT', label: '🤖 BOT', description: 'Automated behavior detected' };
         } else if (score >= suspiciousThreshold) {
