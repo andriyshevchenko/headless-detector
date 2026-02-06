@@ -247,6 +247,379 @@
             color: #666;
             margin-top: 5px;
         }
+
+        /* Interaction Playground Styles */
+        .playground-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 18px;
+            margin-top: 10px;
+        }
+
+        .playground-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .playground-field-wide {
+            grid-column: 1 / -1;
+        }
+
+        .playground-label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #667eea;
+        }
+
+        .playground-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            color: #333;
+            background: #f9fafb;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .playground-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+            background: #fff;
+        }
+
+        .playground-textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        select.playground-input {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23667eea' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+        }
+
+        select[multiple].playground-input {
+            background-image: none;
+            padding-right: 14px;
+        }
+
+        /* Color Picker */
+        .playground-color {
+            width: 48px;
+            height: 40px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            cursor: pointer;
+            padding: 2px;
+            background: #f9fafb;
+            transition: border-color 0.2s;
+        }
+
+        .playground-color:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .playground-color-label {
+            font-size: 0.9rem;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            color: #555;
+            background: #f0f0f0;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        /* Range Slider */
+        .playground-range-wrap {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .playground-range {
+            flex: 1;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #e5e7eb;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .playground-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+            transition: transform 0.15s;
+        }
+
+        .playground-range::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        .playground-range::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+        }
+
+        .playground-range-value {
+            min-width: 36px;
+            text-align: center;
+            font-weight: bold;
+            color: #667eea;
+            font-size: 1rem;
+        }
+
+        /* Checkbox & Radio Custom Styles */
+        .playground-option-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .playground-checkbox-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #333;
+            cursor: pointer;
+            padding: 8px 14px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            transition: border-color 0.2s, background 0.2s;
+            user-select: none;
+            background: #f9fafb;
+        }
+
+        .playground-checkbox-label:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .playground-checkbox,
+        .playground-radio {
+            display: none;
+        }
+
+        .playground-checkbox-custom,
+        .playground-radio-custom {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #d1d5db;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, border-color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .playground-radio-custom {
+            border-radius: 50%;
+        }
+
+        .playground-checkbox:checked + .playground-checkbox-custom {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+        }
+
+        .playground-checkbox:checked + .playground-checkbox-custom::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .playground-radio:checked + .playground-radio-custom {
+            border-color: #667eea;
+            background: white;
+        }
+
+        .playground-radio:checked + .playground-radio-custom::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .playground-checkbox:checked ~ *,
+        .playground-radio:checked ~ * {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        /* Toggle Switch */
+        .playground-toggle-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: #333;
+            cursor: pointer;
+            padding: 8px 14px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            transition: border-color 0.2s, background 0.2s;
+            user-select: none;
+            background: #f9fafb;
+        }
+
+        .playground-toggle-label:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .playground-toggle-input {
+            display: none;
+        }
+
+        .playground-toggle-track {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #d1d5db;
+            border-radius: 12px;
+            transition: background 0.25s;
+            flex-shrink: 0;
+        }
+
+        .playground-toggle-thumb {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            transition: transform 0.25s;
+        }
+
+        .playground-toggle-input:checked + .playground-toggle-track {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .playground-toggle-input:checked + .playground-toggle-track .playground-toggle-thumb {
+            transform: translateX(20px);
+        }
+
+        /* File Input */
+        .playground-file {
+            font-size: 0.9rem;
+            color: #555;
+            padding: 10px;
+            border: 2px dashed #d1d5db;
+            border-radius: 10px;
+            background: #f9fafb;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .playground-file:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .playground-file::file-selector-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: opacity 0.2s;
+        }
+
+        .playground-file::file-selector-button:hover {
+            opacity: 0.9;
+        }
+
+        /* Playground Buttons */
+        .playground-btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .playground-btn {
+            padding: 10px 22px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .playground-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .playground-btn:active {
+            transform: translateY(0);
+        }
+
+        .playground-btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .playground-btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .playground-btn-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+
+        .playground-btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+
+        .playground-btn-outline {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .playground-btn-outline:hover {
+            background: #f0f4ff;
+        }
+
+        @media (max-width: 768px) {
+            .playground-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .playground-field-wide {
+                grid-column: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -315,6 +688,218 @@
                 <div class="sample-counter">
                     <div class="sample-value" id="events-count">0</div>
                     <div class="sample-label"><span aria-hidden="true">🎯</span> Events</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interaction Playground -->
+        <div class="card" id="interaction-playground" style="margin-bottom: 20px;">
+            <div class="card-title">
+                <span class="card-icon" aria-hidden="true">🎮</span>
+                Interaction Playground
+                <span class="new-badge">INTERACT</span>
+            </div>
+            <div class="instruction-box" style="margin-top: 0; border: none; background: #f8f9ff; padding: 12px 16px;">
+                <div class="instruction-text" style="font-size: 0.9rem;">
+                    Use these inputs while the session is running to generate diverse human behavior samples
+                </div>
+            </div>
+
+            <div class="playground-grid">
+                <!-- Text Input -->
+                <div class="playground-field">
+                    <label class="playground-label" for="play-text">✏️ Text Input</label>
+                    <input type="text" id="play-text" class="playground-input" placeholder="Type something here...">
+                </div>
+
+                <!-- Email Input -->
+                <div class="playground-field">
+                    <label class="playground-label" for="play-email">📧 Email</label>
+                    <input type="email" id="play-email" class="playground-input" placeholder="user@example.com">
+                </div>
+
+                <!-- Password Input -->
+                <div class="playground-field">
+                    <label class="playground-label" for="play-password">🔒 Password</label>
+                    <input type="password" id="play-password" class="playground-input" placeholder="Enter a password...">
+                </div>
+
+                <!-- Search Input -->
+                <div class="playground-field">
+                    <label class="playground-label" for="play-search">🔍 Search</label>
+                    <input type="search" id="play-search" class="playground-input" placeholder="Search for something...">
+                </div>
+
+                <!-- URL Input -->
+                <div class="playground-field">
+                    <label class="playground-label" for="play-url">🌐 URL</label>
+                    <input type="url" id="play-url" class="playground-input" placeholder="https://example.com">
+                </div>
+
+                <!-- Phone Input -->
+                <div class="playground-field">
+                    <label class="playground-label" for="play-tel">📞 Telephone</label>
+                    <input type="tel" id="play-tel" class="playground-input" placeholder="+1 (555) 123-4567">
+                </div>
+
+                <!-- Number Input -->
+                <div class="playground-field">
+                    <label class="playground-label" for="play-number">🔢 Number</label>
+                    <input type="number" id="play-number" class="playground-input" placeholder="42" min="0" max="1000" step="1">
+                </div>
+
+                <!-- Date Input -->
+                <div class="playground-field">
+                    <label class="playground-label" for="play-date">📅 Date</label>
+                    <input type="date" id="play-date" class="playground-input">
+                </div>
+
+                <!-- Time Input -->
+                <div class="playground-field">
+                    <label class="playground-label" for="play-time">🕐 Time</label>
+                    <input type="time" id="play-time" class="playground-input">
+                </div>
+
+                <!-- Color Input -->
+                <div class="playground-field">
+                    <label class="playground-label" for="play-color">🎨 Color Picker</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="color" id="play-color" class="playground-color" value="#667eea">
+                        <span id="play-color-value" class="playground-color-label">#667eea</span>
+                    </div>
+                </div>
+
+                <!-- Textarea -->
+                <div class="playground-field playground-field-wide">
+                    <label class="playground-label" for="play-textarea">📝 Textarea</label>
+                    <textarea id="play-textarea" class="playground-input playground-textarea" placeholder="Write a longer message here... Try typing naturally!" rows="3"></textarea>
+                </div>
+
+                <!-- Select Dropdown -->
+                <div class="playground-field">
+                    <label class="playground-label" for="play-select">📋 Dropdown Select</label>
+                    <select id="play-select" class="playground-input">
+                        <option value="" disabled selected>Choose an option...</option>
+                        <option value="option1">Option 1 – Alpha</option>
+                        <option value="option2">Option 2 – Beta</option>
+                        <option value="option3">Option 3 – Gamma</option>
+                        <option value="option4">Option 4 – Delta</option>
+                        <option value="option5">Option 5 – Epsilon</option>
+                    </select>
+                </div>
+
+                <!-- Multi Select -->
+                <div class="playground-field">
+                    <label class="playground-label" for="play-multi-select">📑 Multi Select</label>
+                    <select id="play-multi-select" class="playground-input" multiple size="4">
+                        <option value="red">Red</option>
+                        <option value="green">Green</option>
+                        <option value="blue">Blue</option>
+                        <option value="yellow">Yellow</option>
+                        <option value="purple">Purple</option>
+                    </select>
+                </div>
+
+                <!-- Range Slider -->
+                <div class="playground-field playground-field-wide">
+                    <label class="playground-label" for="play-range">🎚️ Range Slider</label>
+                    <div class="playground-range-wrap">
+                        <input type="range" id="play-range" class="playground-range" min="0" max="100" value="50">
+                        <span id="play-range-value" class="playground-range-value">50</span>
+                    </div>
+                </div>
+
+                <!-- Checkboxes -->
+                <div class="playground-field">
+                    <span class="playground-label">☑️ Checkboxes</span>
+                    <div class="playground-option-group">
+                        <label class="playground-checkbox-label">
+                            <input type="checkbox" id="play-check1" class="playground-checkbox" value="music">
+                            <span class="playground-checkbox-custom"></span>
+                            Music
+                        </label>
+                        <label class="playground-checkbox-label">
+                            <input type="checkbox" id="play-check2" class="playground-checkbox" value="sports">
+                            <span class="playground-checkbox-custom"></span>
+                            Sports
+                        </label>
+                        <label class="playground-checkbox-label">
+                            <input type="checkbox" id="play-check3" class="playground-checkbox" value="coding">
+                            <span class="playground-checkbox-custom"></span>
+                            Coding
+                        </label>
+                        <label class="playground-checkbox-label">
+                            <input type="checkbox" id="play-check4" class="playground-checkbox" value="travel">
+                            <span class="playground-checkbox-custom"></span>
+                            Travel
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Radio Buttons -->
+                <div class="playground-field">
+                    <span class="playground-label">🔘 Radio Buttons</span>
+                    <div class="playground-option-group">
+                        <label class="playground-checkbox-label">
+                            <input type="radio" name="play-radio" id="play-radio1" class="playground-radio" value="small">
+                            <span class="playground-radio-custom"></span>
+                            Small
+                        </label>
+                        <label class="playground-checkbox-label">
+                            <input type="radio" name="play-radio" id="play-radio2" class="playground-radio" value="medium">
+                            <span class="playground-radio-custom"></span>
+                            Medium
+                        </label>
+                        <label class="playground-checkbox-label">
+                            <input type="radio" name="play-radio" id="play-radio3" class="playground-radio" value="large">
+                            <span class="playground-radio-custom"></span>
+                            Large
+                        </label>
+                        <label class="playground-checkbox-label">
+                            <input type="radio" name="play-radio" id="play-radio4" class="playground-radio" value="xl">
+                            <span class="playground-radio-custom"></span>
+                            Extra Large
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Toggle Switch -->
+                <div class="playground-field">
+                    <span class="playground-label">🔀 Toggle Switch</span>
+                    <div class="playground-option-group">
+                        <label class="playground-toggle-label">
+                            <input type="checkbox" id="play-toggle1" class="playground-toggle-input">
+                            <span class="playground-toggle-track">
+                                <span class="playground-toggle-thumb"></span>
+                            </span>
+                            Dark Mode
+                        </label>
+                        <label class="playground-toggle-label">
+                            <input type="checkbox" id="play-toggle2" class="playground-toggle-input">
+                            <span class="playground-toggle-track">
+                                <span class="playground-toggle-thumb"></span>
+                            </span>
+                            Notifications
+                        </label>
+                    </div>
+                </div>
+
+                <!-- File Input -->
+                <div class="playground-field">
+                    <label class="playground-label" for="play-file">📎 File Upload</label>
+                    <input type="file" id="play-file" class="playground-file">
+                </div>
+
+                <!-- Buttons -->
+                <div class="playground-field playground-field-wide">
+                    <span class="playground-label">🖲️ Buttons</span>
+                    <div class="playground-btn-group">
+                        <button type="button" class="playground-btn playground-btn-primary" id="play-btn-primary">Primary</button>
+                        <button type="button" class="playground-btn playground-btn-success" id="play-btn-success">Success</button>
+                        <button type="button" class="playground-btn playground-btn-warning" id="play-btn-warning">Warning</button>
+                        <button type="button" class="playground-btn playground-btn-danger" id="play-btn-danger">Danger</button>
+                        <button type="button" class="playground-btn playground-btn-outline" id="play-btn-outline">Outline</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -816,6 +1401,23 @@
             document.addEventListener('DOMContentLoaded', initMonitor);
         } else {
             initMonitor();
+        }
+
+        // Playground interactivity
+        const rangeInput = document.getElementById('play-range');
+        const rangeValue = document.getElementById('play-range-value');
+        if (rangeInput && rangeValue) {
+            rangeInput.addEventListener('input', function() {
+                rangeValue.textContent = this.value;
+            });
+        }
+
+        const colorInput = document.getElementById('play-color');
+        const colorValue = document.getElementById('play-color-value');
+        if (colorInput && colorValue) {
+            colorInput.addEventListener('input', function() {
+                colorValue.textContent = this.value;
+            });
         }
     </script>
 </body>
