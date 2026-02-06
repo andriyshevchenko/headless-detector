@@ -77,54 +77,58 @@ test.describe('Behavior Monitor E2E Tests', () => {
         // LEVEL 1: MOST NAIVE
         // Implementation: 100ms fixed interval, page.mouse.move() straight lines
         // Detectors: constantTiming + straightLineRatio + lowTimingVariance + naiveMultiplier
+        const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.ROBOT,
-            { minExpectedScore: 0.40, maxExpectedScore: 1.0 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'ROBOT', 1);
+        logDetectionResult(results.overallScore, 'ROBOT', 1, minExp, maxExp);
     });
 
     test('5-minute robot-slow behavior', async ({ page }) => {
         // LEVEL 1: NAIVE - just slower
         // Implementation: 500ms fixed interval, page.mouse.move() straight lines
         // Detectors: constantTiming (CV < 0.15) + straightLineRatio + naiveMultiplier
+        const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.ROBOT_SLOW,
-            { minExpectedScore: 0.40, maxExpectedScore: 1.0 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'ROBOT_SLOW', 1);
+        logDetectionResult(results.overallScore, 'ROBOT_SLOW', 1, minExp, maxExp);
     });
 
     test('5-minute robot + impulsive fast movements', async ({ page }) => {
         // LEVEL 2: Straight lines + random timing
         // Implementation: page.mouse.move() straight lines, randomBetween() timing
+        const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.ROBOT_IMPULSIVE,
-            { minExpectedScore: 0.40, maxExpectedScore: 1.0 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'ROBOT_IMPULSIVE', 2);
+        logDetectionResult(results.overallScore, 'ROBOT_IMPULSIVE', 2, minExp, maxExp);
     });
 
     test('5-minute burst-only behavior', async ({ page }) => {
         // LEVEL 2: Rapid bursts with straight lines
         // Implementation: randomInt timing, page.mouse.move() in bursts
+        const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.BURST_ONLY,
-            { minExpectedScore: 0.40, maxExpectedScore: 1.0 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'BURST_ONLY', 2);
+        logDetectionResult(results.overallScore, 'BURST_ONLY', 2, minExp, maxExp);
     });
 
     // ========================================
@@ -135,40 +139,43 @@ test.describe('Behavior Monitor E2E Tests', () => {
     test('5-minute scroll-heavy behavior', async ({ page }) => {
         // LEVEL 3: Limited mouse signals - scroll automation
         // Implementation: window.scrollBy only, minimal mouse
+        const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.SCROLL_HEAVY,
-            { minExpectedScore: 0.40, maxExpectedScore: 1.0 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'SCROLL_HEAVY', 3);
+        logDetectionResult(results.overallScore, 'SCROLL_HEAVY', 3, minExp, maxExp);
     });
 
     test('5-minute keyboard-heavy behavior', async ({ page }) => {
         // LEVEL 3: Limited mouse signals - keyboard automation
         // Implementation: keyboard.press only, no mouse movements
+        const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.KEYBOARD_HEAVY,
-            { minExpectedScore: 0.40, maxExpectedScore: 1.0 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'KEYBOARD_HEAVY', 3);
+        logDetectionResult(results.overallScore, 'KEYBOARD_HEAVY', 3, minExp, maxExp);
     });
 
     test('5-minute replay-bot behavior', async ({ page }) => {
         // LEVEL 3: Pre-recorded patterns
         // Implementation: Fixed dx/dy patterns, modulo-based timing
+        const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.REPLAY_BOT,
-            { minExpectedScore: 0.40, maxExpectedScore: 1.0 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'REPLAY_BOT', 3);
+        logDetectionResult(results.overallScore, 'REPLAY_BOT', 3, minExp, maxExp);
     });
 
     // ========================================
@@ -179,80 +186,86 @@ test.describe('Behavior Monitor E2E Tests', () => {
     test('5-minute timing-bot behavior', async ({ page }) => {
         // LEVEL 4: Gaussian timing but straight movements
         // Implementation: Box-Muller for timing, linear interpolation for movement
+        const minExp = 0.30, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.TIMING_BOT,
-            { minExpectedScore: 0.30, maxExpectedScore: 0.40 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'TIMING_BOT', 4);
+        logDetectionResult(results.overallScore, 'TIMING_BOT', 4, minExp, maxExp);
     });
 
     test('5-minute mixed-random behavior', async ({ page }) => {
         // LEVEL 4: INCLUDES RobotBehavior in the rotation!
         // Implementation: Randomly switches between ALL behaviors including Robot
+        const minExp = 0.30, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.MIXED_RANDOM,
-            { minExpectedScore: 0.30, maxExpectedScore: 0.40 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'MIXED_RANDOM', 4);
+        logDetectionResult(results.overallScore, 'MIXED_RANDOM', 4, minExp, maxExp);
     });
 
     test('5-minute stealth-bot behavior', async ({ page }) => {
         // LEVEL 5: Bezier + Math.sin() noise
         // Implementation: Bezier path + Math.sin(noisePhase) * 2 for jitter
         // Detectors: periodicNoise catches sinusoidal patterns
+        const minExp = 0.30, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.STEALTH_BOT,
-            { minExpectedScore: 0.30, maxExpectedScore: 0.40 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'STEALTH_BOT', 5);
+        logDetectionResult(results.overallScore, 'STEALTH_BOT', 5, minExp, maxExp);
     });
 
     test('5-minute mouse-heavy behavior', async ({ page }) => {
         // LEVEL 5: MIXED - uses BOTH Bezier AND straight page.mouse.move()
         // Implementation: HumanBehavior.humanLikeMouseMove + page.mouse.move jitter
+        const minExp = 0.30, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.MOUSE_HEAVY,
-            { minExpectedScore: 0.30, maxExpectedScore: 0.40 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'MOUSE_HEAVY', 5);
+        logDetectionResult(results.overallScore, 'MOUSE_HEAVY', 5, minExp, maxExp);
     });
 
     test('5-minute human-fast behavior', async ({ page }) => {
         // LEVEL 6: Fast Bezier movements
         // Implementation: HumanBehavior.humanLikeMouseMove with 10-20 steps
+        const minExp = 0.30, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.HUMAN_FAST,
-            { minExpectedScore: 0.30, maxExpectedScore: 0.40 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'HUMAN_FAST', 6);
+        logDetectionResult(results.overallScore, 'HUMAN_FAST', 6, minExp, maxExp);
     });
 
     test('5-minute human-like + impulsive fast movements', async ({ page }) => {
         // LEVEL 6: Mix of HumanBehavior with impulsive bursts
         // Implementation: HumanBehavior for mouse, impulsive for scroll/keys
+        const minExp = 0.30, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.HUMAN_IMPULSIVE,
-            { minExpectedScore: 0.30, maxExpectedScore: 0.40 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'HUMAN_IMPULSIVE', 6);
+        logDetectionResult(results.overallScore, 'HUMAN_IMPULSIVE', 6, minExp, maxExp);
     });
 
     // ========================================
@@ -263,53 +276,57 @@ test.describe('Behavior Monitor E2E Tests', () => {
     test('5-minute human-slow behavior', async ({ page }) => {
         // LEVEL 7: Slow Bezier movements with long pauses
         // Implementation: HumanBehavior.humanLikeMouseMove with 80-120 steps
+        const minExp = 0.15, maxExp = 0.30;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.HUMAN_SLOW,
-            { minExpectedScore: 0.15, maxExpectedScore: 0.30 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'HUMAN_SLOW', 7);
+        logDetectionResult(results.overallScore, 'HUMAN_SLOW', 7, minExp, maxExp);
     });
 
     test('5-minute alternating burst/smooth with long pauses', async ({ page }) => {
         // LEVEL 7: Burst/Smooth phases with Bezier
         // Implementation: AlternatingBehavior with HumanBehavior.moveMouseHumanLike
+        const minExp = 0.15, maxExp = 0.30;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.ALTERNATING,
-            { minExpectedScore: 0.15, maxExpectedScore: 0.30 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'ALTERNATING', 7);
+        logDetectionResult(results.overallScore, 'ALTERNATING', 7, minExp, maxExp);
     });
 
     test('5-minute human-like behavior session', async ({ page }) => {
         // LEVEL 8: Core HumanBehavior class
         // Implementation: Full Bezier simulation with timing jitter
+        const minExp = 0.15, maxExp = 0.30;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.HUMAN_LIKE,
-            { minExpectedScore: 0.15, maxExpectedScore: 0.30 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'HUMAN_LIKE', 8);
+        logDetectionResult(results.overallScore, 'HUMAN_LIKE', 8, minExp, maxExp);
     });
 
     test('5-minute smooth behavior with timing jitter', async ({ page }) => {
         // LEVEL 8: SmoothBehavior with enhanced timing jitter
         // Implementation: HumanBehavior.moveMouseHumanLike with 100 steps
+        const minExp = 0.15, maxExp = 0.30;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.HUMAN_SMOOTH,
-            { minExpectedScore: 0.15, maxExpectedScore: 0.30 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'HUMAN_SMOOTH', 8);
+        logDetectionResult(results.overallScore, 'HUMAN_SMOOTH', 8, minExp, maxExp);
     });
 
     // ========================================
@@ -320,14 +337,15 @@ test.describe('Behavior Monitor E2E Tests', () => {
     test('5-minute advanced behavior with XY jitter', async ({ page }) => {
         // LEVEL 9: Most sophisticated human simulation
         // Implementation: Bezier + applyJitter() + burst/smooth/silence phases
+        const minExp = 0.00, maxExp = 0.15;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.ADVANCED,
-            { minExpectedScore: 0.00, maxExpectedScore: 0.15 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'ADVANCED', 9);
+        logDetectionResult(results.overallScore, 'ADVANCED', 9, minExp, maxExp);
     });
 
     test('5-minute ultimate-bot behavior', async ({ page }) => {
@@ -335,14 +353,15 @@ test.describe('Behavior Monitor E2E Tests', () => {
         // Implementation: Perlin noise, Fitts's Law, fatigue, micro-saccades,
         //   attention decay, breathing rhythm, ex-Gaussian timing, overshoot+correction
         // This SHOULD evade detection - represents economic barrier for attackers
+        const minExp = 0.00, maxExp = 0.15;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
             BehaviorMode.ULTIMATE_BOT,
-            { minExpectedScore: 0.00, maxExpectedScore: 0.15 }
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'ULTIMATE_BOT', 10);
+        logDetectionResult(results.overallScore, 'ULTIMATE_BOT', 10, minExp, maxExp);
     });
 });
 
@@ -358,21 +377,10 @@ test.describe('Behavior Monitor E2E Tests', () => {
  * @param {number} score 
  * @param {string} testName
  * @param {number} sophisticationLevel
+ * @param {number} minExpected - minimum expected score
+ * @param {number} maxExpected - maximum expected score
  */
-function logDetectionResult(score, testName, sophisticationLevel) {
-    const levelDesc = {
-        1: '🤖 L1 (Naive: fixed timing, straight lines)',
-        2: '🤖 L2 (Naive: straight lines, variable timing)',
-        3: '🤖 L3 (Basic: limited signals, replay patterns)',
-        4: '⚠️ L4 (Intermediate: Gaussian timing, mixed behaviors)',
-        5: '⚠️ L5 (Stealth: Bezier+noise, partial human sim)',
-        6: '⚠️ L6 (Basic Human: fast Bezier)',
-        7: '👤 L7 (Full Human: slow Bezier with pauses)',
-        8: '👤 L8 (Advanced Human: full Bezier+jitter)',
-        9: '✅ L9 (Expert Human: Bezier+XY jitter+phases)',
-        10: '✅ L10 (Ultimate: Perlin, Fitts, fatigue)'
-    };
-    
+function logDetectionResult(score, testName, sophisticationLevel, minExpected, maxExpected) {
     // Expected classification by level
     const expectedClass = {
         1: '🤖 BOT', 2: '🤖 BOT', 3: '🤖 BOT',
@@ -393,10 +401,11 @@ function logDetectionResult(score, testName, sophisticationLevel) {
         actualClass = '✅ VERIFIED';
     }
     
-    const expected = expectedClass[sophisticationLevel] || '?';
-    const match = expected === actualClass ? '✓' : '❌';
+    const expectedClassification = expectedClass[sophisticationLevel] || '?';
+    const classMatch = expectedClassification === actualClass ? '✓' : '❌';
+    const inRange = score >= minExpected && score <= maxExpected ? '✓' : '❌';
     
-    console.log(`${testName} [${levelDesc[sophisticationLevel] || `Level ${sophisticationLevel}`}]: score=${score.toFixed(2)} → ${actualClass} (expected: ${expected}) ${match}`);
+    console.log(`[${testName}] Level=${sophisticationLevel} | Score=${score.toFixed(2)} | Expected=[${minExpected.toFixed(2)}-${maxExpected.toFixed(2)}] ${inRange} | Class=${actualClass} (want: ${expectedClassification}) ${classMatch}`);
 }
 
 
