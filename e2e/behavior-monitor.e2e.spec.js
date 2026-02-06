@@ -71,7 +71,7 @@ const SESSION_SECONDS = 5 * 60; // 5 minutes
  * detection classification. Each level has a target detection class and
  * expected score range based on the tier-to-category system.
  * 
- * Tests may override score ranges for known DETECTION_GAPs (single-channel
+ * Tests may override score ranges for known DETECTION_GAPS (single-channel
  * bots or high-variance Bezier patterns), but the CLASS shows what the
  * detection system SHOULD achieve for each difficulty level.
  */
