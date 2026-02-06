@@ -225,6 +225,7 @@ jobs:
         with:
           pattern: calibration-*
           path: all-calibration-data
+          merge-multiple: true
       
       - name: Aggregate calibration data
         run: |
