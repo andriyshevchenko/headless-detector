@@ -340,7 +340,8 @@
         sophisticationIvScale: 70000000,      // IntervalVariance scale for graduated discount
         sophisticationDiscountMin: 0.15,      // Strongest discount (highest sophistication)
         sophisticationDiscountMax: 0.70,      // Weakest discount (lowest sophistication)
-        // Rescue skip: for sophisticated bots scoring above this, skip rescue to allow discount
+        // Rescue skip: sophisticated bots scoring above this threshold skip rescue
+        // so the graduated sophistication discount can reduce their score instead
         multiChannelRescueMaxScoreForSophisticated: 0.25
     },
 

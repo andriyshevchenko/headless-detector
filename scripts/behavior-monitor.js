@@ -2163,9 +2163,11 @@ class HeadlessBehaviorMonitor {
             
             const ikvScale = S.sophisticationIkvScale ?? 120000000;
             const ivScale = S.sophisticationIvScale ?? 70000000;
+            // Normalize variance above baseline: 5M is the highInterKeyVariance threshold,
+            // 1M is the highIntervalVariance threshold — values below these don't indicate sophistication
             const ikvFactor = Math.min(1, Math.max(0, ikv - 5000000) / ikvScale);
             const ivFactor = Math.min(1, Math.max(0, iv - 1000000) / ivScale);
-            // velVar already gated by threshold, counts as full factor
+            // velVar already gated by threshold check above, counts as full factor (1.0)
             const combined = (ikvFactor + ivFactor + 1.0) / 3;
             
             const discountMin = S.sophisticationDiscountMin ?? 0.15;
