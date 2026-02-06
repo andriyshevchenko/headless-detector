@@ -174,8 +174,10 @@ jobs:
         id: run_test
         run: |
           set +e
+          set -o pipefail
           npx playwright test --grep "${{ matrix.test.grep }}" 2>&1 | tee test-output.log
           TEST_EXIT_CODE=$?
+          set +o pipefail
           set -e
           mkdir -p calibration-data
           grep -A 10000 "===CALIBRATION_JSON_START===" test-output.log | grep -B 10000 "===CALIBRATION_JSON_END===" | grep -v "===CALIBRATION" > calibration-data/${{ matrix.test.name }}-calibration.json || echo '{}' > calibration-data/${{ matrix.test.name }}-calibration.json
