@@ -29,11 +29,11 @@
      * - Increased events weight from 0.13 to 0.16 (trusted events are strong signal)
      */
     CHANNEL_WEIGHTS: {
-        mouse: 0.30,      // Increased from 0.22 - primary bot detection signal (iteration 17)
-        keyboard: 0.28,   // Increased from 0.25 - reliable discriminator (iteration 13)
-        scroll: 0.15,     // Secondary signal - increased from 0.13 (iteration 17)
+        mouse: 0.35,      // Increased from 0.30 - primary bot detection signal (iteration 18)
+        keyboard: 0.35,   // Increased from 0.28 - critical for keyboard-heavy tests (iteration 18)
+        scroll: 0.25,     // Increased from 0.15 - critical for scroll-heavy tests (iteration 18)
         touch: 0.13,      // Primary for mobile
-        events: 0.16,     // Increased from 0.13 - trusted event detection is reliable
+        events: 0.16,     // Trusted event detection is reliable
         sensors: 0.05,    // Device motion (noisy, permission-dependent)
         webglTiming: 0.10 // Rendering timing fingerprint
     },
@@ -106,12 +106,12 @@
     MOUSE_WEIGHTS: {
         lowVelocityVariance: 0.10,     // Slow humans also have low variance - not reliable alone
         lowAngleVariance: 0.05,        // Not reliable alone
-        highStraightLineRatio: 0.50,   // MAJOR - straight lines are the #1 naive bot tell (was 0.30)
+        highStraightLineRatio: 0.55,   // MAJOR - straight lines are the #1 naive bot tell (iteration 18: 0.50→0.55)
         highUntrustedRatio: 0.30,      // Strong bot indicator
         highMouseEfficiency: 0.15,
-        lowTimingVariance: 0.35,       // Key for fast naive bots (robot: 42ms vs human: 500,000+ms)
-        constantTiming: 0.40,          // NEW - catches constant intervals at ANY speed (robot-slow: CV < 0.15)
-        periodicNoise: 0.25,           // NEW - catches sinusoidal noise patterns (stealth-bot: Math.sin)
+        lowTimingVariance: 0.45,       // Key for fast naive bots (iteration 18: 0.35→0.45)
+        constantTiming: 0.50,          // Catches constant intervals at ANY speed (iteration 18: 0.40→0.50)
+        periodicNoise: 0.25,           // Catches sinusoidal noise patterns (stealth-bot: Math.sin)
         subMillisecondPattern: 0.10,   // All Playwright tests trigger this
         lowAccelVariance: 0.10,
         bezierPattern: 0.05,           // Our human simulations use bezier curves

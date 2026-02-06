@@ -1002,12 +1002,12 @@ class HeadlessBehaviorMonitor {
         const defaultWeights = {
             lowVelocityVariance: 0.10,      // Matches calibration-weights.js
             lowAngleVariance: 0.05,         // Matches calibration-weights.js
-            highStraightLineRatio: 0.50,    // Increased in iteration 14 - #1 naive bot tell
+            highStraightLineRatio: 0.55,    // Iteration 18 - #1 naive bot tell
             highUntrustedRatio: 0.30,       // Matches calibration-weights.js
             highMouseEfficiency: 0.15,
-            lowTimingVariance: 0.35,        // Matches calibration-weights.js (iteration 13)
-            constantTiming: 0.40,           // NEW in iteration 14 - catches constant intervals at ANY speed
-            periodicNoise: 0.25,            // NEW in iteration 14 - catches sinusoidal noise patterns
+            lowTimingVariance: 0.45,        // Iteration 18 - key for fast naive bots
+            constantTiming: 0.50,           // Iteration 18 - catches constant intervals at ANY speed
+            periodicNoise: 0.25,            // Catches sinusoidal noise patterns
             subMillisecondPattern: 0.10,    // Matches calibration-weights.js
             lowAccelVariance: 0.10,         // Matches calibration-weights.js
             bezierPattern: 0.05,            // Matches calibration-weights.js
