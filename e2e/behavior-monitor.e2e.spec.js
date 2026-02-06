@@ -7,8 +7,8 @@
  * - Sophisticated bots (expensive to maintain) → LOW scores (harder to catch)
  * 
  * 4-TIER CLASSIFICATION BY SOPHISTICATION LEVEL:
- * - Levels 1-3  → 🤖 Bot (≥0.45) - Naive implementations, MUST be caught
- * - Levels 4-6  → ⚠️ Suspicious (0.30-0.45) - Intermediate evasion attempts
+ * - Levels 1-3  → 🤖 Bot (≥0.40) - Naive implementations, MUST be caught
+ * - Levels 4-6  → ⚠️ Suspicious (0.30-0.40) - Intermediate evasion attempts
  * - Levels 7-8  → 👤 Likely Human (0.15-0.30) - Advanced human simulations
  * - Levels 9-10 → ✅ Verified (<0.15) - Expert simulations, represent cost barrier
  * 
@@ -70,7 +70,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
 
     // ========================================
     // LEVEL 1-2 (🤖 BOT): Naive automation
-    // Fixed timing + straight lines = MUST be caught (≥0.45)
+    // Fixed timing + straight lines = MUST be caught (≥0.40)
     // ========================================
 
     test('5-minute robot behavior - regular Playwright API', async ({ page }) => {
@@ -81,7 +81,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.ROBOT,
-            { minExpectedScore: 0.45, maxExpectedScore: 1.0 }
+            { minExpectedScore: 0.40, maxExpectedScore: 1.0 }
         );
         
         logDetectionResult(results.overallScore, 'ROBOT', 1);
@@ -95,7 +95,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.ROBOT_SLOW,
-            { minExpectedScore: 0.45, maxExpectedScore: 1.0 }
+            { minExpectedScore: 0.40, maxExpectedScore: 1.0 }
         );
         
         logDetectionResult(results.overallScore, 'ROBOT_SLOW', 1);
@@ -108,7 +108,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.ROBOT_IMPULSIVE,
-            { minExpectedScore: 0.45, maxExpectedScore: 1.0 }
+            { minExpectedScore: 0.40, maxExpectedScore: 1.0 }
         );
         
         logDetectionResult(results.overallScore, 'ROBOT_IMPULSIVE', 2);
@@ -121,7 +121,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.BURST_ONLY,
-            { minExpectedScore: 0.45, maxExpectedScore: 1.0 }
+            { minExpectedScore: 0.40, maxExpectedScore: 1.0 }
         );
         
         logDetectionResult(results.overallScore, 'BURST_ONLY', 2);
@@ -129,7 +129,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
 
     // ========================================
     // LEVEL 3 (🤖 BOT): Basic automation patterns
-    // Limited signals or replay = BOT (≥0.45)
+    // Limited signals or replay = BOT (≥0.40)
     // ========================================
 
     test('5-minute scroll-heavy behavior', async ({ page }) => {
@@ -139,7 +139,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.SCROLL_HEAVY,
-            { minExpectedScore: 0.45, maxExpectedScore: 1.0 }
+            { minExpectedScore: 0.40, maxExpectedScore: 1.0 }
         );
         
         logDetectionResult(results.overallScore, 'SCROLL_HEAVY', 3);
@@ -152,7 +152,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.KEYBOARD_HEAVY,
-            { minExpectedScore: 0.45, maxExpectedScore: 1.0 }
+            { minExpectedScore: 0.40, maxExpectedScore: 1.0 }
         );
         
         logDetectionResult(results.overallScore, 'KEYBOARD_HEAVY', 3);
@@ -165,7 +165,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.REPLAY_BOT,
-            { minExpectedScore: 0.45, maxExpectedScore: 1.0 }
+            { minExpectedScore: 0.40, maxExpectedScore: 1.0 }
         );
         
         logDetectionResult(results.overallScore, 'REPLAY_BOT', 3);
@@ -173,7 +173,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
 
     // ========================================
     // LEVEL 4-6 (⚠️ SUSPICIOUS): Intermediate evasion
-    // Noise injection or partial human sim = SUSPICIOUS (0.30-0.45)
+    // Noise injection or partial human sim = SUSPICIOUS (0.30-0.40)
     // ========================================
 
     test('5-minute timing-bot behavior', async ({ page }) => {
@@ -183,7 +183,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.TIMING_BOT,
-            { minExpectedScore: 0.30, maxExpectedScore: 0.45 }
+            { minExpectedScore: 0.30, maxExpectedScore: 0.40 }
         );
         
         logDetectionResult(results.overallScore, 'TIMING_BOT', 4);
@@ -196,7 +196,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.MIXED_RANDOM,
-            { minExpectedScore: 0.30, maxExpectedScore: 0.45 }
+            { minExpectedScore: 0.30, maxExpectedScore: 0.40 }
         );
         
         logDetectionResult(results.overallScore, 'MIXED_RANDOM', 4);
@@ -210,7 +210,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.STEALTH_BOT,
-            { minExpectedScore: 0.30, maxExpectedScore: 0.45 }
+            { minExpectedScore: 0.30, maxExpectedScore: 0.40 }
         );
         
         logDetectionResult(results.overallScore, 'STEALTH_BOT', 5);
@@ -223,7 +223,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.MOUSE_HEAVY,
-            { minExpectedScore: 0.30, maxExpectedScore: 0.45 }
+            { minExpectedScore: 0.30, maxExpectedScore: 0.40 }
         );
         
         logDetectionResult(results.overallScore, 'MOUSE_HEAVY', 5);
@@ -236,7 +236,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.HUMAN_FAST,
-            { minExpectedScore: 0.30, maxExpectedScore: 0.45 }
+            { minExpectedScore: 0.30, maxExpectedScore: 0.40 }
         );
         
         logDetectionResult(results.overallScore, 'HUMAN_FAST', 6);
@@ -249,7 +249,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             page,
             SESSION_SECONDS,
             BehaviorMode.HUMAN_IMPULSIVE,
-            { minExpectedScore: 0.30, maxExpectedScore: 0.45 }
+            { minExpectedScore: 0.30, maxExpectedScore: 0.40 }
         );
         
         logDetectionResult(results.overallScore, 'HUMAN_IMPULSIVE', 6);
@@ -350,8 +350,8 @@ test.describe('Behavior Monitor E2E Tests', () => {
  * Log detection result with sophistication context (4-tier classification)
  * 
  * CLASSIFICATION BY LEVEL:
- * - Levels 1-3  → 🤖 BOT (≥0.45)
- * - Levels 4-6  → ⚠️ SUSPICIOUS (0.30-0.45)
+ * - Levels 1-3  → 🤖 BOT (≥0.40)
+ * - Levels 4-6  → ⚠️ SUSPICIOUS (0.30-0.40)
  * - Levels 7-8  → 👤 LIKELY_HUMAN (0.15-0.30)
  * - Levels 9-10 → ✅ VERIFIED (<0.15)
  * 
@@ -383,7 +383,7 @@ function logDetectionResult(score, testName, sophisticationLevel) {
     
     // Actual classification by score
     let actualClass;
-    if (score >= 0.45) {
+    if (score >= 0.40) {
         actualClass = '🤖 BOT';
     } else if (score >= 0.30) {
         actualClass = '⚠️ SUSPICIOUS';

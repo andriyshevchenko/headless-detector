@@ -29,9 +29,9 @@
      * - Increased events weight from 0.13 to 0.16 (trusted events are strong signal)
      */
     CHANNEL_WEIGHTS: {
-        mouse: 0.22,      // Increased from 0.18 - boost robot detection (iteration 13)
+        mouse: 0.30,      // Increased from 0.22 - primary bot detection signal (iteration 17)
         keyboard: 0.28,   // Increased from 0.25 - reliable discriminator (iteration 13)
-        scroll: 0.13,     // Secondary signal
+        scroll: 0.15,     // Secondary signal - increased from 0.13 (iteration 17)
         touch: 0.13,      // Primary for mobile
         events: 0.16,     // Increased from 0.13 - trusted event detection is reliable
         sensors: 0.05,    // Device motion (noisy, permission-dependent)

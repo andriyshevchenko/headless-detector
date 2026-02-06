@@ -905,9 +905,29 @@ class HeadlessBehaviorMonitor {
             }
             
             // Check for perfectly straight lines (bot-like) with actual movement
-            // Only count horizontal or vertical lines, not stationary points
-            if (distance > 0.01 && (Math.abs(dx) < 0.01 || Math.abs(dy) < 0.01)) {
-                straightLineSegments++;
+            // Count horizontal, vertical, or diagonal straight-line segments
+            // A diagonal segment is detected by checking if it continues the same direction
+            if (distance > 0.01) {
+                if (Math.abs(dx) < 0.01 || Math.abs(dy) < 0.01) {
+                    // Horizontal or vertical line
+                    straightLineSegments++;
+                } else if (i >= 2) {
+                    // Check if this segment continues the same angle as the previous one
+                    // (characteristic of page.mouse.move() which moves in straight lines)
+                    const prevDx = prev.x - movements[i - 2].x;
+                    const prevDy = prev.y - movements[i - 2].y;
+                    const prevDist = Math.sqrt(prevDx * prevDx + prevDy * prevDy);
+                    if (prevDist > 0.01) {
+                        // Normalize both vectors
+                        const currAngle = Math.atan2(dy, dx);
+                        const prevAngle = Math.atan2(prevDy, prevDx);
+                        const angleDiff = Math.abs(currAngle - prevAngle);
+                        // If angle difference is very small, it's a straight diagonal line
+                        if (angleDiff < 0.05 || angleDiff > Math.PI * 2 - 0.05) {
+                            straightLineSegments++;
+                        }
+                    }
+                }
             }
             
             if (!curr.isTrusted) {
