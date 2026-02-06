@@ -156,9 +156,9 @@
      * Keyboard scoring weights (sum = 1.0)
      */
     KEYBOARD_WEIGHTS: {
-        lowHoldTimeVariance: 0.3,
-        lowInterKeyVariance: 0.3,
-        highUntrustedRatio: 0.4
+        lowHoldTimeVariance: 0.5,   // Increased from 0.3 - primary signal for keyboard bots (iteration 20)
+        lowInterKeyVariance: 0.2,   // Reduced from 0.3 - less reliable due to interleaved actions
+        highUntrustedRatio: 0.3     // Reduced from 0.4
     },
 
     /**
@@ -186,9 +186,9 @@
         lowDeltaVariance: 0.2,
         lowIntervalVariance: 0.2,
         lowUniqueDeltaRatio: 0.2,
-        highDeltaVariance: 0.15,
-        highEventsPerSecond: 0.15,
-        subMillisecondPattern: 0.1
+        highDeltaVariance: 0.25,      // Increased from 0.15 - catches scroll-heavy (iteration 20)
+        highEventsPerSecond: 0.10,    // Reduced from 0.15
+        subMillisecondPattern: 0.05   // Reduced from 0.10
     },
 
     /**
@@ -294,7 +294,7 @@
      */
     SAFEGUARDS: {
         minConfidenceGate: 0.4,          // Channels below this confidence are ignored
-        suspiciousChannelThreshold: 0.35, // Channel score >= this is "suspicious" (lowered from 0.45)
+        suspiciousChannelThreshold: 0.25, // Channel score >= this is "suspicious" (lowered from 0.35 - iteration 20)
         minSuspiciousChannels: 2,        // Need this many suspicious channels for escalation
         singleChannelDownscale: 0.90,    // Downscale factor when only 1 suspicious channel (was 0.75)
         maxChannelContribution: 0.6,     // Max contribution per channel (60%)
