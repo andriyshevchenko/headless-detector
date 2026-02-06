@@ -77,7 +77,7 @@
     MOUSE_THRESHOLDS: {
         lowVelocityVariance: 0.001,     // Lowered from 0.01 - only trigger on very low variance (less sensitive)
         lowAngleVariance: 0.05,         // Lowered from 0.1 - only trigger on very low angle variance
-        highStraightLineRatio: 0.3,     // Bots move in straight lines (was 0.5, more sensitive)
+        highStraightLineRatio: 0.35,    // Bots move in straight lines (raised from 0.3 - prevents L10 false trigger)
         highUntrustedRatio: 0.1,        // Non-trusted events indicate automation
         highMouseEfficiency: 0.95,      // Bots take perfect paths (requires multi-signal)
         lowTimingVariance: 50,          // Lowered from 100 - only trigger on very uniform timing
@@ -149,7 +149,8 @@
     KEYBOARD_THRESHOLDS: {
         lowHoldTimeVariance: 10,        // Bots have robotic key hold timing
         lowInterKeyVariance: 100,       // Bots type at constant speed
-        highUntrustedRatio: 0.1         // Non-trusted events indicate automation
+        highUntrustedRatio: 0.1,        // Non-trusted events indicate automation
+        highInterKeyVariance: 5000000   // Human-like reading/thinking pauses (>5M ms² variance)
     },
 
     /**
@@ -158,7 +159,8 @@
     KEYBOARD_WEIGHTS: {
         lowHoldTimeVariance: 0.5,   // Increased from 0.3 - primary signal for keyboard bots (iteration 20)
         lowInterKeyVariance: 0.2,   // Reduced from 0.3 - less reliable due to interleaved actions
-        highUntrustedRatio: 0.3     // Reduced from 0.4
+        highUntrustedRatio: 0.3,    // Reduced from 0.4
+        highInterKeyVariance: 0.30  // Human-like pauses REDUCE score (negative weight in scoring)
     },
 
     /**
@@ -176,7 +178,9 @@
         // High variance = unnaturally erratic (also suspicious)
         highDeltaVariance: 3000,
         // High frequency = too many events per second
-        highEventsPerSecond: 100
+        highEventsPerSecond: 100,
+        // Human-like scroll pauses (>1M ms² interval variance)
+        highIntervalVariance: 1000000
     },
 
     /**
@@ -188,7 +192,8 @@
         lowUniqueDeltaRatio: 0.2,
         highDeltaVariance: 0.25,      // Increased from 0.15 - catches scroll-heavy (iteration 20)
         highEventsPerSecond: 0.10,    // Reduced from 0.15
-        subMillisecondPattern: 0.05   // Reduced from 0.10
+        subMillisecondPattern: 0.05,  // Reduced from 0.10
+        highIntervalVariance: 0.20    // Human-like pauses REDUCE score (negative weight in scoring)
     },
 
     /**
@@ -301,8 +306,19 @@
         minSessionDurationZero: 5000,    // Sessions < 5s get score = 0
         minSessionDurationCap: 10000,    // Sessions < 10s get score capped at 0.5
         shortSessionScoreCap: 0.5,       // Score cap for short sessions
-        botThreshold: 0.5,               // Score >= this is classified as BOT
-        minSamplesForVariance: 10        // Need this many samples for variance checks
+        botThreshold: 0.40,              // Score >= this is classified as BOT
+        suspiciousThreshold: 0.25,       // Score >= this is classified as SUSPICIOUS
+        likelyHumanThreshold: 0.12,      // Score >= this is classified as LIKELY_HUMAN
+        // Below likelyHumanThreshold → VERIFIED_HUMAN
+        minSamplesForVariance: 10,       // Need this many samples for variance checks
+        sophisticationMouseThreshold: 0.40, // Mouse score below this + human kb/scroll patterns → apply discount
+        sophisticationDiscount: 0.60,    // Multiply score by this when sophistication evidence found
+        // SAFEGUARD 10: Multi-channel corroboration rescue
+        // Catches cheap interleaved bots whose per-channel signals are diluted
+        multiChannelRescueThreshold: 0.10,   // Minimum channel score to count as "active"
+        multiChannelRescueCap: 0.42,         // Maximum score the rescue can produce
+        multiChannelRescueBoost: 1.50,       // Multiplier applied to score during rescue
+        multiChannelRescueMinChannels: 3     // Minimum active input channels required
     },
 
     /**
