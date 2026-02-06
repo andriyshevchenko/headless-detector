@@ -1061,7 +1061,7 @@ class HeadlessBehaviorMonitor {
         const constantTimingAnalysis = this._detectConstantTiming(movements);
         const constantTimingTriggered = constantTimingAnalysis.constantTiming && hasSufficientSamples;
         if (constantTimingTriggered) {
-            suspiciousScore += weights.constantTiming || 0.40;
+            suspiciousScore += weights.constantTiming ?? 0.40;
             naiveSignalCount++;  // Constant timing is a key naive signal
         }
         
@@ -1069,7 +1069,7 @@ class HeadlessBehaviorMonitor {
         const periodicNoiseAnalysis = this._detectPeriodicNoise(movements);
         const periodicNoiseTriggered = periodicNoiseAnalysis.periodicNoise && hasSufficientSamples;
         if (periodicNoiseTriggered) {
-            suspiciousScore += weights.periodicNoise || 0.25;
+            suspiciousScore += weights.periodicNoise ?? 0.25;
         }
         
         if (hasSubMillisecondPattern && hasSufficientSamples) suspiciousScore += weights.subMillisecondPattern;
@@ -1132,8 +1132,8 @@ class HeadlessBehaviorMonitor {
                 highUntrustedRatio: { triggered: untrustedRatio > thresholds.highUntrustedRatio, weight: weights.highUntrustedRatio, value: untrustedRatio, threshold: thresholds.highUntrustedRatio },
                 highMouseEfficiency: { triggered: highEfficiencyTriggered, weight: weights.highMouseEfficiency, value: mouseEfficiency, threshold: thresholds.highMouseEfficiency, requiresMultiSignal: true },
                 lowTimingVariance: { triggered: lowTimingVarianceTriggered && hasSufficientSamples, weight: weights.lowTimingVariance, value: timingVariance, threshold: thresholds.lowTimingVariance, isNaiveSignal: true },
-                constantTiming: { triggered: constantTimingTriggered, weight: weights.constantTiming || 0.40, value: constantTimingAnalysis.coefficientOfVariation, threshold: sophThresholds.constantTimingCV, isNaiveSignal: true, meanInterval: constantTimingAnalysis.meanInterval },
-                periodicNoise: { triggered: periodicNoiseTriggered, weight: weights.periodicNoise || 0.25, value: periodicNoiseAnalysis.autocorrelation, threshold: sophThresholds.periodicNoiseAC },
+                constantTiming: { triggered: constantTimingTriggered, weight: weights.constantTiming ?? 0.40, value: constantTimingAnalysis.coefficientOfVariation, threshold: sophThresholds.constantTimingCV, isNaiveSignal: true, meanInterval: constantTimingAnalysis.meanInterval },
+                periodicNoise: { triggered: periodicNoiseTriggered, weight: weights.periodicNoise ?? 0.25, value: periodicNoiseAnalysis.autocorrelation, threshold: sophThresholds.periodicNoiseAC },
                 subMillisecondPattern: { triggered: hasSubMillisecondPattern && hasSufficientSamples, weight: weights.subMillisecondPattern, value: hasSubMillisecondPattern },
                 lowAccelVariance: { triggered: lowAccelTriggered, weight: weights.lowAccelVariance, value: accelVariance, threshold: thresholds.lowAccelVariance },
                 bezierPattern: { triggered: hasBezierPattern && hasSufficientSamples, weight: weights.bezierPattern, value: hasBezierPattern },
@@ -1931,7 +1931,7 @@ class HeadlessBehaviorMonitor {
             
             const contribution = ch.result.score * ch.result.confidence * ch.weight;
             // SAFEGUARD 4: Cap per-channel contribution to maxChannelContribution of total weight
-            const maxContribution = S.maxChannelContribution * ch.weight * ch.result.score;
+            const maxContribution = S.maxChannelContribution * ch.weight;
             totalScore += Math.min(contribution, maxContribution * ch.result.confidence);
             totalWeight += ch.result.confidence * ch.weight;
             totalConfidence += ch.result.confidence;

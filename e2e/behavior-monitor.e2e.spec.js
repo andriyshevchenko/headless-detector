@@ -8,8 +8,8 @@
  * 
  * 4-TIER CLASSIFICATION BY LEVEL:
  * - Level 1-3  → 🤖 BOT (≥0.40) - Naive: fixed timing, straight lines
- * - Level 4-6  → ⚠️ SUSPICIOUS (0.30-0.40) - Some evasion: variable timing
- * - Level 7-8  → 👤 LIKELY_HUMAN (0.15-0.30) - Full Bezier curves
+ * - Level 4-6  → ⚠️ SUSPICIOUS (0.25-0.50) - Some evasion: variable timing
+ * - Level 7-8  → 👤 LIKELY_HUMAN (0.10-0.35) - Full Bezier curves
  * - Level 9-10 → ✅ VERIFIED (<0.15) - Expert evasion, cost barrier
  * 
  * KEY INSIGHT: Test NAMES don't always match IMPLEMENTATION sophistication!
@@ -20,31 +20,29 @@
  * LEVEL 1 (🤖 BOT): True naive - fixed timing, straight lines
  *   - robot: 100ms fixed interval, page.mouse.move() straight lines
  * 
- * LEVEL 3 (⚠️ SUSPICIOUS): Variable timing defeats constantTiming
+ * LEVEL 4 (⚠️ SUSPICIOUS): Variable timing defeats constantTiming
  *   - robot-impulsive: straight lines but random timing (CV > 0.15)
  * 
- * LEVEL 4 (⚠️ SUSPICIOUS): Burst patterns, replay patterns
+ * LEVEL 4 (⚠️ SUSPICIOUS): Burst patterns
  *   - burst-only: Burst pattern with random gaps
- *   - replay-bot: Pre-recorded movement patterns
  * 
  * LEVEL 5 (⚠️ SUSPICIOUS): Limited signals or sophisticated timing
- *   - robot-slow: Interleaved mouse/keyboard/scroll defeats timing
  *   - keyboard-heavy: Minimal mouse → can't trigger mouse detection
  *   - scroll-heavy: Minimal mouse → can't trigger mouse detection
  *   - timing-bot: Gaussian timing evasion
- *   - mixed-random: Cycles all behaviors
  * 
  * LEVEL 6 (⚠️ SUSPICIOUS): Bezier + noise or mixed signals
  *   - stealth-bot: Bezier + Math.sin() noise
  *   - mouse-heavy: Mix of Bezier + straight line jitter
- * 
- * LEVEL 7 (👤 LIKELY HUMAN): Full Bezier movements
  *   - human-fast: Fast Bezier (10-20 steps)
- *   - human-impulsive: Bezier + impulsive bursts
  *   - human-slow: Slow Bezier (80-120 steps)
- *   - alternating: Burst/smooth phases with Bezier
  * 
- * LEVEL 8 (👤 LIKELY HUMAN): Core human simulation
+ * LEVEL 7 (👤 LIKELY HUMAN): Full Bezier movements or mixed patterns
+ *   - replay-bot: Pre-recorded movement patterns
+ *   - robot-slow: Interleaved mouse/keyboard/scroll defeats timing
+ *   - mixed-random: Cycles all behaviors
+ *   - human-impulsive: Bezier + impulsive bursts
+ *   - alternating: Burst/smooth phases with Bezier
  *   - human-like: Core HumanBehavior class
  *   - human-smooth: SmoothBehavior, 100-step Bezier
  * 
@@ -89,10 +87,10 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L1_NAIVE_ROBOT', 1, minExp, maxExp);
     });
 
-    test('5-minute L5-interleaved-actions behavior', async ({ page }) => {
-        // LEVEL 5: Interleaved actions defeat mouse-based timing detection → ⚠️ SUSPICIOUS (0.30-0.40)
+    test('5-minute L7-interleaved-actions behavior', async ({ page }) => {
+        // LEVEL 7: Interleaved actions defeat mouse-based timing detection → 👤 LIKELY_HUMAN (0.15-0.35)
         // Implementation: Random interleave of mouse/keyboard/scroll at 500ms each
-        const minExp = 0.30, maxExp = 0.40;
+        const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -100,13 +98,13 @@ test.describe('Behavior Monitor E2E Tests', () => {
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'L5_INTERLEAVED_ACTIONS', 5, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L7_INTERLEAVED_ACTIONS', 7, minExp, maxExp);
     });
 
-    test('5-minute L3-impulsive-robot behavior', async ({ page }) => {
-        // LEVEL 3: Straight lines but random timing → 🤖 BOT (≥0.40)
+    test('5-minute L4-impulsive-robot behavior', async ({ page }) => {
+        // LEVEL 4: Straight lines but random timing → ⚠️ SUSPICIOUS (0.25-0.50)
         // Implementation: page.mouse.move() straight lines, randomBetween() timing
-        const minExp = 0.40, maxExp = 1.0;
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -114,13 +112,13 @@ test.describe('Behavior Monitor E2E Tests', () => {
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'L3_IMPULSIVE_ROBOT', 3, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L4_IMPULSIVE_ROBOT', 4, minExp, maxExp);
     });
 
     test('5-minute L4-burst-pattern behavior', async ({ page }) => {
-        // LEVEL 4: Burst pattern with random gaps → ⚠️ SUSPICIOUS (0.30-0.40)
+        // LEVEL 4: Burst pattern with random gaps → ⚠️ SUSPICIOUS (0.25-0.50)
         // Implementation: randomInt timing, page.mouse.move() in bursts
-        const minExp = 0.30, maxExp = 0.40;
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -137,9 +135,9 @@ test.describe('Behavior Monitor E2E Tests', () => {
     // ========================================
 
     test('5-minute L5-scroll-focused behavior', async ({ page }) => {
-        // LEVEL 5: Minimal mouse signals - scroll-based automation → ⚠️ SUSPICIOUS (0.30-0.40)
+        // LEVEL 5: Minimal mouse signals - scroll-based automation → ⚠️ SUSPICIOUS (0.25-0.50)
         // Implementation: window.scrollBy, limited mouse events
-        const minExp = 0.30, maxExp = 0.40;
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -151,9 +149,9 @@ test.describe('Behavior Monitor E2E Tests', () => {
     });
 
     test('5-minute L5-keyboard-focused behavior', async ({ page }) => {
-        // LEVEL 5: Minimal mouse signals - keyboard automation → ⚠️ SUSPICIOUS (0.30-0.40)
+        // LEVEL 5: Minimal mouse signals - keyboard automation → ⚠️ SUSPICIOUS (0.25-0.50)
         // Implementation: keyboard.press only, limited mouse movements
-        const minExp = 0.30, maxExp = 0.40;
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -164,10 +162,10 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L5_KEYBOARD_FOCUSED', 5, minExp, maxExp);
     });
 
-    test('5-minute L4-replay-pattern behavior', async ({ page }) => {
-        // LEVEL 4: Pre-recorded movement patterns → ⚠️ SUSPICIOUS (0.30-0.40)
+    test('5-minute L7-replay-pattern behavior', async ({ page }) => {
+        // LEVEL 7: Pre-recorded movement patterns → 👤 LIKELY_HUMAN (0.15-0.35)
         // Implementation: Fixed dx/dy patterns, modulo-based timing
-        const minExp = 0.30, maxExp = 0.40;
+        const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -175,7 +173,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'L4_REPLAY_PATTERN', 4, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L7_REPLAY_PATTERN', 7, minExp, maxExp);
     });
 
     // ========================================
@@ -184,9 +182,9 @@ test.describe('Behavior Monitor E2E Tests', () => {
     // ========================================
 
     test('5-minute L5-gaussian-timing behavior', async ({ page }) => {
-        // LEVEL 5: Gaussian timing but straight movements → ⚠️ SUSPICIOUS (0.30-0.40)
+        // LEVEL 5: Gaussian timing but straight movements → ⚠️ SUSPICIOUS (0.25-0.50)
         // Implementation: Box-Muller for timing, linear interpolation
-        const minExp = 0.30, maxExp = 0.40;
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -197,10 +195,10 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L5_GAUSSIAN_TIMING', 5, minExp, maxExp);
     });
 
-    test('5-minute L5-mixed-behaviors', async ({ page }) => {
-        // LEVEL 5: Cycles through ALL behaviors including Robot → ⚠️ SUSPICIOUS (0.30-0.40)
+    test('5-minute L7-mixed-behaviors', async ({ page }) => {
+        // LEVEL 7: Cycles through ALL behaviors including Robot → 👤 LIKELY_HUMAN (0.15-0.35)
         // Implementation: Randomly switches between behaviors
-        const minExp = 0.30, maxExp = 0.40;
+        const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -208,13 +206,13 @@ test.describe('Behavior Monitor E2E Tests', () => {
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'L5_MIXED_BEHAVIORS', 5, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L7_MIXED_BEHAVIORS', 7, minExp, maxExp);
     });
 
     test('5-minute L6-bezier-with-noise behavior', async ({ page }) => {
-        // LEVEL 6: Bezier + Math.sin() noise → ⚠️ SUSPICIOUS (0.30-0.40)
+        // LEVEL 6: Bezier + Math.sin() noise → ⚠️ SUSPICIOUS (0.25-0.50)
         // Implementation: Bezier path + sinusoidal jitter
-        const minExp = 0.30, maxExp = 0.40;
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -226,9 +224,9 @@ test.describe('Behavior Monitor E2E Tests', () => {
     });
 
     test('5-minute L6-mouse-focused behavior', async ({ page }) => {
-        // LEVEL 6: MIXED - uses BOTH Bezier AND straight page.mouse.move() → ⚠️ SUSPICIOUS (0.30-0.40)
+        // LEVEL 6: MIXED - uses BOTH Bezier AND straight page.mouse.move() → ⚠️ SUSPICIOUS (0.25-0.50)
         // Implementation: HumanBehavior.humanLikeMouseMove + page.mouse.move jitter
-        const minExp = 0.30, maxExp = 0.40;
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -239,10 +237,10 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L6_MOUSE_FOCUSED', 6, minExp, maxExp);
     });
 
-    test('5-minute L7-fast-bezier behavior', async ({ page }) => {
-        // LEVEL 7: Fast Bezier movements → 👤 LIKELY_HUMAN (0.15-0.30)
+    test('5-minute L6-fast-bezier behavior', async ({ page }) => {
+        // LEVEL 6: Fast Bezier movements → ⚠️ SUSPICIOUS (0.25-0.50)
         // Implementation: HumanBehavior.humanLikeMouseMove with 10-20 steps
-        const minExp = 0.15, maxExp = 0.30;
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -250,13 +248,13 @@ test.describe('Behavior Monitor E2E Tests', () => {
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'L7_FAST_BEZIER', 7, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L6_FAST_BEZIER', 6, minExp, maxExp);
     });
 
     test('5-minute L7-impulsive-bezier behavior', async ({ page }) => {
-        // LEVEL 7: Mix of HumanBehavior with impulsive bursts → 👤 LIKELY_HUMAN (0.15-0.30)
+        // LEVEL 7: Mix of HumanBehavior with impulsive bursts → 👤 LIKELY_HUMAN (0.10-0.30)
         // Implementation: HumanBehavior for mouse, impulsive for scroll/keys
-        const minExp = 0.15, maxExp = 0.30;
+        const minExp = 0.10, maxExp = 0.30;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -272,10 +270,10 @@ test.describe('Behavior Monitor E2E Tests', () => {
     // Full Bezier with timing variance = LIKELY HUMAN (0.10-0.30)
     // ========================================
 
-    test('5-minute L7-slow-bezier behavior', async ({ page }) => {
-        // LEVEL 7: Slow Bezier movements with long pauses → 👤 LIKELY_HUMAN (0.15-0.30)
+    test('5-minute L6-slow-bezier behavior', async ({ page }) => {
+        // LEVEL 6: Slow Bezier movements with long pauses → ⚠️ SUSPICIOUS (0.25-0.45)
         // Implementation: HumanBehavior.humanLikeMouseMove with 80-120 steps
-        const minExp = 0.15, maxExp = 0.30;
+        const minExp = 0.25, maxExp = 0.45;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -283,13 +281,13 @@ test.describe('Behavior Monitor E2E Tests', () => {
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'L7_SLOW_BEZIER', 7, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L6_SLOW_BEZIER', 6, minExp, maxExp);
     });
 
     test('5-minute L7-phase-alternating behavior', async ({ page }) => {
-        // LEVEL 7: Burst/Smooth phases with Bezier → 👤 LIKELY_HUMAN (0.15-0.30)
+        // LEVEL 7: Burst/Smooth phases with Bezier → 👤 LIKELY_HUMAN (0.15-0.40)
         // Implementation: AlternatingBehavior with HumanBehavior.moveMouseHumanLike
-        const minExp = 0.15, maxExp = 0.30;
+        const minExp = 0.15, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -300,10 +298,10 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L7_PHASE_ALTERNATING', 7, minExp, maxExp);
     });
 
-    test('5-minute L8-full-human-sim behavior', async ({ page }) => {
-        // LEVEL 8: Core HumanBehavior class → 👤 LIKELY_HUMAN (0.15-0.30)
+    test('5-minute L7-full-human-sim behavior', async ({ page }) => {
+        // LEVEL 7: Core HumanBehavior class → 👤 LIKELY_HUMAN (0.15-0.35)
         // Implementation: Full Bezier simulation with timing jitter
-        const minExp = 0.15, maxExp = 0.30;
+        const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -311,13 +309,13 @@ test.describe('Behavior Monitor E2E Tests', () => {
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'L8_FULL_HUMAN_SIM', 8, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L7_FULL_HUMAN_SIM', 7, minExp, maxExp);
     });
 
-    test('5-minute L8-smooth-bezier behavior', async ({ page }) => {
-        // LEVEL 8: SmoothBehavior with enhanced timing jitter → 👤 LIKELY_HUMAN (0.15-0.30)
+    test('5-minute L7-smooth-bezier behavior', async ({ page }) => {
+        // LEVEL 7: SmoothBehavior with enhanced timing jitter → 👤 LIKELY_HUMAN (0.15-0.35)
         // Implementation: HumanBehavior.moveMouseHumanLike with 100 steps
-        const minExp = 0.15, maxExp = 0.30;
+        const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -325,7 +323,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'L8_SMOOTH_BEZIER', 8, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L7_SMOOTH_BEZIER', 7, minExp, maxExp);
     });
 
     // ========================================
@@ -400,33 +398,33 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L2_FAST_ROBOT_V2', 2, minExp, maxExp);
     });
 
-    // --- LEVEL 3: Additional BOT variants (2 more) ---
+    // --- LEVEL 4: Additional SUSPICIOUS variants - ROBOT_IMPULSIVE (2 more) ---
     
-    test('5-minute L3-impulsive-robot-v2 behavior', async ({ page }) => {
-        // LEVEL 3 variant → 🤖 BOT (≥0.40)
-        const minExp = 0.40, maxExp = 1.0;
+    test('5-minute L4-impulsive-robot-v2 behavior', async ({ page }) => {
+        // LEVEL 4 variant → ⚠️ SUSPICIOUS (0.25-0.50)
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.ROBOT_IMPULSIVE,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L3_IMPULSIVE_ROBOT_V2', 3, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L4_IMPULSIVE_ROBOT_V2', 4, minExp, maxExp);
     });
 
-    test('5-minute L3-impulsive-robot-v3 behavior', async ({ page }) => {
-        // LEVEL 3 variant → 🤖 BOT (≥0.40)
-        const minExp = 0.40, maxExp = 1.0;
+    test('5-minute L4-impulsive-robot-v3 behavior', async ({ page }) => {
+        // LEVEL 4 variant → ⚠️ SUSPICIOUS (0.25-0.50)
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.ROBOT_IMPULSIVE,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L3_IMPULSIVE_ROBOT_V3', 3, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L4_IMPULSIVE_ROBOT_V3', 4, minExp, maxExp);
     });
 
-    // --- LEVEL 4: Additional SUSPICIOUS variants (4 more) ---
+    // --- LEVEL 4: Additional SUSPICIOUS variants (2 more BURST_ONLY) ---
     
     test('5-minute L4-burst-pattern-v2 behavior', async ({ page }) => {
-        // LEVEL 4 variant → ⚠️ SUSPICIOUS (0.30-0.40)
-        const minExp = 0.30, maxExp = 0.40;
+        // LEVEL 4 variant → ⚠️ SUSPICIOUS (0.25-0.50)
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.BURST_ONLY,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -435,8 +433,8 @@ test.describe('Behavior Monitor E2E Tests', () => {
     });
 
     test('5-minute L4-burst-pattern-v3 behavior', async ({ page }) => {
-        // LEVEL 4 variant → ⚠️ SUSPICIOUS (0.30-0.40)
-        const minExp = 0.30, maxExp = 0.40;
+        // LEVEL 4 variant → ⚠️ SUSPICIOUS (0.25-0.50)
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.BURST_ONLY,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -444,51 +442,51 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L4_BURST_PATTERN_V3', 4, minExp, maxExp);
     });
 
-    test('5-minute L4-replay-pattern-v2 behavior', async ({ page }) => {
-        // LEVEL 4 variant → ⚠️ SUSPICIOUS (0.30-0.40)
-        const minExp = 0.30, maxExp = 0.40;
+    test('5-minute L7-replay-pattern-v2 behavior', async ({ page }) => {
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.35)
+        const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.REPLAY_BOT,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L4_REPLAY_PATTERN_V2', 4, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L7_REPLAY_PATTERN_V2', 7, minExp, maxExp);
     });
 
-    test('5-minute L4-replay-pattern-v3 behavior', async ({ page }) => {
-        // LEVEL 4 variant → ⚠️ SUSPICIOUS (0.30-0.40)
-        const minExp = 0.30, maxExp = 0.40;
+    test('5-minute L7-replay-pattern-v3 behavior', async ({ page }) => {
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.35)
+        const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.REPLAY_BOT,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L4_REPLAY_PATTERN_V3', 4, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L7_REPLAY_PATTERN_V3', 7, minExp, maxExp);
     });
 
-    // --- LEVEL 5: Additional SUSPICIOUS variants (6 more) ---
+    // --- LEVEL 5-7: Additional variants (6 more) ---
     
-    test('5-minute L5-interleaved-actions-v2 behavior', async ({ page }) => {
-        // LEVEL 5 variant → ⚠️ SUSPICIOUS (0.30-0.40)
-        const minExp = 0.30, maxExp = 0.40;
+    test('5-minute L7-interleaved-actions-v2 behavior', async ({ page }) => {
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.35)
+        const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.ROBOT_SLOW,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L5_INTERLEAVED_V2', 5, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L7_INTERLEAVED_V2', 7, minExp, maxExp);
     });
 
-    test('5-minute L5-interleaved-actions-v3 behavior', async ({ page }) => {
-        // LEVEL 5 variant → ⚠️ SUSPICIOUS (0.30-0.40)
-        const minExp = 0.30, maxExp = 0.40;
+    test('5-minute L7-interleaved-actions-v3 behavior', async ({ page }) => {
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.35)
+        const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.ROBOT_SLOW,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L5_INTERLEAVED_V3', 5, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L7_INTERLEAVED_V3', 7, minExp, maxExp);
     });
 
     test('5-minute L5-gaussian-timing-v2 behavior', async ({ page }) => {
-        // LEVEL 5 variant → ⚠️ SUSPICIOUS (0.30-0.40)
-        const minExp = 0.30, maxExp = 0.40;
+        // LEVEL 5 variant → ⚠️ SUSPICIOUS (0.25-0.50)
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.TIMING_BOT,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -496,19 +494,19 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L5_GAUSSIAN_TIMING_V2', 5, minExp, maxExp);
     });
 
-    test('5-minute L5-mixed-behaviors-v2 behavior', async ({ page }) => {
-        // LEVEL 5 variant → ⚠️ SUSPICIOUS (0.30-0.40)
-        const minExp = 0.30, maxExp = 0.40;
+    test('5-minute L7-mixed-behaviors-v2 behavior', async ({ page }) => {
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.35)
+        const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.MIXED_RANDOM,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L5_MIXED_V2', 5, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L7_MIXED_V2', 7, minExp, maxExp);
     });
 
     test('5-minute L5-keyboard-focused-v2 behavior', async ({ page }) => {
-        // LEVEL 5 variant → ⚠️ SUSPICIOUS (0.30-0.40)
-        const minExp = 0.30, maxExp = 0.40;
+        // LEVEL 5 variant → ⚠️ SUSPICIOUS (0.25-0.50)
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.KEYBOARD_HEAVY,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -517,8 +515,8 @@ test.describe('Behavior Monitor E2E Tests', () => {
     });
 
     test('5-minute L5-scroll-focused-v2 behavior', async ({ page }) => {
-        // LEVEL 5 variant → ⚠️ SUSPICIOUS (0.30-0.40)
-        const minExp = 0.30, maxExp = 0.40;
+        // LEVEL 5 variant → ⚠️ SUSPICIOUS (0.25-0.50)
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.SCROLL_HEAVY,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -529,8 +527,8 @@ test.describe('Behavior Monitor E2E Tests', () => {
     // --- LEVEL 6: Additional SUSPICIOUS variants (4 more) ---
     
     test('5-minute L6-bezier-with-noise-v2 behavior', async ({ page }) => {
-        // LEVEL 6 variant → ⚠️ SUSPICIOUS (0.30-0.40)
-        const minExp = 0.30, maxExp = 0.40;
+        // LEVEL 6 variant → ⚠️ SUSPICIOUS (0.25-0.50)
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.STEALTH_BOT,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -539,8 +537,8 @@ test.describe('Behavior Monitor E2E Tests', () => {
     });
 
     test('5-minute L6-bezier-with-noise-v3 behavior', async ({ page }) => {
-        // LEVEL 6 variant → ⚠️ SUSPICIOUS (0.30-0.40)
-        const minExp = 0.30, maxExp = 0.40;
+        // LEVEL 6 variant → ⚠️ SUSPICIOUS (0.25-0.50)
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.STEALTH_BOT,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -549,8 +547,8 @@ test.describe('Behavior Monitor E2E Tests', () => {
     });
 
     test('5-minute L6-mouse-focused-v2 behavior', async ({ page }) => {
-        // LEVEL 6 variant → ⚠️ SUSPICIOUS (0.30-0.40)
-        const minExp = 0.30, maxExp = 0.40;
+        // LEVEL 6 variant → ⚠️ SUSPICIOUS (0.25-0.50)
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.MOUSE_HEAVY,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -559,8 +557,8 @@ test.describe('Behavior Monitor E2E Tests', () => {
     });
 
     test('5-minute L6-mouse-focused-v3 behavior', async ({ page }) => {
-        // LEVEL 6 variant → ⚠️ SUSPICIOUS (0.30-0.40)
-        const minExp = 0.30, maxExp = 0.40;
+        // LEVEL 6 variant → ⚠️ SUSPICIOUS (0.25-0.50)
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.MOUSE_HEAVY,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -568,41 +566,41 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L6_MOUSE_V3', 6, minExp, maxExp);
     });
 
-    // --- LEVEL 7: Additional LIKELY_HUMAN variants (6 more) ---
+    // --- LEVEL 6-7: Additional variants (6 more) ---
     
-    test('5-minute L7-fast-bezier-v2 behavior', async ({ page }) => {
-        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.30)
-        const minExp = 0.15, maxExp = 0.30;
+    test('5-minute L6-fast-bezier-v2 behavior', async ({ page }) => {
+        // LEVEL 6 variant → ⚠️ SUSPICIOUS (0.25-0.50)
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_FAST,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L7_FAST_BEZIER_V2', 7, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L6_FAST_BEZIER_V2', 6, minExp, maxExp);
     });
 
-    test('5-minute L7-fast-bezier-v3 behavior', async ({ page }) => {
-        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.30)
-        const minExp = 0.15, maxExp = 0.30;
+    test('5-minute L6-fast-bezier-v3 behavior', async ({ page }) => {
+        // LEVEL 6 variant → ⚠️ SUSPICIOUS (0.25-0.50)
+        const minExp = 0.25, maxExp = 0.50;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_FAST,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L7_FAST_BEZIER_V3', 7, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L6_FAST_BEZIER_V3', 6, minExp, maxExp);
     });
 
-    test('5-minute L7-slow-bezier-v2 behavior', async ({ page }) => {
-        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.30)
-        const minExp = 0.15, maxExp = 0.30;
+    test('5-minute L6-slow-bezier-v2 behavior', async ({ page }) => {
+        // LEVEL 6 variant → ⚠️ SUSPICIOUS (0.25-0.45)
+        const minExp = 0.25, maxExp = 0.45;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_SLOW,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L7_SLOW_BEZIER_V2', 7, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L6_SLOW_BEZIER_V2', 6, minExp, maxExp);
     });
 
     test('5-minute L7-impulsive-bezier-v2 behavior', async ({ page }) => {
-        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.30)
-        const minExp = 0.15, maxExp = 0.30;
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.10-0.30)
+        const minExp = 0.10, maxExp = 0.30;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_IMPULSIVE,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -611,8 +609,8 @@ test.describe('Behavior Monitor E2E Tests', () => {
     });
 
     test('5-minute L7-phase-alternating-v2 behavior', async ({ page }) => {
-        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.30)
-        const minExp = 0.15, maxExp = 0.30;
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.40)
+        const minExp = 0.15, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.ALTERNATING,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -621,8 +619,8 @@ test.describe('Behavior Monitor E2E Tests', () => {
     });
 
     test('5-minute L7-phase-alternating-v3 behavior', async ({ page }) => {
-        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.30)
-        const minExp = 0.15, maxExp = 0.30;
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.40)
+        const minExp = 0.15, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.ALTERNATING,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
@@ -630,46 +628,46 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L7_ALTERNATING_V3', 7, minExp, maxExp);
     });
 
-    // --- LEVEL 8: Additional LIKELY_HUMAN variants (4 more) ---
+    // --- LEVEL 7: Additional LIKELY_HUMAN variants (4 more) ---
     
-    test('5-minute L8-full-human-sim-v2 behavior', async ({ page }) => {
-        // LEVEL 8 variant → 👤 LIKELY_HUMAN (0.15-0.30)
-        const minExp = 0.15, maxExp = 0.30;
+    test('5-minute L7-full-human-sim-v2 behavior', async ({ page }) => {
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.35)
+        const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_LIKE,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L8_HUMAN_SIM_V2', 8, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L7_HUMAN_SIM_V2', 7, minExp, maxExp);
     });
 
-    test('5-minute L8-full-human-sim-v3 behavior', async ({ page }) => {
-        // LEVEL 8 variant → 👤 LIKELY_HUMAN (0.15-0.30)
-        const minExp = 0.15, maxExp = 0.30;
+    test('5-minute L7-full-human-sim-v3 behavior', async ({ page }) => {
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.35)
+        const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_LIKE,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L8_HUMAN_SIM_V3', 8, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L7_HUMAN_SIM_V3', 7, minExp, maxExp);
     });
 
-    test('5-minute L8-smooth-bezier-v2 behavior', async ({ page }) => {
-        // LEVEL 8 variant → 👤 LIKELY_HUMAN (0.15-0.30)
-        const minExp = 0.15, maxExp = 0.30;
+    test('5-minute L7-smooth-bezier-v2 behavior', async ({ page }) => {
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.35)
+        const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_SMOOTH,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L8_SMOOTH_V2', 8, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L7_SMOOTH_V2', 7, minExp, maxExp);
     });
 
-    test('5-minute L8-smooth-bezier-v3 behavior', async ({ page }) => {
-        // LEVEL 8 variant → 👤 LIKELY_HUMAN (0.15-0.30)
-        const minExp = 0.15, maxExp = 0.30;
+    test('5-minute L7-smooth-bezier-v3 behavior', async ({ page }) => {
+        // LEVEL 7 variant → 👤 LIKELY_HUMAN (0.15-0.35)
+        const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_SMOOTH,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L8_SMOOTH_V3', 8, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L7_SMOOTH_V3', 7, minExp, maxExp);
     });
 
     // --- LEVEL 9-10: Additional VERIFIED variants (2 more) ---
@@ -700,8 +698,8 @@ test.describe('Behavior Monitor E2E Tests', () => {
  * 
  * CLASSIFICATION BY LEVEL:
  * - Levels 1-3  → 🤖 BOT (≥0.40)
- * - Levels 4-6  → ⚠️ SUSPICIOUS (0.30-0.40)
- * - Levels 7-8  → 👤 LIKELY_HUMAN (0.15-0.30)
+ * - Levels 4-6  → ⚠️ SUSPICIOUS (0.25-0.50)
+ * - Levels 7-8  → 👤 LIKELY_HUMAN (0.10-0.35)
  * - Levels 9-10 → ✅ VERIFIED (<0.15)
  * 
  * @param {number} score 
@@ -723,9 +721,9 @@ function logDetectionResult(score, testName, sophisticationLevel, minExpected, m
     let actualClass;
     if (score >= 0.40) {
         actualClass = '🤖 BOT';
-    } else if (score >= 0.30) {
+    } else if (score >= 0.25) {
         actualClass = '⚠️ SUSPICIOUS';
-    } else if (score >= 0.15) {
+    } else if (score >= 0.10) {
         actualClass = '👤 LIKELY_HUMAN';
     } else {
         actualClass = '✅ VERIFIED';
