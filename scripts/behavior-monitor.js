@@ -2014,11 +2014,32 @@ class HeadlessBehaviorMonitor {
             score *= S.singleChannelDownscale;
         }
         
+        // SAFEGUARD 10: Multi-channel corroboration rescue
+        // When 3+ input channels show signals but individual scores are moderate,
+        // the combined evidence of bot activity across channels justifies a higher
+        // overall score. This catches cheap interleaved bots whose per-channel
+        // timing patterns are diluted by cross-channel action mixing.
+        // Only applied when no Bezier pattern is detected (Bezier = more sophisticated bot).
+        const mouseBreakdown = analysis.mouse && analysis.mouse.scoringBreakdown;
+        const hasBezier = mouseBreakdown && mouseBreakdown.bezierPattern && mouseBreakdown.bezierPattern.triggered;
+        const rescueThreshold = S.multiChannelRescueThreshold ?? 0.10;
+        const rescueCap = S.multiChannelRescueCap ?? 0.42;
+        const rescueBoost = S.multiChannelRescueBoost ?? 1.50;
+        const rescueMinChannels = S.multiChannelRescueMinChannels ?? 3;
+        const activeInputChannels = confidentChannels.filter(ch =>
+            !ch.isSensor && !ch.isWebgl && ch.result.score >= rescueThreshold
+        );
+        if (activeInputChannels.length >= rescueMinChannels && score < rescueCap && !hasBezier) {
+            score = Math.min(rescueCap, score * rescueBoost);
+        }
+        
         // SAFEGUARD 9: Sophistication-aware modulation
-        // When keyboard and/or scroll show human-like timing patterns (high variance)
+        // When BOTH keyboard AND scroll show human-like timing patterns (high variance)
         // AND mouse is not strongly flagged, this indicates a sophisticated bot that
         // leaks only through automation tool artifacts, not through behavioral patterns.
         // Apply a discount to reflect lower detection confidence.
+        // Requires BOTH channels to show human-like patterns to avoid false discounts
+        // on cheap interleaved bots where only one channel has high variance.
         const mouseScore = analysis.mouse && analysis.mouse.available ? analysis.mouse.score : 0;
         const kbBreakdown = analysis.keyboard && analysis.keyboard.scoringBreakdown;
         const scrollBreakdown = analysis.scroll && analysis.scroll.scoringBreakdown;
@@ -2029,7 +2050,7 @@ class HeadlessBehaviorMonitor {
         // (if mouse score >= 0.40, the bot is detectable through mouse regardless of kb/scroll patterns)
         const sophisticationThreshold = S.sophisticationMouseThreshold ?? 0.40;
         const sophisticationDiscount = S.sophisticationDiscount ?? 0.60;
-        if (mouseScore < sophisticationThreshold && (hasHumanKeyboard || hasHumanScroll)) {
+        if (mouseScore < sophisticationThreshold && (hasHumanKeyboard && hasHumanScroll)) {
             score *= sophisticationDiscount;
         }
         

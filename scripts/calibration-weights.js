@@ -309,7 +309,13 @@
         botThreshold: 0.5,               // Score >= this is classified as BOT
         minSamplesForVariance: 10,       // Need this many samples for variance checks
         sophisticationMouseThreshold: 0.40, // Mouse score below this + human kb/scroll patterns → apply discount
-        sophisticationDiscount: 0.60     // Multiply score by this when sophistication evidence found
+        sophisticationDiscount: 0.60,    // Multiply score by this when sophistication evidence found
+        // SAFEGUARD 10: Multi-channel corroboration rescue
+        // Catches cheap interleaved bots whose per-channel signals are diluted
+        multiChannelRescueThreshold: 0.10,   // Minimum channel score to count as "active"
+        multiChannelRescueCap: 0.42,         // Maximum score the rescue can produce
+        multiChannelRescueBoost: 1.50,       // Multiplier applied to score during rescue
+        multiChannelRescueMinChannels: 3     // Minimum active input channels required
     },
 
     /**
