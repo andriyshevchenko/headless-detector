@@ -173,13 +173,15 @@ jobs:
       - name: Run ${{ matrix.test.name }} test
         id: run_test
         run: |
+          set +e
           set -o pipefail
-          # Run test and capture output
           npx playwright test --grep "${{ matrix.test.grep }}" 2>&1 | tee test-output.log
-          
-          # Extract calibration JSON from output for artifact storage
+          TEST_EXIT_CODE=$?
+          set +o pipefail
+          set -e
           mkdir -p calibration-data
           grep -A 10000 "===CALIBRATION_JSON_START===" test-output.log | grep -B 10000 "===CALIBRATION_JSON_END===" | grep -v "===CALIBRATION" > calibration-data/${{ matrix.test.name }}-calibration.json || echo '{}' > calibration-data/${{ matrix.test.name }}-calibration.json
+          exit $TEST_EXIT_CODE
       
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -200,10 +202,11 @@ jobs:
       # Upload calibration data as artifact for metric analysis
       - name: Upload calibration data
         uses: actions/upload-artifact@v4
-        if: always()
+        if: failure()
         with:
           name: calibration-${{ matrix.test.name }}
           path: calibration-data/
+          if-no-files-found: warn
           retention-days: 30  # Keep metrics longer for analysis
 
   # Summary job that waits for all tests and reports overall status
@@ -213,6 +216,10 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
+      # Ensure directory exists even if no calibration artifacts were produced
+      - name: Prepare calibration data directory
+        run: mkdir -p all-calibration-data
+
       - name: Download all calibration data
         uses: actions/download-artifact@v4
         with:
@@ -246,6 +253,15 @@ jobs:
           echo "..."
           echo "Full data saved to aggregated-metrics/all-metrics.json"
       
+      # Provide full raw calibration data in a single archive for easy download
+      - name: Upload merged calibration data
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-calibration-data
+          path: all-calibration-data/
+          if-no-files-found: warn
+          retention-days: 30
+      
       # Upload aggregated metrics - this is the main artifact for analysis
       - name: Upload aggregated metrics
         uses: actions/upload-artifact@v4
@@ -253,6 +269,7 @@ jobs:
           name: all-calibration-metrics
           path: aggregated-metrics/
           retention-days: 30
+      
       
       - name: Check test results
         run: |
