@@ -733,9 +733,17 @@ function logDetectionResult(score, testName, sophisticationLevel, minExpected, m
     
     const expectedClassification = expectedClass[sophisticationLevel] || '?';
     const classMatch = expectedClassification === actualClass ? '✓' : '❌';
-    const inRange = score >= minExpected && score <= maxExpected ? '✓' : '❌';
+    const inRange = score >= minExpected && score <= maxExpected;
+    const inRangeSymbol = inRange ? '✓' : '❌';
     
-    console.log(`[${testName}] Level=${sophisticationLevel} | Score=${score.toFixed(2)} | Expected=[${minExpected.toFixed(2)}-${maxExpected.toFixed(2)}] ${inRange} | Class=${actualClass} (want: ${expectedClassification}) ${classMatch}`);
+    console.log(`[${testName}] Level=${sophisticationLevel} | Score=${score.toFixed(2)} | Expected=[${minExpected.toFixed(2)}-${maxExpected.toFixed(2)}] ${inRangeSymbol} | Class=${actualClass} (want: ${expectedClassification}) ${classMatch}`);
+    
+    // ASSERT: Fail the test if score is outside expected range
+    if (!inRange) {
+        throw new Error(
+            `SCORE OUT OF RANGE: ${testName} scored ${score.toFixed(2)} but expected ${minExpected.toFixed(2)}-${maxExpected.toFixed(2)} for Level ${sophisticationLevel} (${expectedClassification})`
+        );
+    }
 }
 
 
