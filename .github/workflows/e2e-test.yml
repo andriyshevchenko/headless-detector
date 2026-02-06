@@ -217,7 +217,7 @@ jobs:
     steps:
       # Ensure directory exists even if no calibration artifacts were produced
       - name: Prepare calibration data directory
-        run: mkdir -p all-calibration-data
+        run: mkdir -p all-calibration-data || true
 
       - name: Download all calibration data
         uses: actions/download-artifact@v4
@@ -266,6 +266,7 @@ jobs:
         with:
           name: all-calibration-data
           path: all-calibration-data/
+          if-no-files-found: warn
           retention-days: 30
       
       - name: Check test results
