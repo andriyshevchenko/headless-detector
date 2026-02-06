@@ -2011,6 +2011,9 @@ class HeadlessBehaviorMonitor {
         // SAFEGUARD 7: Sensors only contribute if another non-sensor channel is suspicious
         const hasNonSensorSuspicion = suspiciousInputChannels.length > 0;
         
+        // Count available input channels for single-input detection
+        const availableInputCount = confidentChannels.filter(ch => !ch.isSensor && !ch.isWebgl).length;
+        
         let totalScore = 0;
         let totalWeight = 0;
         let totalConfidence = 0;
@@ -2040,8 +2043,41 @@ class HeadlessBehaviorMonitor {
             const contribution = ch.result.score * ch.result.confidence * ch.weight;
             // SAFEGUARD 4: Cap per-channel contribution to maxChannelContribution of total weight
             const maxContribution = S.maxChannelContribution * ch.weight;
+            
+            // SAFEGUARD 12: Graduated zero-score weight for input channels
+            // Channels with score=0 and no negative evidence are excluded (no data signal).
+            // Channels with score=0 but negative evidence (human-like patterns) retain
+            // partial weight proportional to evidence strength — they represent genuine
+            // evidence of human-like behavior that should dilute the overall score.
+            let effectiveWeight = ch.result.confidence * ch.weight;
+            if (ch.result.score === 0 && !ch.isSensor && !ch.isWebgl) {
+                const breakdown = ch.result.scoringBreakdown;
+                let negStrength = 0;
+                if (breakdown) {
+                    const keys = Object.keys(breakdown);
+                    for (let i = 0; i < keys.length; i++) {
+                        const sig = breakdown[keys[i]];
+                        if (sig && sig.triggered && sig.isNegative && sig.threshold > 0) {
+                            const ratio = sig.value / sig.threshold;
+                            if (ratio > negStrength) negStrength = ratio;
+                        }
+                    }
+                }
+                if (negStrength === 0) {
+                    // No evidence — exclude from weighting
+                    effectiveWeight = 0;
+                } else {
+                    // Graduated weight: stronger negative evidence → more weight (more dilution)
+                    const scale = S.zeroScoreNegStrengthScale ?? 150;
+                    const minF = S.zeroScoreNegMinFactor ?? 0.15;
+                    const maxF = S.zeroScoreNegMaxFactor ?? 0.80;
+                    const factor = Math.min(maxF, minF + (negStrength - 1) / scale);
+                    effectiveWeight = ch.result.confidence * ch.weight * factor;
+                }
+            }
+            
             totalScore += Math.min(contribution, maxContribution * ch.result.confidence);
-            totalWeight += ch.result.confidence * ch.weight;
+            totalWeight += effectiveWeight;
             totalConfidence += ch.result.confidence;
             availableChecks++;
         }
@@ -2054,44 +2090,88 @@ class HeadlessBehaviorMonitor {
             score *= S.singleChannelDownscale;
         }
         
-        // SAFEGUARD 10: Multi-channel corroboration rescue
-        // When 3+ input channels show signals but individual scores are moderate,
-        // the combined evidence of bot activity across channels justifies a higher
-        // overall score. This catches cheap interleaved bots whose per-channel
-        // timing patterns are diluted by cross-channel action mixing.
-        // Only applied when no Bezier pattern is detected (Bezier = more sophisticated bot).
+        // Compute sophistication signals (used by SAFEGUARD 10 and 9)
         const mouseBreakdown = analysis.mouse && analysis.mouse.scoringBreakdown;
         const hasBezier = mouseBreakdown && mouseBreakdown.bezierPattern && mouseBreakdown.bezierPattern.triggered;
-        const rescueThreshold = S.multiChannelRescueThreshold ?? 0.10;
-        const rescueCap = S.multiChannelRescueCap ?? 0.42;
-        const rescueBoost = S.multiChannelRescueBoost ?? 1.50;
-        const rescueMinChannels = S.multiChannelRescueMinChannels ?? 3;
-        const activeInputChannels = confidentChannels.filter(ch =>
-            !ch.isSensor && !ch.isWebgl && ch.result.score >= rescueThreshold
-        );
-        if (activeInputChannels.length >= rescueMinChannels && score < rescueCap && !hasBezier) {
-            score = Math.min(rescueCap, score * rescueBoost);
-        }
-        
-        // SAFEGUARD 9: Sophistication-aware modulation
-        // When BOTH keyboard AND scroll show human-like timing patterns (high variance)
-        // AND mouse is not strongly flagged, this indicates a sophisticated bot that
-        // leaks only through automation tool artifacts, not through behavioral patterns.
-        // Apply a discount to reflect lower detection confidence.
-        // Requires BOTH channels to show human-like patterns to avoid false discounts
-        // on cheap interleaved bots where only one channel has high variance.
-        const mouseScore = analysis.mouse && analysis.mouse.available ? analysis.mouse.score : 0;
         const kbBreakdown = analysis.keyboard && analysis.keyboard.scoringBreakdown;
         const scrollBreakdown = analysis.scroll && analysis.scroll.scoringBreakdown;
         const hasHumanKeyboard = kbBreakdown && kbBreakdown.highInterKeyVariance && kbBreakdown.highInterKeyVariance.triggered;
         const hasHumanScroll = scrollBreakdown && scrollBreakdown.highIntervalVariance && scrollBreakdown.highIntervalVariance.triggered;
+        const hasSophistication = hasHumanKeyboard && hasHumanScroll;
         
-        // Only apply discount when mouse isn't strongly detecting the bot
-        // (if mouse score >= 0.40, the bot is detectable through mouse regardless of kb/scroll patterns)
-        const sophisticationThreshold = S.sophisticationMouseThreshold ?? 0.40;
-        const sophisticationDiscount = S.sophisticationDiscount ?? 0.60;
-        if (mouseScore < sophisticationThreshold && (hasHumanKeyboard && hasHumanScroll)) {
-            score *= sophisticationDiscount;
+        const mouseMetrics = analysis.mouse && analysis.mouse.metrics;
+        const mouseVelVar = mouseMetrics ? mouseMetrics.velocityVariance : Infinity;
+        const kbScore = analysis.keyboard && analysis.keyboard.available ? analysis.keyboard.score : 0;
+        const scrollScore = analysis.scroll && analysis.scroll.available ? analysis.scroll.score : 0;
+        const nonMouseSignalSum = kbScore + scrollScore;
+        
+        // SAFEGUARD 10: Multi-channel corroboration rescue
+        // When 2+ input channels show signals but individual scores are moderate,
+        // the combined evidence of bot activity across channels justifies a higher
+        // overall score. This catches cheap interleaved bots whose per-channel
+        // timing patterns are diluted by cross-channel action mixing.
+        // Uses lower rescue cap when sophistication evidence is present to keep
+        // sophisticated bots in the SUSPICIOUS range rather than BOT range.
+        const rescueThreshold = S.multiChannelRescueThreshold ?? 0.04;
+        const rescueCapNormal = S.multiChannelRescueCap ?? 0.42;
+        const rescueCapSoph = S.multiChannelRescueCapSophisticated ?? 0.39;
+        const rescueCap = hasSophistication ? rescueCapSoph : rescueCapNormal;
+        const rescueBoost = S.multiChannelRescueBoost ?? 1.60;
+        const rescueMinChannels = S.multiChannelRescueMinChannels ?? 2;
+        const activeInputChannels = confidentChannels.filter(ch =>
+            !ch.isSensor && !ch.isWebgl && ch.result.score >= rescueThreshold
+        );
+        
+        // Skip rescue for sophisticated bots with subtle mouse velocity tells
+        // that already score high enough — they need the discount path instead
+        const velVarThreshold = S.sophisticationVelVarThreshold ?? 1.0;
+        const sophNMMin = S.sophisticationNonMouseMinScore ?? 0.10;
+        const rescueMaxSoph = S.multiChannelRescueMaxScoreForSophisticated ?? 0.25;
+        const skipRescue = hasSophistication && mouseVelVar < velVarThreshold &&
+            nonMouseSignalSum >= sophNMMin && score >= rescueMaxSoph;
+        
+        let rescued = false;
+        if (activeInputChannels.length >= rescueMinChannels && score < rescueCap && !skipRescue) {
+            score = Math.min(rescueCap, score * rescueBoost);
+            rescued = true;
+        }
+        
+        // SAFEGUARD 11: Single-input-channel boost
+        // When only one input channel is available, real humans always produce
+        // multi-channel input. A mono-channel pattern is itself suspicious.
+        if (availableInputCount === 1 && !rescued) {
+            const boostThreshold = S.singleInputChannelBoostThreshold ?? 0.15;
+            const boostFactor = S.singleInputChannelBoostFactor ?? 2.5;
+            const boostCap = S.singleInputChannelBoostCap ?? 0.55;
+            if (score >= boostThreshold) {
+                score = Math.min(boostCap, score * boostFactor);
+            }
+        }
+        
+        // SAFEGUARD 9: Sophistication-aware modulation (graduated)
+        // When BOTH keyboard AND scroll show human-like timing patterns AND
+        // mouse has subtle velocity variance tell (< threshold) AND non-mouse
+        // channels have positive signals — apply graduated discount based on
+        // sophistication strength. Skip if bezier pattern detected (bezier is
+        // itself evidence of bot automation) or if rescue already applied.
+        if (hasSophistication && nonMouseSignalSum >= sophNMMin &&
+            mouseVelVar < velVarThreshold && !rescued && !hasBezier) {
+            const kbMetrics = analysis.keyboard && analysis.keyboard.metrics;
+            const scrollMetrics = analysis.scroll && analysis.scroll.metrics;
+            const ikv = kbMetrics ? kbMetrics.interKeyVariance : 0;
+            const iv = scrollMetrics ? scrollMetrics.intervalVariance : 0;
+            
+            const ikvScale = S.sophisticationIkvScale ?? 120000000;
+            const ivScale = S.sophisticationIvScale ?? 70000000;
+            const ikvFactor = Math.min(1, Math.max(0, ikv - 5000000) / ikvScale);
+            const ivFactor = Math.min(1, Math.max(0, iv - 1000000) / ivScale);
+            // velVar already gated by threshold, counts as full factor
+            const combined = (ikvFactor + ivFactor + 1.0) / 3;
+            
+            const discountMin = S.sophisticationDiscountMin ?? 0.15;
+            const discountMax = S.sophisticationDiscountMax ?? 0.70;
+            const discount = discountMax - combined * (discountMax - discountMin);
+            score *= discount;
         }
         
         // SAFEGUARD 5: Time accumulation before escalation

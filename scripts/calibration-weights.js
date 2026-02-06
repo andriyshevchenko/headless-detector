@@ -34,7 +34,7 @@
         scroll: 0.40,     // Increased from 0.25 - critical for scroll-heavy tests (iteration 19)
         touch: 0.13,      // Primary for mobile
         events: 0.16,     // Trusted event detection is reliable
-        sensors: 0.05,    // Device motion (noisy, permission-dependent)
+        sensors: 0.10,    // Device motion - raised from 0.05 (iteration 21: supports single-channel detection)
         webglTiming: 0.10 // Rendering timing fingerprint
     },
 
@@ -111,7 +111,7 @@
         highMouseEfficiency: 0.15,
         lowTimingVariance: 0.45,       // Key for fast naive bots (iteration 18: 0.35→0.45)
         constantTiming: 0.50,          // Catches constant intervals at ANY speed (iteration 18: 0.40→0.50)
-        periodicNoise: 0.00,           // DISABLED (iteration 19) - too many Bezier false positives
+        periodicNoise: 0.15,           // Re-enabled (iteration 21) - catches stealth-bot's Math.sin patterns
         subMillisecondPattern: 0.10,   // All Playwright tests trigger this
         lowAccelVariance: 0.10,
         bezierPattern: 0.05,           // Our human simulations use bezier curves
@@ -315,10 +315,33 @@
         sophisticationDiscount: 0.60,    // Multiply score by this when sophistication evidence found
         // SAFEGUARD 10: Multi-channel corroboration rescue
         // Catches cheap interleaved bots whose per-channel signals are diluted
-        multiChannelRescueThreshold: 0.10,   // Minimum channel score to count as "active"
-        multiChannelRescueCap: 0.42,         // Maximum score the rescue can produce
-        multiChannelRescueBoost: 1.50,       // Multiplier applied to score during rescue
-        multiChannelRescueMinChannels: 3     // Minimum active input channels required
+        multiChannelRescueThreshold: 0.04,   // Lowered from 0.10 (iteration 21: avoids float precision issues at 0.05)
+        multiChannelRescueCap: 0.42,         // Maximum score the rescue can produce (non-sophisticated tests)
+        multiChannelRescueCapSophisticated: 0.39, // Cap for tests with sophistication evidence (< suspiciousThreshold max)
+        multiChannelRescueBoost: 1.60,       // Raised from 1.50 (iteration 21: stronger rescue)
+        multiChannelRescueMinChannels: 2,    // Lowered from 3 (iteration 21: supports 2-channel bots)
+        // SAFEGUARD 11: Single-input-channel boost
+        // When only 1 input channel is available, boost score to account for
+        // mono-channel suspicion (real humans use multiple input channels)
+        singleInputChannelBoostThreshold: 0.15, // Minimum score to apply boost
+        singleInputChannelBoostFactor: 2.5,     // Multiplier for single-channel score
+        singleInputChannelBoostCap: 0.55,       // Maximum boosted score
+        // SAFEGUARD 12: Graduated zero-score weight for channels with negative evidence
+        // Channels scoring 0 with strong human-like signals (negative evidence)
+        // still dilute the overall score, but proportional to evidence strength
+        zeroScoreNegStrengthScale: 150,  // Divisor for negative signal strength → weight factor
+        zeroScoreNegMinFactor: 0.15,     // Minimum weight factor for any negative evidence
+        zeroScoreNegMaxFactor: 0.80,     // Maximum weight factor (very strong negative evidence)
+        // SAFEGUARD 9 improvements: Graduated sophistication discount
+        // Uses mouse velocity variance and negative signal magnitude to scale discount
+        sophisticationVelVarThreshold: 1.0,  // Mouse velVar below this indicates subtle bot tell
+        sophisticationNonMouseMinScore: 0.10, // Minimum kb+scroll score sum to apply discount
+        sophisticationIkvScale: 120000000,    // InterKeyVariance scale for graduated discount
+        sophisticationIvScale: 70000000,      // IntervalVariance scale for graduated discount
+        sophisticationDiscountMin: 0.15,      // Strongest discount (highest sophistication)
+        sophisticationDiscountMax: 0.70,      // Weakest discount (lowest sophistication)
+        // Rescue skip: for sophisticated bots scoring above this, skip rescue to allow discount
+        multiChannelRescueMaxScoreForSophisticated: 0.25
     },
 
     /**
