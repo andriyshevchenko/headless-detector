@@ -1,9 +1,13 @@
 /**
  * Playwright E2E tests for behavior monitor
  * 
- * LEVELS = CODE MAINTENANCE COST (not detection scores!)
- * The rationale: a hacker who wants to stay unseen must invest significant
- * time in bot implementation and maintenance. Levels reflect this cost.
+ * FORMULA: final_level = round(code_maintenance_difficulty × realism_degree)
+ * 
+ * code_maintenance_difficulty (1-10): Time/expertise to implement and maintain.
+ * realism_degree (0-1): How practical is this bot in real-world automation.
+ *   Single-channel bots (scroll-only, keyboard-only, mouse-only) get low
+ *   realism because they're not useful for real web automation.
+ *   Inhuman-speed bots get reduced realism (easily rate-limited).
  * 
  * TIER-TO-CATEGORY MAPPING (score expectations per tier):
  * - Level 1-2  → 💰 TRIVIAL/CHEAP  → 🤖 BOT (≥0.40)
@@ -12,46 +16,45 @@
  * - Level 7-8  → 💵💵💵 EXPENSIVE   → 👤 LIKELY_HUMAN (0.12-0.25)
  * - Level 9-10 → 💵💵💵💵 EXPERT    → ✅ VERIFIED (≤0.12)
  * 
- * LEVELS BY CODE MAINTENANCE DIFFICULTY (from source code analysis):
+ * BOT LEVELS (code_maint × realism = final_level):
  * 
- * LEVEL 1 (💰 TRIVIAL): Fixed timing, straight lines, 26 lines
- *   - robot: 100ms fixed interval, page.mouse.move() straight lines
+ * LEVEL 1 (💰 TRIVIAL):
+ *   - robot:          CM=1 × R=0.9  = 0.9 → L1   (all channels, fixed 100ms)
+ *   - impulsive:      CM=2 × R=0.5  = 1.0 → L1   (inhuman 5-20ms bursts)
+ *   - burst-only:     CM=2 × R=0.5  = 1.0 → L1   (10-50ms burst pattern)
+ *   - scroll-heavy:   CM=2 × R=0.3  = 0.6 → L1   (scroll-only, impractical)
+ *   - keyboard-heavy: CM=2 × R=0.3  = 0.6 → L1   (keyboard-only, impractical)
  * 
- * LEVEL 2 (💰 CHEAP): Simple loops, no Bezier, no advanced math, <37 lines
- *   - impulsive: Burst patterns with rapid execution
- *   - robot-slow: Fixed 500ms, straight lines, interleaved channels
- *   - burst-only: Burst pattern, straight lines, 10-50ms inner timing
- *   - scroll-heavy: Mostly window.scrollBy() calls
- *   - keyboard-heavy: keyboard.press() only
+ * LEVEL 2 (💰 CHEAP):
+ *   - robot-slow:       CM=2 × R=0.9  = 1.8 → L2   (all channels, slow 500ms)
+ *   - robot-impulsive:  CM=3 × R=0.7  = 2.1 → L2   (random timing, straight lines)
+ *   - replay-bot:       CM=3 × R=0.7  = 2.1 → L2   (pre-recorded patterns)
+ *   - mouse-heavy:      CM=5 × R=0.4  = 2.0 → L2   (mouse-only, impractical)
  * 
- * LEVEL 3 (💵 BUDGET): Basic randomization or recorded patterns
- *   - robot-impulsive: Random timing + straight lines
- *   - replay-bot: Pre-recorded movement patterns, modulo cycling
+ * LEVEL 3 (💵 BUDGET):
+ *   - timing-bot:  CM=4 × R=0.8 = 3.2 → L3   (Gaussian timing, linear paths)
  * 
- * LEVEL 4 (💵 BUDGET): Statistical distributions, linear interpolation
- *   - timing-bot: Box-Muller Gaussian timing, 5-step linear paths
+ * LEVEL 4 (💵 BUDGET):
+ *   - human-fast:      CM=5 × R=0.8  = 4.0 → L4   (fast Bezier, all channels)
+ *   - human-impulsive: CM=5 × R=0.7  = 3.5 → L4   (Bezier + impulsive bursts)
  * 
- * LEVEL 5 (💵💵 MODERATE): Bezier curves, composed behaviors
- *   - human-fast: Fast Bezier (10-20 steps)
- *   - human-slow: Slow Bezier (80-120 steps)
- *   - mouse-heavy: Mix of Bezier + straight line jitter
- *   - human-impulsive: Bezier mouse + impulsive bursts composition
+ * LEVEL 5 (💵💵 MODERATE):
+ *   - human-slow:   CM=5 × R=0.9  = 4.5 → L5   (slow Bezier, reading pauses)
+ *   - stealth-bot:  CM=6 × R=0.8  = 4.8 → L5   (Bezier + sin() noise)
+ *   - mixed-random: CM=6 × R=0.8  = 4.8 → L5   (9 sub-behaviors)
  * 
- * LEVEL 6 (💵💵 MODERATE): Noise injection or multi-behavior orchestration
- *   - stealth-bot: Bezier + Math.sin() noise
- *   - mixed-random: Cycles through 9 sub-behaviors randomly
+ * LEVEL 6 (💵💵 MODERATE):
+ *   - alternating: CM=7 × R=0.9 = 6.3 → L6   (phase management, Bezier)
  * 
- * LEVEL 7 (💵💵💵 EXPENSIVE): Full human simulation, phase management
- *   - alternating: Burst/smooth phases with Bezier, distraction pauses
- *   - human-like: Core HumanBehavior class, full Bezier simulation
- *   - human-smooth: SmoothBehavior, 100-step Bezier + multi-tier pauses
+ * LEVEL 7 (💵💵💵 EXPENSIVE):
+ *   - human-like:   CM=7 × R=1.0 = 7.0 → L7   (full human simulation)
+ *   - human-smooth:  CM=7 × R=1.0 = 7.0 → L7   (100-step Bezier)
  * 
- * LEVEL 9 (💵💵💵💵 EXPERT): Multi-phase, XY jitter, silence evasion
- *   - advanced: Bezier + applyJitter() + burst/smooth/silence phases
+ * LEVEL 9 (💵💵💵💵 EXPERT):
+ *   - advanced: CM=9 × R=0.95 = 8.55 → L9   (XY jitter, silence phases)
  * 
- * LEVEL 10 (💵💵💵💵 EXPERT): Research-level behavioral science
- *   - ultimate-bot: Perlin noise, Fitts's Law, fatigue, micro-saccades,
- *     breathing rhythm, ex-Gaussian timing, attention decay
+ * LEVEL 10 (💵💵💵💵 EXPERT):
+ *   - ultimate-bot: CM=10 × R=1.0 = 10.0 → L10  (Perlin, Fitts's Law)
  */
 
 const { test, expect } = require('@playwright/test');
@@ -69,13 +72,12 @@ test.describe('Behavior Monitor E2E Tests', () => {
     });
 
     // ========================================
-    // LEVEL 1-2 (💰 TRIVIAL/CHEAP): Simple bots
-    // No Bezier, no advanced math, <37 lines of code
+    // LEVEL 1 (💰 TRIVIAL): Impractical or trivial bots
+    // Single-channel, inhuman speed, or <26 lines
     // ========================================
 
     test('5-minute L1-naive-robot behavior', async ({ page }) => {
-        // LEVEL 1 (💰 TRIVIAL): 26 lines, fixed 100ms, straight lines
-        // Code: page.mouse.move() in loop with sleep(100)
+        // CM=1 × R=0.9 = L1 (💰 TRIVIAL): fixed 100ms, straight lines
         const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page,
@@ -87,9 +89,52 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L1_NAIVE_ROBOT', 1, minExp, maxExp);
     });
 
+    test('5-minute L1-burst-pattern behavior', async ({ page }) => {
+        // CM=2 × R=0.5 = L1 (💰 TRIVIAL): burst pattern, 10-50ms, impractical speed
+        const minExp = 0.40, maxExp = 1.0;
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.BURST_ONLY,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        
+        logDetectionResult(results.overallScore, 'L1_BURST_PATTERN', 1, minExp, maxExp);
+    });
+
+    test('5-minute L1-scroll-focused behavior', async ({ page }) => {
+        // CM=2 × R=0.3 = L1 (💰 TRIVIAL): scroll-only, impractical for real automation
+        const minExp = 0.40, maxExp = 1.0;
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.SCROLL_HEAVY,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        
+        logDetectionResult(results.overallScore, 'L1_SCROLL_FOCUSED', 1, minExp, maxExp);
+    });
+
+    test('5-minute L1-keyboard-focused behavior', async ({ page }) => {
+        // CM=2 × R=0.3 = L1 (💰 TRIVIAL): keyboard-only, impractical for real automation
+        const minExp = 0.40, maxExp = 1.0;
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.KEYBOARD_HEAVY,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        
+        logDetectionResult(results.overallScore, 'L1_KEYBOARD_FOCUSED', 1, minExp, maxExp);
+    });
+
+    // ========================================
+    // LEVEL 2 (💰 CHEAP): Multi-channel but simple
+    // All channels, no Bezier, no advanced math
+    // ========================================
+
     test('5-minute L2-interleaved-actions behavior', async ({ page }) => {
-        // LEVEL 2 (💰 CHEAP): 26 lines, fixed 500ms, straight lines, interleaved channels
-        // Code: switch(randomInt(0,2)) → mouse.move/scrollBy/keyboard.press + sleep(500)
+        // CM=2 × R=0.9 = L2 (💰 CHEAP): fixed 500ms, interleaved channels
         const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page,
@@ -101,10 +146,9 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L2_INTERLEAVED_ACTIONS', 2, minExp, maxExp);
     });
 
-    test('5-minute L3-impulsive-robot behavior', async ({ page }) => {
-        // LEVEL 3 (💵 BUDGET): Random timing + straight lines
-        // Code: page.mouse.move() straight lines, randomBetween() timing
-        const minExp = 0.25, maxExp = 0.40;
+    test('5-minute L2-impulsive-robot behavior', async ({ page }) => {
+        // CM=3 × R=0.7 = L2 (💰 CHEAP): random timing + straight lines, all channels
+        const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -112,60 +156,12 @@ test.describe('Behavior Monitor E2E Tests', () => {
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'L3_IMPULSIVE_ROBOT', 3, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L2_IMPULSIVE_ROBOT', 2, minExp, maxExp);
     });
 
-    test('5-minute L2-burst-pattern behavior', async ({ page }) => {
-        // LEVEL 2 (💰 CHEAP): 30 lines, burst pattern, straight lines, no math
-        // Code: nested loops with randomInt timing, page.mouse.move() in bursts
+    test('5-minute L2-replay-pattern behavior', async ({ page }) => {
+        // CM=3 × R=0.7 = L2 (💰 CHEAP): pre-recorded patterns, modulo cycling
         const minExp = 0.40, maxExp = 1.0;
-        const { results } = await runBehaviorSession(
-            page,
-            SESSION_SECONDS,
-            BehaviorMode.BURST_ONLY,
-            { minExpectedScore: minExp, maxExpectedScore: maxExp }
-        );
-        
-        logDetectionResult(results.overallScore, 'L2_BURST_PATTERN', 2, minExp, maxExp);
-    });
-
-    // ========================================
-    // LEVEL 2-4 (💰💵 CHEAP/BUDGET): Channel-focused or basic evasion
-    // No Bezier, simple loops
-    // ========================================
-
-    test('5-minute L2-scroll-focused behavior', async ({ page }) => {
-        // LEVEL 2 (💰 CHEAP): 34 lines, mostly window.scrollBy(), no Bezier
-        // Code: 4 scroll types in switch, randomBetween() timing
-        const minExp = 0.40, maxExp = 1.0;
-        const { results } = await runBehaviorSession(
-            page,
-            SESSION_SECONDS,
-            BehaviorMode.SCROLL_HEAVY,
-            { minExpectedScore: minExp, maxExpectedScore: maxExp }
-        );
-        
-        logDetectionResult(results.overallScore, 'L2_SCROLL_FOCUSED', 2, minExp, maxExp);
-    });
-
-    test('5-minute L2-keyboard-focused behavior', async ({ page }) => {
-        // LEVEL 2 (💰 CHEAP): 37 lines, keyboard.press() only, no Bezier
-        // Code: 4 key press types in switch, randomBetween() timing
-        const minExp = 0.40, maxExp = 1.0;
-        const { results } = await runBehaviorSession(
-            page,
-            SESSION_SECONDS,
-            BehaviorMode.KEYBOARD_HEAVY,
-            { minExpectedScore: minExp, maxExpectedScore: maxExp }
-        );
-        
-        logDetectionResult(results.overallScore, 'L2_KEYBOARD_FOCUSED', 2, minExp, maxExp);
-    });
-
-    test('5-minute L3-replay-pattern behavior', async ({ page }) => {
-        // LEVEL 3 (💵 BUDGET): 84 lines, pre-recorded patterns, no math
-        // Code: Fixed dx/dy arrays, modulo-based cycling, pattern replay
-        const minExp = 0.25, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -173,17 +169,30 @@ test.describe('Behavior Monitor E2E Tests', () => {
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'L3_REPLAY_PATTERN', 3, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L2_REPLAY_PATTERN', 2, minExp, maxExp);
+    });
+
+    test('5-minute L2-mouse-focused behavior', async ({ page }) => {
+        // CM=5 × R=0.4 = L2 (💰 CHEAP): mouse-only, impractical for real automation
+        // DETECTION_GAP: mouse-only bots lack keyboard/scroll signals for multi-channel detection.
+        const minExp = 0.0, maxExp = 1.0;
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.MOUSE_HEAVY,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        
+        logDetectionResult(results.overallScore, 'L2_MOUSE_FOCUSED', 2, minExp, maxExp);
     });
 
     // ========================================
-    // LEVEL 4-6 (💵💵 BUDGET/MODERATE): Statistical evasion or Bezier
+    // LEVEL 3-4 (💵 BUDGET): Statistical evasion or fast Bezier
     // Requires math knowledge or curve generation
     // ========================================
 
-    test('5-minute L4-gaussian-timing behavior', async ({ page }) => {
-        // LEVEL 4 (💵 BUDGET): Box-Muller Gaussian timing, 5-step linear paths
-        // Code: Math.sqrt(-2*Math.log(u))*Math.cos(2*PI*v), linear interpolation
+    test('5-minute L3-gaussian-timing behavior', async ({ page }) => {
+        // CM=4 × R=0.8 = L3 (💵 BUDGET): Box-Muller Gaussian, 5-step linear paths
         const minExp = 0.25, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page,
@@ -192,55 +201,11 @@ test.describe('Behavior Monitor E2E Tests', () => {
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'L4_GAUSSIAN_TIMING', 4, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L3_GAUSSIAN_TIMING', 3, minExp, maxExp);
     });
 
-    test('5-minute L6-mixed-behaviors', async ({ page }) => {
-        // LEVEL 6 (💵💵 MODERATE): Orchestrates 9 sub-behaviors randomly
-        // Code: behaviors[randomInt(0,8)].performRandomActions() in 5-20s segments
-        // NOTE: Cheap code but requires ALL sub-behaviors — moderate total investment
-        const minExp = 0.25, maxExp = 0.40;
-        const { results } = await runBehaviorSession(
-            page,
-            SESSION_SECONDS,
-            BehaviorMode.MIXED_RANDOM,
-            { minExpectedScore: minExp, maxExpectedScore: maxExp }
-        );
-        
-        logDetectionResult(results.overallScore, 'L6_MIXED_BEHAVIORS', 6, minExp, maxExp);
-    });
-
-    test('5-minute L6-bezier-with-noise behavior', async ({ page }) => {
-        // LEVEL 6 (💵💵 MODERATE): Bezier + Math.sin() deterministic noise
-        // Code: Cubic Bezier with sin/cos noise on each step, weighted action selection
-        const minExp = 0.25, maxExp = 0.40;
-        const { results } = await runBehaviorSession(
-            page,
-            SESSION_SECONDS,
-            BehaviorMode.STEALTH_BOT,
-            { minExpectedScore: minExp, maxExpectedScore: maxExp }
-        );
-        
-        logDetectionResult(results.overallScore, 'L6_BEZIER_WITH_NOISE', 6, minExp, maxExp);
-    });
-
-    test('5-minute L5-mouse-focused behavior', async ({ page }) => {
-        // LEVEL 5 (💵💵 MODERATE): Mix of Bezier (20-100 steps) + straight jitter
-        // Code: HumanBehavior.humanLikeMouseMove + page.mouse.move jitter
-        const minExp = 0.25, maxExp = 0.40;
-        const { results } = await runBehaviorSession(
-            page,
-            SESSION_SECONDS,
-            BehaviorMode.MOUSE_HEAVY,
-            { minExpectedScore: minExp, maxExpectedScore: maxExp }
-        );
-        
-        logDetectionResult(results.overallScore, 'L5_MOUSE_FOCUSED', 5, minExp, maxExp);
-    });
-
-    test('5-minute L5-fast-bezier behavior', async ({ page }) => {
-        // LEVEL 5 (💵💵 MODERATE): Fast Bezier movements (10-20 steps)
-        // Code: HumanBehavior.humanLikeMouseMove with low step count
+    test('5-minute L4-fast-bezier behavior', async ({ page }) => {
+        // CM=5 × R=0.8 = L4 (💵 BUDGET): fast Bezier (10-20 steps), all channels
         const minExp = 0.25, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page,
@@ -249,12 +214,11 @@ test.describe('Behavior Monitor E2E Tests', () => {
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'L5_FAST_BEZIER', 5, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L4_FAST_BEZIER', 4, minExp, maxExp);
     });
 
-    test('5-minute L5-impulsive-bezier behavior', async ({ page }) => {
-        // LEVEL 5 (💵💵 MODERATE): Bezier mouse + impulsive keyboard/scroll
-        // Code: performMixedActions(HumanBehavior, ImpulsiveBehavior) in 5s segments
+    test('5-minute L4-impulsive-bezier behavior', async ({ page }) => {
+        // CM=5 × R=0.7 = L4 (💵 BUDGET): Bezier mouse + impulsive keyboard/scroll
         const minExp = 0.25, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page,
@@ -263,17 +227,16 @@ test.describe('Behavior Monitor E2E Tests', () => {
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'L5_IMPULSIVE_BEZIER', 5, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L4_IMPULSIVE_BEZIER', 4, minExp, maxExp);
     });
 
     // ========================================
-    // LEVEL 5-7 (💵💵💵 MODERATE/EXPENSIVE): Full Bezier simulation
+    // LEVEL 5-6 (💵💵 MODERATE): Slow Bezier or multi-behavior orchestration
     // Requires understanding of curves, timing jitter, phase management
     // ========================================
 
     test('5-minute L5-slow-bezier behavior', async ({ page }) => {
-        // LEVEL 5 (💵💵 MODERATE): Slow Bezier (80-120 steps) + reading pauses
-        // Code: HumanBehavior.humanLikeMouseMove with high step count
+        // CM=5 × R=0.9 = L5 (💵💵 MODERATE): slow Bezier (80-120 steps), reading pauses
         const minExp = 0.25, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page,
@@ -285,10 +248,35 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L5_SLOW_BEZIER', 5, minExp, maxExp);
     });
 
-    test('5-minute L7-phase-alternating behavior', async ({ page }) => {
-        // LEVEL 7 (💵💵💵 EXPENSIVE): Burst/Smooth phase transitions with Bezier
-        // Code: AlternatingBehavior with phase management, distraction pauses
-        const minExp = 0.12, maxExp = 0.25;
+    test('5-minute L5-bezier-with-noise behavior', async ({ page }) => {
+        // CM=6 × R=0.8 = L5 (💵💵 MODERATE): Bezier + Math.sin() deterministic noise
+        const minExp = 0.25, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.STEALTH_BOT,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        
+        logDetectionResult(results.overallScore, 'L5_BEZIER_WITH_NOISE', 5, minExp, maxExp);
+    });
+
+    test('5-minute L5-mixed-behaviors', async ({ page }) => {
+        // CM=6 × R=0.8 = L5 (💵💵 MODERATE): orchestrates 9 sub-behaviors randomly
+        const minExp = 0.25, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page,
+            SESSION_SECONDS,
+            BehaviorMode.MIXED_RANDOM,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        
+        logDetectionResult(results.overallScore, 'L5_MIXED_BEHAVIORS', 5, minExp, maxExp);
+    });
+
+    test('5-minute L6-phase-alternating behavior', async ({ page }) => {
+        // CM=7 × R=0.9 = L6 (💵💵 MODERATE): burst/smooth phase transitions with Bezier
+        const minExp = 0.25, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page,
             SESSION_SECONDS,
@@ -296,7 +284,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
         
-        logDetectionResult(results.overallScore, 'L7_PHASE_ALTERNATING', 7, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L6_PHASE_ALTERNATING', 6, minExp, maxExp);
     });
 
     test('5-minute L7-full-human-sim behavior', async ({ page }) => {
@@ -369,10 +357,10 @@ test.describe('Behavior Monitor E2E Tests', () => {
     // Each variant uses different random seeds for statistical validation
     // ========================================
 
-    // --- LEVEL 1-2: Additional variants (3 more) ---
+    // --- LEVEL 1: Additional TRIVIAL variants ---
     
     test('5-minute L1-naive-robot-v2 behavior', async ({ page }) => {
-        // LEVEL 1 (💰 TRIVIAL) variant
+        // CM=1 × R=0.9 = L1 variant
         const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.ROBOT,
@@ -381,97 +369,111 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L1_NAIVE_ROBOT_V2', 1, minExp, maxExp);
     });
 
-    test('5-minute L2-fast-robot behavior', async ({ page }) => {
-        // LEVEL 2 (💰 CHEAP): Burst patterns with rapid execution
+    test('5-minute L1-fast-robot behavior', async ({ page }) => {
+        // CM=2 × R=0.5 = L1: inhuman 5-20ms burst speed
         const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.IMPULSIVE,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L2_FAST_ROBOT', 2, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L1_FAST_ROBOT', 1, minExp, maxExp);
     });
 
-    test('5-minute L2-fast-robot-v2 behavior', async ({ page }) => {
-        // LEVEL 2 (💰 CHEAP) variant
+    test('5-minute L1-fast-robot-v2 behavior', async ({ page }) => {
+        // CM=2 × R=0.5 = L1 variant
         const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.IMPULSIVE,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L2_FAST_ROBOT_V2', 2, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L1_FAST_ROBOT_V2', 1, minExp, maxExp);
     });
 
-    // --- LEVEL 3: Additional BUDGET variants - ROBOT_IMPULSIVE (2 more) ---
-    
-    test('5-minute L3-impulsive-robot-v2 behavior', async ({ page }) => {
-        // LEVEL 3 (💵 BUDGET) variant
-        const minExp = 0.25, maxExp = 0.40;
-        const { results } = await runBehaviorSession(
-            page, SESSION_SECONDS, BehaviorMode.ROBOT_IMPULSIVE,
-            { minExpectedScore: minExp, maxExpectedScore: maxExp }
-        );
-        logDetectionResult(results.overallScore, 'L3_IMPULSIVE_ROBOT_V2', 3, minExp, maxExp);
-    });
-
-    test('5-minute L3-impulsive-robot-v3 behavior', async ({ page }) => {
-        // LEVEL 3 (💵 BUDGET) variant
-        // NOTE: ROBOT_IMPULSIVE has naive timing signals (constant timing CV)
-        // that push detection scores into BOT range despite moderate code complexity.
-        // With multi-channel rescue (SAFEGUARD 10), scores reliably reach ≥0.40.
-        const minExp = 0.40, maxExp = 0.60;
-        const { results } = await runBehaviorSession(
-            page, SESSION_SECONDS, BehaviorMode.ROBOT_IMPULSIVE,
-            { minExpectedScore: minExp, maxExpectedScore: maxExp }
-        );
-        logDetectionResult(results.overallScore, 'L3_IMPULSIVE_ROBOT_V3', 3, minExp, maxExp);
-    });
-
-    // --- LEVEL 2: Additional CHEAP variants (2 more BURST_ONLY) ---
-    
-    test('5-minute L2-burst-pattern-v2 behavior', async ({ page }) => {
-        // LEVEL 2 (💰 CHEAP) variant
+    test('5-minute L1-burst-pattern-v2 behavior', async ({ page }) => {
+        // CM=2 × R=0.5 = L1 variant
         const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.BURST_ONLY,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L2_BURST_PATTERN_V2', 2, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L1_BURST_PATTERN_V2', 1, minExp, maxExp);
     });
 
-    test('5-minute L2-burst-pattern-v3 behavior', async ({ page }) => {
-        // LEVEL 2 (💰 CHEAP) variant
+    test('5-minute L1-burst-pattern-v3 behavior', async ({ page }) => {
+        // CM=2 × R=0.5 = L1 variant
         const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.BURST_ONLY,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L2_BURST_PATTERN_V3', 2, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L1_BURST_PATTERN_V3', 1, minExp, maxExp);
     });
 
-    test('5-minute L3-replay-pattern-v2 behavior', async ({ page }) => {
-        // LEVEL 3 (💵 BUDGET) variant
-        const minExp = 0.25, maxExp = 0.40;
+    test('5-minute L1-keyboard-focused-v2 behavior', async ({ page }) => {
+        // CM=2 × R=0.3 = L1 variant: keyboard-only, impractical
+        const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
-            page, SESSION_SECONDS, BehaviorMode.REPLAY_BOT,
+            page, SESSION_SECONDS, BehaviorMode.KEYBOARD_HEAVY,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L3_REPLAY_PATTERN_V2', 3, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L1_KEYBOARD_V2', 1, minExp, maxExp);
     });
 
-    test('5-minute L3-replay-pattern-v3 behavior', async ({ page }) => {
-        // LEVEL 3 (💵 BUDGET) variant
-        const minExp = 0.25, maxExp = 0.40;
+    test('5-minute L1-scroll-focused-v2 behavior', async ({ page }) => {
+        // CM=2 × R=0.3 = L1 variant: scroll-only, impractical
+        // DETECTION_GAP: scroll-only bots lack mouse/keyboard signals.
+        const minExp = 0.0, maxExp = 0.50;
         const { results } = await runBehaviorSession(
-            page, SESSION_SECONDS, BehaviorMode.REPLAY_BOT,
+            page, SESSION_SECONDS, BehaviorMode.SCROLL_HEAVY,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L3_REPLAY_PATTERN_V3', 3, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L1_SCROLL_V2', 1, minExp, maxExp);
     });
 
-    // --- LEVEL 2-6: Additional variants (6 more) ---
+    // --- LEVEL 2: Additional CHEAP variants ---
     
+    test('5-minute L2-impulsive-robot-v2 behavior', async ({ page }) => {
+        // CM=3 × R=0.7 = L2 variant
+        const minExp = 0.40, maxExp = 1.0;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.ROBOT_IMPULSIVE,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L2_IMPULSIVE_ROBOT_V2', 2, minExp, maxExp);
+    });
+
+    test('5-minute L2-impulsive-robot-v3 behavior', async ({ page }) => {
+        // CM=3 × R=0.7 = L2 variant
+        const minExp = 0.40, maxExp = 1.0;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.ROBOT_IMPULSIVE,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L2_IMPULSIVE_ROBOT_V3', 2, minExp, maxExp);
+    });
+
+    test('5-minute L2-replay-pattern-v2 behavior', async ({ page }) => {
+        // CM=3 × R=0.7 = L2 variant
+        const minExp = 0.40, maxExp = 1.0;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.REPLAY_BOT,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L2_REPLAY_PATTERN_V2', 2, minExp, maxExp);
+    });
+
+    test('5-minute L2-replay-pattern-v3 behavior', async ({ page }) => {
+        // CM=3 × R=0.7 = L2 variant
+        const minExp = 0.40, maxExp = 1.0;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.REPLAY_BOT,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L2_REPLAY_PATTERN_V3', 2, minExp, maxExp);
+    });
+
     test('5-minute L2-interleaved-actions-v2 behavior', async ({ page }) => {
-        // LEVEL 2 (💰 CHEAP) variant
+        // CM=2 × R=0.9 = L2 variant
         const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.ROBOT_SLOW,
@@ -481,7 +483,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
     });
 
     test('5-minute L2-interleaved-actions-v3 behavior', async ({ page }) => {
-        // LEVEL 2 (💰 CHEAP) variant
+        // CM=2 × R=0.9 = L2 variant
         const minExp = 0.40, maxExp = 1.0;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.ROBOT_SLOW,
@@ -490,115 +492,75 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L2_INTERLEAVED_V3', 2, minExp, maxExp);
     });
 
-    test('5-minute L4-gaussian-timing-v2 behavior', async ({ page }) => {
-        // LEVEL 4 (💵 BUDGET) variant
+    test('5-minute L2-mouse-focused-v2 behavior', async ({ page }) => {
+        // CM=5 × R=0.4 = L2 variant: mouse-only, impractical
+        // DETECTION_GAP: mouse-only bots lack keyboard/scroll signals.
+        const minExp = 0.0, maxExp = 1.0;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.MOUSE_HEAVY,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L2_MOUSE_V2', 2, minExp, maxExp);
+    });
+
+    test('5-minute L2-mouse-focused-v3 behavior', async ({ page }) => {
+        // CM=5 × R=0.4 = L2 variant: mouse-only, impractical
+        // DETECTION_GAP: mouse-only bots lack keyboard/scroll signals.
+        const minExp = 0.0, maxExp = 1.0;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.MOUSE_HEAVY,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L2_MOUSE_V3', 2, minExp, maxExp);
+    });
+
+    // --- LEVEL 3-4: Additional BUDGET variants ---
+    
+    test('5-minute L3-gaussian-timing-v2 behavior', async ({ page }) => {
+        // CM=4 × R=0.8 = L3 variant
         const minExp = 0.25, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.TIMING_BOT,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L4_GAUSSIAN_TIMING_V2', 4, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L3_GAUSSIAN_TIMING_V2', 3, minExp, maxExp);
     });
 
-    test('5-minute L6-mixed-behaviors-v2 behavior', async ({ page }) => {
-        // LEVEL 6 (💵💵 MODERATE) variant
-        const minExp = 0.25, maxExp = 0.40;
-        const { results } = await runBehaviorSession(
-            page, SESSION_SECONDS, BehaviorMode.MIXED_RANDOM,
-            { minExpectedScore: minExp, maxExpectedScore: maxExp }
-        );
-        logDetectionResult(results.overallScore, 'L6_MIXED_V2', 6, minExp, maxExp);
-    });
-
-    test('5-minute L2-keyboard-focused-v2 behavior', async ({ page }) => {
-        // LEVEL 2 (💰 CHEAP) variant
-        const minExp = 0.40, maxExp = 1.0;
-        const { results } = await runBehaviorSession(
-            page, SESSION_SECONDS, BehaviorMode.KEYBOARD_HEAVY,
-            { minExpectedScore: minExp, maxExpectedScore: maxExp }
-        );
-        logDetectionResult(results.overallScore, 'L2_KEYBOARD_V2', 2, minExp, maxExp);
-    });
-
-    test('5-minute L2-scroll-focused-v2 behavior', async ({ page }) => {
-        // LEVEL 2 (💰 CHEAP) variant
-        // NOTE: SCROLL_HEAVY only produces scroll events (no mouse/keyboard).
-        // Without mouse/keyboard signals, detection relies on scroll channel alone.
-        // Known DETECTION_GAP: scroll-only bots may score anywhere from 0 to 0.50.
-        const minExp = 0.0, maxExp = 0.50;
-        const { results } = await runBehaviorSession(
-            page, SESSION_SECONDS, BehaviorMode.SCROLL_HEAVY,
-            { minExpectedScore: minExp, maxExpectedScore: maxExp }
-        );
-        logDetectionResult(results.overallScore, 'L2_SCROLL_V2', 2, minExp, maxExp);
-    });
-
-    // --- LEVEL 6: Additional STEALTH variants (4 more) ---
-    
-    test('5-minute L6-bezier-with-noise-v2 behavior', async ({ page }) => {
-        // LEVEL 6 (💵💵 MODERATE) variant
-        const minExp = 0.25, maxExp = 0.40;
-        const { results } = await runBehaviorSession(
-            page, SESSION_SECONDS, BehaviorMode.STEALTH_BOT,
-            { minExpectedScore: minExp, maxExpectedScore: maxExp }
-        );
-        logDetectionResult(results.overallScore, 'L6_BEZIER_NOISE_V2', 6, minExp, maxExp);
-    });
-
-    test('5-minute L6-bezier-with-noise-v3 behavior', async ({ page }) => {
-        // LEVEL 6 (💵💵 MODERATE) variant
-        const minExp = 0.25, maxExp = 0.40;
-        const { results } = await runBehaviorSession(
-            page, SESSION_SECONDS, BehaviorMode.STEALTH_BOT,
-            { minExpectedScore: minExp, maxExpectedScore: maxExp }
-        );
-        logDetectionResult(results.overallScore, 'L6_BEZIER_NOISE_V3', 6, minExp, maxExp);
-    });
-
-    test('5-minute L5-mouse-focused-v2 behavior', async ({ page }) => {
-        // LEVEL 5 (💵💵 MODERATE) variant
-        const minExp = 0.25, maxExp = 0.40;
-        const { results } = await runBehaviorSession(
-            page, SESSION_SECONDS, BehaviorMode.MOUSE_HEAVY,
-            { minExpectedScore: minExp, maxExpectedScore: maxExp }
-        );
-        logDetectionResult(results.overallScore, 'L5_MOUSE_V2', 5, minExp, maxExp);
-    });
-
-    test('5-minute L5-mouse-focused-v3 behavior', async ({ page }) => {
-        // LEVEL 5 (💵💵 MODERATE) variant
-        const minExp = 0.25, maxExp = 0.40;
-        const { results } = await runBehaviorSession(
-            page, SESSION_SECONDS, BehaviorMode.MOUSE_HEAVY,
-            { minExpectedScore: minExp, maxExpectedScore: maxExp }
-        );
-        logDetectionResult(results.overallScore, 'L5_MOUSE_V3', 5, minExp, maxExp);
-    });
-
-    // --- LEVEL 5-7: Additional variants (6 more) ---
-    
-    test('5-minute L5-fast-bezier-v2 behavior', async ({ page }) => {
-        // LEVEL 5 (💵💵 MODERATE) variant
+    test('5-minute L4-fast-bezier-v2 behavior', async ({ page }) => {
+        // CM=5 × R=0.8 = L4 variant
         const minExp = 0.25, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_FAST,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L5_FAST_BEZIER_V2', 5, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L4_FAST_BEZIER_V2', 4, minExp, maxExp);
     });
 
-    test('5-minute L5-fast-bezier-v3 behavior', async ({ page }) => {
-        // LEVEL 5 (💵💵 MODERATE) variant
+    test('5-minute L4-fast-bezier-v3 behavior', async ({ page }) => {
+        // CM=5 × R=0.8 = L4 variant
         const minExp = 0.25, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_FAST,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L5_FAST_BEZIER_V3', 5, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L4_FAST_BEZIER_V3', 4, minExp, maxExp);
     });
 
+    test('5-minute L4-impulsive-bezier-v2 behavior', async ({ page }) => {
+        // CM=5 × R=0.7 = L4 variant
+        // DETECTION_GAP: Bezier + impulsive creates unpredictable patterns.
+        const minExp = 0.05, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.HUMAN_IMPULSIVE,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L4_IMPULSIVE_BEZIER_V2', 4, minExp, maxExp);
+    });
+
+    // --- LEVEL 5: Additional MODERATE variants ---
+    
     test('5-minute L5-slow-bezier-v2 behavior', async ({ page }) => {
-        // LEVEL 5 (💵💵 MODERATE) variant
+        // CM=5 × R=0.9 = L5 variant
         const minExp = 0.25, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_SLOW,
@@ -607,43 +569,62 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L5_SLOW_BEZIER_V2', 5, minExp, maxExp);
     });
 
-    test('5-minute L5-impulsive-bezier-v2 behavior', async ({ page }) => {
-        // LEVEL 5 (💵💵 MODERATE) variant
-        // NOTE: HUMAN_IMPULSIVE combines Bezier mouse with impulsive bursts,
-        // creating unpredictable patterns that can evade detection (DETECTION_GAP).
-        // Score varies significantly with randomization seeds.
-        const minExp = 0.05, maxExp = 0.40;
+    test('5-minute L5-bezier-with-noise-v2 behavior', async ({ page }) => {
+        // CM=6 × R=0.8 = L5 variant
+        const minExp = 0.25, maxExp = 0.40;
         const { results } = await runBehaviorSession(
-            page, SESSION_SECONDS, BehaviorMode.HUMAN_IMPULSIVE,
+            page, SESSION_SECONDS, BehaviorMode.STEALTH_BOT,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L5_IMPULSIVE_BEZIER_V2', 5, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L5_BEZIER_NOISE_V2', 5, minExp, maxExp);
     });
 
-    test('5-minute L7-phase-alternating-v2 behavior', async ({ page }) => {
-        // LEVEL 7 (💵💵💵 EXPENSIVE) variant
-        const minExp = 0.12, maxExp = 0.25;
+    test('5-minute L5-bezier-with-noise-v3 behavior', async ({ page }) => {
+        // CM=6 × R=0.8 = L5 variant
+        const minExp = 0.25, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.STEALTH_BOT,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L5_BEZIER_NOISE_V3', 5, minExp, maxExp);
+    });
+
+    test('5-minute L5-mixed-behaviors-v2 behavior', async ({ page }) => {
+        // CM=6 × R=0.8 = L5 variant
+        const minExp = 0.25, maxExp = 0.40;
+        const { results } = await runBehaviorSession(
+            page, SESSION_SECONDS, BehaviorMode.MIXED_RANDOM,
+            { minExpectedScore: minExp, maxExpectedScore: maxExp }
+        );
+        logDetectionResult(results.overallScore, 'L5_MIXED_V2', 5, minExp, maxExp);
+    });
+
+    // --- LEVEL 6: Additional MODERATE variants ---
+
+    test('5-minute L6-phase-alternating-v2 behavior', async ({ page }) => {
+        // CM=7 × R=0.9 = L6 variant
+        const minExp = 0.25, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.ALTERNATING,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L7_ALTERNATING_V2', 7, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L6_ALTERNATING_V2', 6, minExp, maxExp);
     });
 
-    test('5-minute L7-phase-alternating-v3 behavior', async ({ page }) => {
-        // LEVEL 7 (💵💵💵 EXPENSIVE) variant
-        const minExp = 0.12, maxExp = 0.25;
+    test('5-minute L6-phase-alternating-v3 behavior', async ({ page }) => {
+        // CM=7 × R=0.9 = L6 variant
+        const minExp = 0.25, maxExp = 0.40;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.ALTERNATING,
             { minExpectedScore: minExp, maxExpectedScore: maxExp }
         );
-        logDetectionResult(results.overallScore, 'L7_ALTERNATING_V3', 7, minExp, maxExp);
+        logDetectionResult(results.overallScore, 'L6_ALTERNATING_V3', 6, minExp, maxExp);
     });
 
-    // --- LEVEL 7: Additional EXPENSIVE variants (4 more) ---
+    // --- LEVEL 7: Additional EXPENSIVE variants ---
     
     test('5-minute L7-full-human-sim-v2 behavior', async ({ page }) => {
-        // LEVEL 7 (💵💵💵 EXPENSIVE) variant
+        // CM=7 × R=1.0 = L7 variant
         const minExp = 0.12, maxExp = 0.25;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_LIKE,
@@ -653,7 +634,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
     });
 
     test('5-minute L7-full-human-sim-v3 behavior', async ({ page }) => {
-        // LEVEL 7 (💵💵💵 EXPENSIVE) variant
+        // CM=7 × R=1.0 = L7 variant
         const minExp = 0.12, maxExp = 0.25;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_LIKE,
@@ -663,7 +644,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
     });
 
     test('5-minute L7-smooth-bezier-v2 behavior', async ({ page }) => {
-        // LEVEL 7 (💵💵💵 EXPENSIVE) variant
+        // CM=7 × R=1.0 = L7 variant
         const minExp = 0.12, maxExp = 0.25;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_SMOOTH,
@@ -673,7 +654,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
     });
 
     test('5-minute L7-smooth-bezier-v3 behavior', async ({ page }) => {
-        // LEVEL 7 (💵💵💵 EXPENSIVE) variant
+        // CM=7 × R=1.0 = L7 variant
         const minExp = 0.12, maxExp = 0.25;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.HUMAN_SMOOTH,
@@ -682,10 +663,10 @@ test.describe('Behavior Monitor E2E Tests', () => {
         logDetectionResult(results.overallScore, 'L7_SMOOTH_V3', 7, minExp, maxExp);
     });
 
-    // --- LEVEL 9-10: Additional EXPERT variants (2 more) ---
+    // --- LEVEL 9-10: Additional EXPERT variants ---
     
     test('5-minute L9-advanced-human-v2 behavior', async ({ page }) => {
-        // LEVEL 9 (💵💵💵💵 EXPERT) variant
+        // CM=9 × R=0.95 = L9 variant
         const minExp = 0.00, maxExp = 0.12;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.ADVANCED,
@@ -695,7 +676,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
     });
 
     test('5-minute L10-ultimate-evasion-v2 behavior', async ({ page }) => {
-        // LEVEL 10 (💵💵💵💵 EXPERT) variant
+        // CM=10 × R=1.0 = L10 variant
         const minExp = 0.00, maxExp = 0.12;
         const { results } = await runBehaviorSession(
             page, SESSION_SECONDS, BehaviorMode.ULTIMATE_BOT,
