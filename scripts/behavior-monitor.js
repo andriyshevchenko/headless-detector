@@ -1007,7 +1007,7 @@ class HeadlessBehaviorMonitor {
             highMouseEfficiency: 0.15,
             lowTimingVariance: 0.45,        // Iteration 18 - key for fast naive bots
             constantTiming: 0.50,           // Iteration 18 - catches constant intervals at ANY speed
-            periodicNoise: 0.25,            // Catches sinusoidal noise patterns
+            periodicNoise: 0.00,            // DISABLED (iteration 19) - Bezier false positives
             subMillisecondPattern: 0.10,    // Matches calibration-weights.js
             lowAccelVariance: 0.10,         // Matches calibration-weights.js
             bezierPattern: 0.05,            // Matches calibration-weights.js

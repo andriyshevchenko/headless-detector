@@ -30,8 +30,8 @@
      */
     CHANNEL_WEIGHTS: {
         mouse: 0.35,      // Increased from 0.30 - primary bot detection signal (iteration 18)
-        keyboard: 0.35,   // Increased from 0.28 - critical for keyboard-heavy tests (iteration 18)
-        scroll: 0.25,     // Increased from 0.15 - critical for scroll-heavy tests (iteration 18)
+        keyboard: 0.40,   // Increased from 0.35 - critical for keyboard-heavy tests (iteration 19)
+        scroll: 0.40,     // Increased from 0.25 - critical for scroll-heavy tests (iteration 19)
         touch: 0.13,      // Primary for mobile
         events: 0.16,     // Trusted event detection is reliable
         sensors: 0.05,    // Device motion (noisy, permission-dependent)
@@ -111,7 +111,7 @@
         highMouseEfficiency: 0.15,
         lowTimingVariance: 0.45,       // Key for fast naive bots (iteration 18: 0.35→0.45)
         constantTiming: 0.50,          // Catches constant intervals at ANY speed (iteration 18: 0.40→0.50)
-        periodicNoise: 0.25,           // Catches sinusoidal noise patterns (stealth-bot: Math.sin)
+        periodicNoise: 0.00,           // DISABLED (iteration 19) - too many Bezier false positives
         subMillisecondPattern: 0.10,   // All Playwright tests trigger this
         lowAccelVariance: 0.10,
         bezierPattern: 0.05,           // Our human simulations use bezier curves
