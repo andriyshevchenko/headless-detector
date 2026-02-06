@@ -252,6 +252,15 @@ jobs:
           echo "..."
           echo "Full data saved to aggregated-metrics/all-metrics.json"
       
+      # Provide full raw calibration data in a single archive for easy download
+      - name: Upload merged calibration data
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-calibration-data
+          path: all-calibration-data/
+          if-no-files-found: warn
+          retention-days: 30
+      
       # Upload aggregated metrics - this is the main artifact for analysis
       - name: Upload aggregated metrics
         uses: actions/upload-artifact@v4
