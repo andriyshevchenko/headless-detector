@@ -1,7 +1,7 @@
 /**
  * Playwright E2E tests for behavior monitor
  * 
- * LEVELS = CODE MAINTENANCE DIFFICULTY (not detection scores!)
+ * LEVELS = CODE MAINTENANCE COST (not detection scores!)
  * The rationale: a hacker who wants to stay unseen must invest significant
  * time in bot implementation and maintenance. Levels reflect this cost.
  * 
@@ -173,7 +173,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
     test('5-minute L3-replay-pattern behavior', async ({ page }) => {
         // LEVEL 3 (💵 BUDGET): 84 lines, pre-recorded patterns, no math
         // Code: Fixed dx/dy arrays, modulo-based cycling, pattern replay
-        // NOTE: Evades detection despite simple recording → detection gap
+        // NOTE: Evades detection despite simple recording — detection gap
         const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page,
@@ -207,7 +207,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
     test('5-minute L6-mixed-behaviors', async ({ page }) => {
         // LEVEL 6 (💵💵 MODERATE): Orchestrates 9 sub-behaviors randomly
         // Code: behaviors[randomInt(0,8)].performRandomActions() in 5-20s segments
-        // NOTE: Cheap code but requires ALL sub-behaviors → moderate total investment
+        // NOTE: Cheap code but requires ALL sub-behaviors — moderate total investment
         const minExp = 0.15, maxExp = 0.35;
         const { results } = await runBehaviorSession(
             page,
