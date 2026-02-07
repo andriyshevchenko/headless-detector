@@ -2080,8 +2080,8 @@ class HeadlessBehaviorMonitor {
         const rescueCapNormal = S.multiChannelRescueCap ?? 0.42;
         const rescueCapSoph = S.multiChannelRescueCapSophisticated ?? rescueCapNormal;
         const rescueCap = hasSophistication ? rescueCapSoph : rescueCapNormal;
-        const rescueBoost = S.multiChannelRescueBoost ?? 1.75;
-        const rescueMinChannels = S.multiChannelRescueMinChannels ?? 2;
+        const rescueBoost = S.multiChannelRescueBoost ?? 1.50;
+        const rescueMinChannels = S.multiChannelRescueMinChannels ?? 3;
         const activeInputChannels = confidentChannels.filter(ch =>
             !ch.isSensor && !ch.isWebgl && ch.result.score >= rescueThreshold
         );
