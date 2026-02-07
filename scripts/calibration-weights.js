@@ -147,18 +147,18 @@
      * - interKeyVariance: 200 - 10000 ms (humans have varied typing rhythm)
      */
     KEYBOARD_THRESHOLDS: {
-        lowHoldTimeVariance: 10,        // Bots have robotic key hold timing
-        lowInterKeyVariance: 100,       // Bots type at constant speed
+        lowHoldTimeVariance: 5,         // More tolerant for mobile/auto-complete timing
+        lowInterKeyVariance: 50,        // More tolerant for mobile keyboards
         highUntrustedRatio: 0.1,        // Non-trusted events indicate automation
-        highInterKeyVariance: 5000000   // Human-like reading/thinking pauses (>5M ms² variance)
+        highInterKeyVariance: 500000    // Credit humans sooner for irregular pacing
     },
 
     /**
      * Keyboard scoring weights (sum = 1.0)
      */
     KEYBOARD_WEIGHTS: {
-        lowHoldTimeVariance: 0.4,   // Softer weight to reduce mobile/auto-complete false positives
-        lowInterKeyVariance: 0.15,  // Softer weight; mobile keyboards interleave edits
+        lowHoldTimeVariance: 0.30,  // Softer weight to reduce mobile/auto-complete false positives
+        lowInterKeyVariance: 0.12,  // Softer weight; mobile keyboards interleave edits
         highUntrustedRatio: 0.3,    // Reduced from 0.4
         highInterKeyVariance: 0.35  // Stronger human credit for pauses/irregular typing
     },
