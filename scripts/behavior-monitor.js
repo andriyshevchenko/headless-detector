@@ -2066,11 +2066,13 @@ class HeadlessBehaviorMonitor {
         const scrollBreakdown = analysis.scroll && analysis.scroll.scoringBreakdown;
         const hasHumanKeyboard = kbBreakdown && kbBreakdown.highInterKeyVariance && kbBreakdown.highInterKeyVariance.triggered;
         const hasHumanScroll = scrollBreakdown && scrollBreakdown.highIntervalVariance && scrollBreakdown.highIntervalVariance.triggered;
-        const hasDualSophistication = hasHumanKeyboard && hasHumanScroll;
+        const hasDualHumanChannels = hasHumanKeyboard && hasHumanScroll;
         // Deep sophistication: human-like timing in BOTH channels AND no identifiable
-        // automation tool pattern (e.g. Bezier). These bots are detected only via
-        // tool-level artifacts (subMillisecond timing), not behavioral patterns.
-        const isDeeplySophisticated = hasDualSophistication && !hasBezier;
+        // automation tool pattern (e.g. Bezier). Bots WITHOUT Bezier are more sophisticated
+        // because they use advanced algorithms (Perlin noise, Fitts's Law) that evade
+        // pattern-specific detectors. Detection relies only on tool-level artifacts
+        // (subMillisecond timing), not behavioral patterns.
+        const isDeeplySophisticated = hasDualHumanChannels && !hasBezier;
         
         // SAFEGUARD 10: Multi-channel corroboration rescue
         // When 2+ input channels show signals but individual scores are moderate,
@@ -2082,10 +2084,12 @@ class HeadlessBehaviorMonitor {
         // accounted for by the split rescue cap and SAFEGUARD 9 discount.
         // Deeply sophisticated bots are never rescued — their low scores reflect
         // genuine evasion success, not signal dilution.
+        // Note: rescue cap uses hasDualHumanChannels for Bezier bots that DO get
+        // rescued (e.g. L5-slow-bezier) — they get the lower sophisticated cap.
         const rescueThreshold = S.multiChannelRescueThreshold ?? 0.10;
         const rescueCapNormal = S.multiChannelRescueCap ?? 0.42;
         const rescueCapSoph = S.multiChannelRescueCapSophisticated ?? rescueCapNormal;
-        const rescueCap = hasDualSophistication ? rescueCapSoph : rescueCapNormal;
+        const rescueCap = hasDualHumanChannels ? rescueCapSoph : rescueCapNormal;
         const rescueBoost = S.multiChannelRescueBoost ?? 1.50;
         const rescueMinChannels = S.multiChannelRescueMinChannels ?? 3;
         const activeInputChannels = confidentChannels.filter(ch =>
@@ -2123,7 +2127,7 @@ class HeadlessBehaviorMonitor {
         const discountMin = S.sophisticationDiscountMin ?? 0.60;
         const discountMax = S.sophisticationDiscountMax ?? discountMin;
         const likelyHumanThreshold = S.likelyHumanThreshold ?? 0.12;
-        if (mouseScore < sophisticationThreshold && hasDualSophistication) {
+        if (mouseScore < sophisticationThreshold && hasDualHumanChannels) {
             if (isDeeplySophisticated) {
                 score = Math.min(score, likelyHumanThreshold);
             } else {
