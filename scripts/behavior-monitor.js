@@ -152,7 +152,11 @@ class HeadlessBehaviorMonitor {
             
             timeout: options.timeout || 30000,
             onReady: options.onReady || null,
-            onSample: options.onSample || null
+            onSample: options.onSample || null,
+            
+            // Persistence: store telemetry in sessionStorage across page refreshes
+            persist: options.persist === true,
+            storageKey: options.storageKey || 'hbm_data'
         };
         
         // Load calibration weights (from window.BehaviorMonitorWeights or defaults)
@@ -191,6 +195,15 @@ class HeadlessBehaviorMonitor {
         this.lastKeyDownTime = null;
         this.sensorHandler = null;
         this.sensorTimeoutId = null;
+        
+        // Persistence state
+        this._saveTimerId = null;
+        this._beforeUnloadHandler = null;
+        
+        // Restore persisted data if enabled
+        if (this.options.persist) {
+            this._loadFromStorage();
+        }
     }
     
     /**
@@ -217,7 +230,11 @@ class HeadlessBehaviorMonitor {
         if (this.isRunning) return;
         
         this.isRunning = true;
-        this.startTime = Date.now();
+        const now = Date.now();
+        // Preserve earlier startTime if persistence restored one
+        if (!this.startTime || this.startTime > now) {
+            this.startTime = now;
+        }
         this.readyFired = false;
         this.readyResolvers = [];
         
@@ -258,6 +275,12 @@ class HeadlessBehaviorMonitor {
             this.timeoutId = setTimeout(() => {
                 this._checkReadiness(true);
             }, this.options.timeout);
+        }
+        
+        // Attach beforeunload handler for persistence
+        if (this.options.persist && typeof window !== 'undefined') {
+            this._beforeUnloadHandler = () => this._saveToStorage();
+            window.addEventListener('beforeunload', this._beforeUnloadHandler);
         }
     }
     
@@ -310,6 +333,19 @@ class HeadlessBehaviorMonitor {
         if (this.sensorTimeoutId) {
             clearTimeout(this.sensorTimeoutId);
             this.sensorTimeoutId = null;
+        }
+        
+        // Save and clean up persistence
+        if (this.options.persist) {
+            if (this._saveTimerId) {
+                clearTimeout(this._saveTimerId);
+                this._saveTimerId = null;
+            }
+            this._saveToStorage();
+            if (typeof window !== 'undefined' && this._beforeUnloadHandler) {
+                window.removeEventListener('beforeunload', this._beforeUnloadHandler);
+                this._beforeUnloadHandler = null;
+            }
         }
         
         // Resolve any pending waitForReady() promises as not ready
@@ -622,6 +658,7 @@ class HeadlessBehaviorMonitor {
         }
         
         this._checkReadiness();
+        this._scheduleSave();
     }
     
     _handleKeyDown(event) {
@@ -650,6 +687,7 @@ class HeadlessBehaviorMonitor {
         }
         
         this._checkReadiness();
+        this._scheduleSave();
     }
     
     _handleScroll(event) {
@@ -671,6 +709,7 @@ class HeadlessBehaviorMonitor {
         }
         
         this._checkReadiness();
+        this._scheduleSave();
     }
     
     _handleTouchStart(event) {
@@ -700,6 +739,7 @@ class HeadlessBehaviorMonitor {
         }
         
         this._checkReadiness();
+        this._scheduleSave();
     }
     
     _handleTouchMove(event) {
@@ -729,6 +769,7 @@ class HeadlessBehaviorMonitor {
         }
         
         this._checkReadiness();
+        this._scheduleSave();
     }
     
     _handleEvent(eventType, event) {
@@ -750,6 +791,7 @@ class HeadlessBehaviorMonitor {
         }
         
         this._checkReadiness();
+        this._scheduleSave();
     }
     
     _startSensorMonitoring() {
@@ -822,6 +864,92 @@ class HeadlessBehaviorMonitor {
             // Cleanup
             gl.deleteShader(vertexShader);
             gl.deleteShader(fragmentShader);
+        } catch (e) {
+            // Ignore errors
+        }
+    }
+    
+    /**
+     * Save telemetry data to sessionStorage.
+     * Called on stop(), beforeunload, and periodically during collection.
+     * @private
+     */
+    _saveToStorage() {
+        if (typeof sessionStorage === 'undefined') return;
+        
+        try {
+            const payload = JSON.stringify({
+                data: this.data,
+                startTime: this.startTime
+            });
+            sessionStorage.setItem(this.options.storageKey, payload);
+        } catch (e) {
+            // Quota exceeded or other storage errors - silently ignore
+        }
+    }
+    
+    /**
+     * Load persisted telemetry data from sessionStorage.
+     * Merges stored data arrays with current (empty) data.
+     * @private
+     */
+    _loadFromStorage() {
+        if (typeof sessionStorage === 'undefined') return;
+        
+        try {
+            const raw = sessionStorage.getItem(this.options.storageKey);
+            if (!raw) return;
+            
+            const stored = JSON.parse(raw);
+            if (!stored || !stored.data) return;
+            
+            // Restore data arrays
+            const channels = ['mouse', 'keyboard', 'scroll', 'touch', 'events', 'sensors'];
+            for (const ch of channels) {
+                if (Array.isArray(stored.data[ch]) && stored.data[ch].length > 0) {
+                    this.data[ch] = stored.data[ch].concat(this.data[ch]);
+                }
+            }
+            
+            // Restore webglTiming if not already set
+            if (stored.data.webglTiming && !this.data.webglTiming) {
+                this.data.webglTiming = stored.data.webglTiming;
+            }
+            
+            // Use earliest startTime for accurate session duration
+            if (stored.startTime) {
+                if (!this.startTime || stored.startTime < this.startTime) {
+                    this.startTime = stored.startTime;
+                }
+            }
+        } catch (e) {
+            // Corrupted data or parse error - silently ignore
+        }
+    }
+    
+    /**
+     * Schedule a debounced save to sessionStorage.
+     * Batches rapid events into a single write every 1 second.
+     * @private
+     */
+    _scheduleSave() {
+        if (!this.options.persist || this._saveTimerId) return;
+        
+        this._saveTimerId = setTimeout(() => {
+            this._saveTimerId = null;
+            this._saveToStorage();
+        }, 1000);
+    }
+    
+    /**
+     * Clear persisted telemetry data from sessionStorage.
+     * Call this when starting a fresh detection session.
+     */
+    clearStorage() {
+        if (typeof sessionStorage === 'undefined') return;
+        
+        try {
+            sessionStorage.removeItem(this.options.storageKey);
         } catch (e) {
             // Ignore errors
         }

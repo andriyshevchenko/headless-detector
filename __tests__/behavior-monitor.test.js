@@ -936,4 +936,180 @@ describe('HeadlessBehaviorMonitor', () => {
             monitor.stop();
         });
     });
+
+    describe('Persistence', () => {
+        let storage;
+
+        beforeEach(() => {
+            storage = {};
+            global.sessionStorage = {
+                getItem: jest.fn((key) => storage[key] || null),
+                setItem: jest.fn((key, value) => { storage[key] = value; }),
+                removeItem: jest.fn((key) => { delete storage[key]; })
+            };
+        });
+
+        afterEach(() => {
+            delete global.sessionStorage;
+        });
+
+        test('should not persist by default', () => {
+            const m = new HeadlessBehaviorMonitor();
+            m.start();
+            m._handleMouseMove({ clientX: 1, clientY: 2, isTrusted: true });
+            m.stop();
+
+            expect(Object.keys(storage)).toHaveLength(0);
+        });
+
+        test('should accept persist and storageKey options', () => {
+            const m = new HeadlessBehaviorMonitor({ persist: true, storageKey: 'my_key' });
+
+            expect(m.options.persist).toBe(true);
+            expect(m.options.storageKey).toBe('my_key');
+        });
+
+        test('should save data to sessionStorage on stop()', () => {
+            const m = new HeadlessBehaviorMonitor({ persist: true });
+            m.start();
+            m.data.mouse.push({ x: 10, y: 20, timestamp: 1000 });
+            m.stop();
+
+            expect(sessionStorage.setItem).toHaveBeenCalledWith(
+                'hbm_data',
+                expect.any(String)
+            );
+
+            const saved = JSON.parse(sessionStorage.setItem.mock.calls[0][1]);
+            expect(saved.data.mouse).toHaveLength(1);
+            expect(saved.data.mouse[0].x).toBe(10);
+            expect(saved.startTime).toBeDefined();
+        });
+
+        test('should restore data from sessionStorage on construction', () => {
+            const stored = {
+                data: {
+                    mouse: [{ x: 5, y: 6, timestamp: 500 }],
+                    keyboard: [],
+                    scroll: [],
+                    touch: [],
+                    events: [],
+                    sensors: [],
+                    webglTiming: null
+                },
+                startTime: 100
+            };
+            storage['hbm_data'] = JSON.stringify(stored);
+
+            const m = new HeadlessBehaviorMonitor({ persist: true });
+
+            expect(m.data.mouse).toHaveLength(1);
+            expect(m.data.mouse[0].x).toBe(5);
+            expect(m.startTime).toBe(100);
+        });
+
+        test('should use earliest startTime when restoring', () => {
+            const stored = {
+                data: { mouse: [], keyboard: [], scroll: [], touch: [], events: [], sensors: [], webglTiming: null },
+                startTime: 500
+            };
+            storage['hbm_data'] = JSON.stringify(stored);
+
+            const m = new HeadlessBehaviorMonitor({ persist: true });
+
+            // Constructor restores startTime=500 from storage
+            expect(m.startTime).toBe(500);
+
+            // start() would set a new startTime, but stored one is earlier
+            m.start();
+            expect(m.startTime).toBe(500);
+        });
+
+        test('clearStorage() should remove stored data', () => {
+            storage['hbm_data'] = '{"data":{}}';
+
+            const m = new HeadlessBehaviorMonitor({ persist: true });
+            m.clearStorage();
+
+            expect(sessionStorage.removeItem).toHaveBeenCalledWith('hbm_data');
+        });
+
+        test('should handle corrupted storage data gracefully', () => {
+            storage['hbm_data'] = 'not valid json!!!';
+
+            expect(() => {
+                new HeadlessBehaviorMonitor({ persist: true });
+            }).not.toThrow();
+        });
+
+        test('should handle sessionStorage quota exceeded gracefully', () => {
+            sessionStorage.setItem = jest.fn(() => { throw new Error('QuotaExceededError'); });
+
+            const m = new HeadlessBehaviorMonitor({ persist: true });
+            m.start();
+            m.data.mouse.push({ x: 1, y: 2, timestamp: 1 });
+
+            expect(() => m.stop()).not.toThrow();
+        });
+
+        test('_scheduleSave() should debounce saves', () => {
+            jest.useFakeTimers();
+            const m = new HeadlessBehaviorMonitor({ persist: true });
+            m.start();
+
+            m._scheduleSave();
+            m._scheduleSave();
+            m._scheduleSave();
+
+            // Not saved yet (debounced)
+            expect(sessionStorage.setItem).not.toHaveBeenCalled();
+
+            jest.advanceTimersByTime(1000);
+
+            // Now it should have saved once
+            expect(sessionStorage.setItem).toHaveBeenCalledTimes(1);
+
+            jest.useRealTimers();
+        });
+
+        test('should use custom storageKey', () => {
+            const m = new HeadlessBehaviorMonitor({ persist: true, storageKey: 'custom_key' });
+            m.start();
+            m.data.mouse.push({ x: 1, y: 2, timestamp: 1 });
+            m.stop();
+
+            expect(sessionStorage.setItem).toHaveBeenCalledWith(
+                'custom_key',
+                expect.any(String)
+            );
+        });
+
+        test('should restore webglTiming when not already set', () => {
+            const stored = {
+                data: {
+                    mouse: [], keyboard: [], scroll: [], touch: [],
+                    events: [], sensors: [],
+                    webglTiming: { compilationTime: 42, timestamp: 1000 }
+                },
+                startTime: 100
+            };
+            storage['hbm_data'] = JSON.stringify(stored);
+
+            const m = new HeadlessBehaviorMonitor({ persist: true });
+
+            expect(m.data.webglTiming).toEqual({ compilationTime: 42, timestamp: 1000 });
+        });
+
+        test('should handle missing sessionStorage gracefully', () => {
+            delete global.sessionStorage;
+
+            expect(() => {
+                const m = new HeadlessBehaviorMonitor({ persist: true });
+                m.start();
+                m.data.mouse.push({ x: 1, y: 2, timestamp: 1 });
+                m.stop();
+                m.clearStorage();
+            }).not.toThrow();
+        });
+    });
 });
