@@ -230,10 +230,9 @@ class HeadlessBehaviorMonitor {
         if (this.isRunning) return;
         
         this.isRunning = true;
-        const now = Date.now();
-        // Preserve earlier startTime if persistence restored one
-        if (!this.startTime || this.startTime > now) {
-            this.startTime = now;
+        // Preserve earlier startTime restored from persistence
+        if (!this.startTime) {
+            this.startTime = Date.now();
         }
         this.readyFired = false;
         this.readyResolvers = [];
@@ -907,7 +906,7 @@ class HeadlessBehaviorMonitor {
             const channels = ['mouse', 'keyboard', 'scroll', 'touch', 'events', 'sensors'];
             for (const ch of channels) {
                 if (Array.isArray(stored.data[ch]) && stored.data[ch].length > 0) {
-                    this.data[ch] = stored.data[ch].concat(this.data[ch]);
+                    this.data[ch] = stored.data[ch];
                 }
             }
             
@@ -916,11 +915,9 @@ class HeadlessBehaviorMonitor {
                 this.data.webglTiming = stored.data.webglTiming;
             }
             
-            // Use earliest startTime for accurate session duration
-            if (stored.startTime) {
-                if (!this.startTime || stored.startTime < this.startTime) {
-                    this.startTime = stored.startTime;
-                }
+            // Use persisted startTime if valid (not in the future)
+            if (stored.startTime && stored.startTime <= Date.now()) {
+                this.startTime = stored.startTime;
             }
         } catch (e) {
             // Corrupted data or parse error - silently ignore
