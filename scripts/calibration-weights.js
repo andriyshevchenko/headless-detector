@@ -157,10 +157,10 @@
      * Keyboard scoring weights (sum = 1.0)
      */
     KEYBOARD_WEIGHTS: {
-        lowHoldTimeVariance: 0.5,   // Increased from 0.3 - primary signal for keyboard bots (iteration 20)
-        lowInterKeyVariance: 0.2,   // Reduced from 0.3 - less reliable due to interleaved actions
+        lowHoldTimeVariance: 0.4,   // Softer weight to reduce mobile/auto-complete false positives
+        lowInterKeyVariance: 0.15,  // Softer weight; mobile keyboards interleave edits
         highUntrustedRatio: 0.3,    // Reduced from 0.4
-        highInterKeyVariance: 0.30  // Human-like pauses REDUCE score (negative weight in scoring)
+        highInterKeyVariance: 0.35  // Stronger human credit for pauses/irregular typing
     },
 
     /**
