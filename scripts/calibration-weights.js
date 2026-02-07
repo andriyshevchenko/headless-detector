@@ -317,7 +317,7 @@
         // SAFEGUARD 10: Multi-channel corroboration rescue
         // Catches cheap interleaved bots whose per-channel signals are diluted
         multiChannelRescueThreshold: 0.10,   // Minimum channel score to count as "active"
-        multiChannelRescueCap: 0.42,         // Maximum score rescue can produce (non-sophisticated bots)
+        multiChannelRescueCap: 0.40,         // Maximum score rescue can produce (non-sophisticated bots)
         multiChannelRescueCapSophisticated: 0.395, // Lower cap when human-like kb/scroll evidence detected
         multiChannelRescueBoost: 1.75,       // Multiplier applied to score during rescue
         multiChannelRescueMinChannels: 2,    // Minimum active input channels required (lowered from 3)
