@@ -193,7 +193,7 @@
         highDeltaVariance: 0.25,      // Increased from 0.15 - catches scroll-heavy (iteration 20)
         highEventsPerSecond: 0.10,    // Reduced from 0.15
         subMillisecondPattern: 0.05,  // Reduced from 0.10
-        highIntervalVariance: 0.20    // Human-like pauses REDUCE score (negative weight in scoring)
+        highIntervalVariance: 0.15    // Human-like pauses REDUCE score (negative weight in scoring) (iteration 21: 0.20→0.15, prevents over-cancellation on scroll-only bots)
     },
 
     /**
@@ -311,9 +311,9 @@
         likelyHumanThreshold: 0.12,      // Score >= this is classified as LIKELY_HUMAN
         // Below likelyHumanThreshold → VERIFIED_HUMAN
         minSamplesForVariance: 10,       // Need this many samples for variance checks
-        sophisticationMouseThreshold: 0.40, // Mouse score below this + human kb/scroll patterns → apply discount
-        sophisticationDiscountMin: 0.60, // Graduated discount: floor when mouse score ≈ 0
-        sophisticationDiscountMax: 0.90, // Graduated discount: ceiling when mouse score → threshold
+        sophisticationMouseThreshold: 0.45, // Mouse score below this + human kb/scroll patterns → apply discount (iteration 21: 0.40→0.45, catches Bezier bots with mouseScore=0.40)
+        sophisticationDiscountMin: 0.70, // Graduated discount: floor when mouse score ≈ 0 (iteration 21: 0.60→0.70, prevents over-discounting L5)
+        sophisticationDiscountMax: 0.80, // Graduated discount: ceiling when mouse score → threshold (iteration 21: 0.90→0.80, ensures L7-smooth-bezier gets enough discount)
         // SAFEGUARD 10: Multi-channel corroboration rescue
         // Catches cheap interleaved bots whose per-channel signals are diluted
         multiChannelRescueThreshold: 0.10,   // Minimum channel score to count as "active"
