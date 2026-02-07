@@ -192,7 +192,7 @@
         lowDeltaVariance: 0.2,
         lowIntervalVariance: 0.2,
         lowUniqueDeltaRatio: 0.2,
-        highDeltaVariance: 0.25,      // Increased from 0.15 - catches scroll-heavy (iteration 20)
+        highDeltaVariance: 0.20,      // Tuned down to reduce human false positives on erratic touch/scroll
         highEventsPerSecond: 0.10,    // Reduced from 0.15
         subMillisecondPattern: 0.05,  // Reduced from 0.10
         lowEventsPerSecond: 0.10,     // Human-like slow scroll cadence REDUCES score
@@ -322,7 +322,7 @@
         multiChannelRescueThreshold: 0.10,   // Minimum channel score to count as "active"
         multiChannelRescueCap: 0.40,         // Maximum score rescue can produce (non-sophisticated bots)
         multiChannelRescueCapSophisticated: 0.395, // Lower cap when human-like kb/scroll evidence detected
-        multiChannelRescueBoost: 1.60,       // Multiplier applied to score during rescue
+        multiChannelRescueBoost: 1.65,       // Multiplier applied to score during rescue
         multiChannelRescueMinChannels: 2,    // Minimum active input channels required (lowered from 3)
         // SAFEGUARD 11: Single-input-channel boost
         // When only 1 input channel detects the bot, boost to compensate for dilution by zero-score channels

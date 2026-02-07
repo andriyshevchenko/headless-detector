@@ -2132,10 +2132,14 @@ class HeadlessBehaviorMonitor {
         const discountMin = S.sophisticationDiscountMin ?? 0.60;
         const discountMax = S.sophisticationDiscountMax ?? discountMin;
         const likelyHumanThreshold = S.likelyHumanThreshold ?? 0.12;
+        const artifactDiscount = S.sophisticationArtifactDiscount ?? 0.35;
         if (mouseScore < sophisticationThreshold && hasDualHumanChannels) {
             if (isDeeplySophisticated) {
                 if (!hasSubMillisecondTimingPattern) {
                     score = Math.min(score, likelyHumanThreshold);
+                } else {
+                    // Automation timing artifact present: apply soft discount instead of clamping
+                    score *= artifactDiscount;
                 }
                 // Automation artifact present: skip discounting because timing evidence points to automation, not human behavior
             } else {
