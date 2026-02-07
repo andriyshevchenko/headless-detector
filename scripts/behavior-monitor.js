@@ -2129,9 +2129,10 @@ class HeadlessBehaviorMonitor {
         const discountMax = S.sophisticationDiscountMax ?? discountMin;
         const likelyHumanThreshold = S.likelyHumanThreshold ?? 0.12;
         if (mouseScore < sophisticationThreshold && hasDualHumanChannels) {
-            if (isDeeplySophisticated && !hasAutomationArtifact) {
-                score = Math.min(score, likelyHumanThreshold);
-            } else if (isDeeplySophisticated && hasAutomationArtifact) {
+            if (isDeeplySophisticated) {
+                if (!hasAutomationArtifact) {
+                    score = Math.min(score, likelyHumanThreshold);
+                }
                 // Automation artifact present: skip discounting to avoid misclassifying bots as human
             } else {
                 const ratio = mouseScore / sophisticationThreshold;
