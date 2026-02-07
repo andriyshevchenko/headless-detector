@@ -310,6 +310,65 @@
             padding-right: 14px;
         }
 
+        /* Custom Multi Select */
+        .playground-multiselect-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .playground-multiselect-option {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #333;
+            cursor: pointer;
+            padding: 8px 14px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            transition: border-color 0.2s, background 0.2s, color 0.2s, box-shadow 0.2s;
+            user-select: none;
+            background: #f9fafb;
+        }
+
+        .playground-multiselect-option:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .playground-multiselect-option .ms-check {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #d1d5db;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, border-color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .playground-multiselect-option.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+            color: #667eea;
+            font-weight: 600;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.10);
+        }
+
+        .playground-multiselect-option.selected .ms-check {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+        }
+
+        .playground-multiselect-option.selected .ms-check::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
         /* Color Picker */
         .playground-color {
             width: 48px;
@@ -790,14 +849,21 @@
 
                 <!-- Multi Select -->
                 <div class="playground-field">
-                    <label class="playground-label" for="play-multi-select">📑 Multi Select</label>
-                    <select id="play-multi-select" class="playground-input" multiple size="4">
+                    <span id="play-multi-select-label" class="playground-label">📑 Multi Select</span>
+                    <select id="play-multi-select" class="playground-input" multiple size="4" style="display:none;">
                         <option value="red">Red</option>
                         <option value="green">Green</option>
                         <option value="blue">Blue</option>
                         <option value="yellow">Yellow</option>
                         <option value="purple">Purple</option>
                     </select>
+                    <div class="playground-multiselect-options" role="group" aria-labelledby="play-multi-select-label" data-for="play-multi-select">
+                        <div class="playground-multiselect-option" role="checkbox" aria-checked="false" tabindex="0" data-value="red"><span class="ms-check"></span> Red</div>
+                        <div class="playground-multiselect-option" role="checkbox" aria-checked="false" tabindex="0" data-value="green"><span class="ms-check"></span> Green</div>
+                        <div class="playground-multiselect-option" role="checkbox" aria-checked="false" tabindex="0" data-value="blue"><span class="ms-check"></span> Blue</div>
+                        <div class="playground-multiselect-option" role="checkbox" aria-checked="false" tabindex="0" data-value="yellow"><span class="ms-check"></span> Yellow</div>
+                        <div class="playground-multiselect-option" role="checkbox" aria-checked="false" tabindex="0" data-value="purple"><span class="ms-check"></span> Purple</div>
+                    </div>
                 </div>
 
                 <!-- Range Slider -->
@@ -1419,6 +1485,34 @@
                 colorValue.textContent = this.value;
             });
         }
+
+        // Custom multi-select interactivity
+        document.querySelectorAll('.playground-multiselect-options').forEach(function(container) {
+            var selectId = container.getAttribute('data-for');
+            var selectEl = document.getElementById(selectId);
+            container.querySelectorAll('.playground-multiselect-option').forEach(function(option) {
+                function toggleOption() {
+                    option.classList.toggle('selected');
+                    var isSelected = option.classList.contains('selected');
+                    option.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+                    if (selectEl) {
+                        var val = option.getAttribute('data-value');
+                        var opt = selectEl.querySelector('option[value="' + val + '"]');
+                        if (opt) {
+                            opt.selected = isSelected;
+                            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
+                }
+                option.addEventListener('click', toggleOption);
+                option.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleOption();
+                    }
+                });
+            });
+        });
     </script>
 </body>
 </html>
