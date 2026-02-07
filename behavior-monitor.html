@@ -305,10 +305,6 @@
             padding-right: 36px;
         }
 
-        select[multiple].playground-input {
-            background-image: none;
-            padding-right: 14px;
-        }
 
         /* Color Picker */
         .playground-color {
@@ -790,14 +786,34 @@
 
                 <!-- Multi Select -->
                 <div class="playground-field">
-                    <label class="playground-label" for="play-multi-select">📑 Multi Select</label>
-                    <select id="play-multi-select" class="playground-input" multiple size="4">
-                        <option value="red">Red</option>
-                        <option value="green">Green</option>
-                        <option value="blue">Blue</option>
-                        <option value="yellow">Yellow</option>
-                        <option value="purple">Purple</option>
-                    </select>
+                    <span class="playground-label">📑 Multi Select</span>
+                    <div class="playground-option-group">
+                        <label class="playground-checkbox-label">
+                            <input type="checkbox" id="play-multi-1" class="playground-checkbox" value="red">
+                            <span class="playground-checkbox-custom"></span>
+                            Red
+                        </label>
+                        <label class="playground-checkbox-label">
+                            <input type="checkbox" id="play-multi-2" class="playground-checkbox" value="green">
+                            <span class="playground-checkbox-custom"></span>
+                            Green
+                        </label>
+                        <label class="playground-checkbox-label">
+                            <input type="checkbox" id="play-multi-3" class="playground-checkbox" value="blue">
+                            <span class="playground-checkbox-custom"></span>
+                            Blue
+                        </label>
+                        <label class="playground-checkbox-label">
+                            <input type="checkbox" id="play-multi-4" class="playground-checkbox" value="yellow">
+                            <span class="playground-checkbox-custom"></span>
+                            Yellow
+                        </label>
+                        <label class="playground-checkbox-label">
+                            <input type="checkbox" id="play-multi-5" class="playground-checkbox" value="purple">
+                            <span class="playground-checkbox-custom"></span>
+                            Purple
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Range Slider -->
