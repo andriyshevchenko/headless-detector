@@ -2134,8 +2134,7 @@ class HeadlessBehaviorMonitor {
             } else {
                 const ratio = mouseScore / sophisticationThreshold;
                 const discount = discountMin + ratio * (discountMax - discountMin);
-                const adjustedDiscount = (isDeeplySophisticated && hasAutomationArtifact) ? 1 : discount;
-                score *= adjustedDiscount;
+                score *= (isDeeplySophisticated && hasAutomationArtifact) ? 1 : discount;
             }
         }
         
