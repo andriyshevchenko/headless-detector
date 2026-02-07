@@ -2067,7 +2067,7 @@ class HeadlessBehaviorMonitor {
         const hasHumanKeyboard = kbBreakdown && kbBreakdown.highInterKeyVariance && kbBreakdown.highInterKeyVariance.triggered;
         const hasHumanScroll = scrollBreakdown && scrollBreakdown.highIntervalVariance && scrollBreakdown.highIntervalVariance.triggered;
         const hasDualHumanChannels = hasHumanKeyboard && hasHumanScroll;
-        const hasAutomationArtifact = mouseBreakdown && mouseBreakdown.subMillisecondPattern && mouseBreakdown.subMillisecondPattern.triggered;
+        const hasAutomationTimingArtifact = mouseBreakdown && mouseBreakdown.subMillisecondPattern && mouseBreakdown.subMillisecondPattern.triggered;
         // Deep sophistication: human-like timing in BOTH channels AND no identifiable
         // automation tool pattern (e.g. Bezier). Bots WITHOUT Bezier are more sophisticated
         // because they use advanced algorithms (Perlin noise, Fitts's Law) that evade
@@ -2097,7 +2097,7 @@ class HeadlessBehaviorMonitor {
             !ch.isSensor && !ch.isWebgl && ch.result.score >= rescueThreshold
         );
         const blockRescueByBezier = hasBezier && mouseScore >= 0.30;
-        const blockRescueBySophistication = isDeeplySophisticated && !hasAutomationArtifact;
+        const blockRescueBySophistication = isDeeplySophisticated && !hasAutomationTimingArtifact;
         if (activeInputChannels.length >= rescueMinChannels && score < rescueCap && !blockRescueByBezier && !blockRescueBySophistication) {
             score = Math.min(rescueCap, score * rescueBoost);
         }
@@ -2130,7 +2130,7 @@ class HeadlessBehaviorMonitor {
         const likelyHumanThreshold = S.likelyHumanThreshold ?? 0.12;
         if (mouseScore < sophisticationThreshold && hasDualHumanChannels) {
             if (isDeeplySophisticated) {
-                if (!hasAutomationArtifact) {
+                if (!hasAutomationTimingArtifact) {
                     score = Math.min(score, likelyHumanThreshold);
                 }
                 // Automation artifact present: skip discounting to avoid misclassifying bots as human
