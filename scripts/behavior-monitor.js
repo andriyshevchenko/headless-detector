@@ -2067,7 +2067,7 @@ class HeadlessBehaviorMonitor {
         const hasHumanKeyboard = kbBreakdown && kbBreakdown.highInterKeyVariance && kbBreakdown.highInterKeyVariance.triggered;
         const hasHumanScroll = scrollBreakdown && scrollBreakdown.highIntervalVariance && scrollBreakdown.highIntervalVariance.triggered;
         const hasDualHumanChannels = hasHumanKeyboard && hasHumanScroll;
-        const hasAutomationTimingArtifact = mouseBreakdown && mouseBreakdown.subMillisecondPattern && mouseBreakdown.subMillisecondPattern.triggered;
+        const hasSubMillisecondTimingPattern = mouseBreakdown && mouseBreakdown.subMillisecondPattern && mouseBreakdown.subMillisecondPattern.triggered;
         // Deep sophistication: human-like timing in BOTH channels AND no identifiable
         // automation tool pattern (e.g. Bezier). Bots WITHOUT Bezier are more sophisticated
         // because they use advanced algorithms (Perlin noise, Fitts's Law) that evade
@@ -2097,7 +2097,7 @@ class HeadlessBehaviorMonitor {
             !ch.isSensor && !ch.isWebgl && ch.result.score >= rescueThreshold
         );
         const blockRescueByBezier = hasBezier && mouseScore >= 0.30;
-        const blockRescueBySophistication = isDeeplySophisticated && !hasAutomationTimingArtifact;
+        const blockRescueBySophistication = isDeeplySophisticated && !hasSubMillisecondTimingPattern;
         if (activeInputChannels.length >= rescueMinChannels && score < rescueCap && !blockRescueByBezier && !blockRescueBySophistication) {
             score = Math.min(rescueCap, score * rescueBoost);
         }
@@ -2130,7 +2130,7 @@ class HeadlessBehaviorMonitor {
         const likelyHumanThreshold = S.likelyHumanThreshold ?? 0.12;
         if (mouseScore < sophisticationThreshold && hasDualHumanChannels) {
             if (isDeeplySophisticated) {
-                if (!hasAutomationTimingArtifact) {
+                if (!hasSubMillisecondTimingPattern) {
                     score = Math.min(score, likelyHumanThreshold);
                 }
                 // Automation artifact present: skip discounting because timing evidence points to automation, not human behavior
