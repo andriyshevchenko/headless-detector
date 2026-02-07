@@ -312,13 +312,19 @@
         // Below likelyHumanThreshold → VERIFIED_HUMAN
         minSamplesForVariance: 10,       // Need this many samples for variance checks
         sophisticationMouseThreshold: 0.40, // Mouse score below this + human kb/scroll patterns → apply discount
-        sophisticationDiscount: 0.60,    // Multiply score by this when sophistication evidence found
+        sophisticationDiscountMin: 0.60, // Graduated discount: floor when mouse score ≈ 0
+        sophisticationDiscountMax: 0.90, // Graduated discount: ceiling when mouse score → threshold
         // SAFEGUARD 10: Multi-channel corroboration rescue
         // Catches cheap interleaved bots whose per-channel signals are diluted
         multiChannelRescueThreshold: 0.10,   // Minimum channel score to count as "active"
-        multiChannelRescueCap: 0.42,         // Maximum score the rescue can produce
-        multiChannelRescueBoost: 1.50,       // Multiplier applied to score during rescue
-        multiChannelRescueMinChannels: 3     // Minimum active input channels required
+        multiChannelRescueCap: 0.42,         // Maximum score rescue can produce (non-sophisticated bots)
+        multiChannelRescueCapSophisticated: 0.395, // Lower cap when human-like kb/scroll evidence detected
+        multiChannelRescueBoost: 1.75,       // Multiplier applied to score during rescue
+        multiChannelRescueMinChannels: 2,    // Minimum active input channels required (lowered from 3)
+        // SAFEGUARD 11: Single-input-channel boost
+        // When only 1 input channel detects the bot, boost to compensate for dilution by zero-score channels
+        singleInputChannelBoost: 2.5,        // Multiplier for single-channel bots
+        singleInputChannelCap: 0.55          // Maximum score the boost can produce
     },
 
     /**
