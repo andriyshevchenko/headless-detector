@@ -2133,7 +2133,7 @@ class HeadlessBehaviorMonitor {
                 if (!hasAutomationTimingArtifact) {
                     score = Math.min(score, likelyHumanThreshold);
                 }
-                // Automation artifact present: skip discounting to avoid misclassifying bots as human
+                // Automation artifact present: skip discounting because timing evidence points to automation, not human behavior
             } else {
                 const ratio = mouseScore / sophisticationThreshold;
                 const discount = discountMin + ratio * (discountMax - discountMin);
