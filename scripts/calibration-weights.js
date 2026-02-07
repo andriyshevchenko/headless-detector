@@ -116,7 +116,7 @@
         lowAccelVariance: 0.10,
         bezierPattern: 0.05,           // Our human simulations use bezier curves
         pressureSuspicious: 0.05,      // Causes false positives
-        lowEntropy: 0.15,
+        lowEntropy: 0.10,
         fingerprintSuspicious: 0.05    // Causes false positives
     },
     
@@ -179,6 +179,8 @@
         highDeltaVariance: 3000,
         // High frequency = too many events per second
         highEventsPerSecond: 100,
+        // Very low frequency = slow human scroll cadence (reduces score)
+        lowEventsPerSecond: 1,
         // Human-like scroll pauses (>1M ms² interval variance)
         highIntervalVariance: 1000000
     },
@@ -193,6 +195,7 @@
         highDeltaVariance: 0.25,      // Increased from 0.15 - catches scroll-heavy (iteration 20)
         highEventsPerSecond: 0.10,    // Reduced from 0.15
         subMillisecondPattern: 0.05,  // Reduced from 0.10
+        lowEventsPerSecond: 0.10,     // Human-like slow scroll cadence REDUCES score
         highIntervalVariance: 0.15    // Human-like pauses REDUCE score (negative weight in scoring) (iteration 21: 0.20→0.15, prevents over-cancellation on scroll-only bots)
     },
 
@@ -319,7 +322,7 @@
         multiChannelRescueThreshold: 0.10,   // Minimum channel score to count as "active"
         multiChannelRescueCap: 0.40,         // Maximum score rescue can produce (non-sophisticated bots)
         multiChannelRescueCapSophisticated: 0.395, // Lower cap when human-like kb/scroll evidence detected
-        multiChannelRescueBoost: 1.75,       // Multiplier applied to score during rescue
+        multiChannelRescueBoost: 1.60,       // Multiplier applied to score during rescue
         multiChannelRescueMinChannels: 2,    // Minimum active input channels required (lowered from 3)
         // SAFEGUARD 11: Single-input-channel boost
         // When only 1 input channel detects the bot, boost to compensate for dilution by zero-score channels

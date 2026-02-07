@@ -1327,6 +1327,7 @@ class HeadlessBehaviorMonitor {
             lowUniqueDeltaRatio: 0.3,
             highDeltaVariance: 3000,
             highEventsPerSecond: 100,
+            lowEventsPerSecond: 1,
             highIntervalVariance: 1000000
         };
         const scWeights = (this.weights && this.weights.SCROLL_WEIGHTS) || {
@@ -1336,6 +1337,7 @@ class HeadlessBehaviorMonitor {
             highDeltaVariance: 0.15,
             highEventsPerSecond: 0.15,
             subMillisecondPattern: 0.1,
+            lowEventsPerSecond: 0.10,
             highIntervalVariance: 0.20
         };
         
@@ -1363,6 +1365,7 @@ class HeadlessBehaviorMonitor {
         // Normal human scrolling is 10-50 events/sec
         // > 100 events/sec suggests automation or scripted rapid scrolling
         if (eventsPerSecond > scThresholds.highEventsPerSecond) suspiciousScore += scWeights.highEventsPerSecond;
+        if (eventsPerSecond < scThresholds.lowEventsPerSecond) suspiciousScore -= scWeights.lowEventsPerSecond;
         
         // Check for automation timing patterns in scroll events
         const hasSubMillisecondPattern = this._detectSubMillisecondPattern(scrolls);
@@ -1399,6 +1402,7 @@ class HeadlessBehaviorMonitor {
                 highDeltaVariance: { triggered: deltaVariance > scThresholds.highDeltaVariance, weight: scWeights.highDeltaVariance, value: deltaVariance, threshold: scThresholds.highDeltaVariance },
                 highEventFrequency: { triggered: eventsPerSecond > scThresholds.highEventsPerSecond, weight: scWeights.highEventsPerSecond, value: eventsPerSecond, threshold: scThresholds.highEventsPerSecond },
                 subMillisecondPattern: { triggered: hasSubMillisecondPattern, weight: scWeights.subMillisecondPattern, value: hasSubMillisecondPattern },
+                lowEventFrequency: { triggered: eventsPerSecond < scThresholds.lowEventsPerSecond, weight: scWeights.lowEventsPerSecond, value: eventsPerSecond, threshold: scThresholds.lowEventsPerSecond, isNegative: true },
                 highIntervalVariance: { triggered: highIntervalTriggered, weight: highIntervalWeight, value: intervalVariance, threshold: highIntervalThreshold, isNegative: true }
             }
         };
