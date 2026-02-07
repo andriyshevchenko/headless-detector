@@ -103,7 +103,11 @@ const DEFAULT_WEIGHTS = {
         likelyHumanThreshold: 0.12,
         minSamplesForVariance: 10,
         sophisticationMouseThreshold: 0.40,
-        sophisticationDiscount: 0.60
+        sophisticationDiscountMin: 0.60,
+        sophisticationDiscountMax: 0.90,
+        multiChannelRescueCapSophisticated: 0.395,
+        singleInputChannelBoost: 0,
+        singleInputChannelCap: 0.55
     }
 };
 
@@ -2054,44 +2058,63 @@ class HeadlessBehaviorMonitor {
             score *= S.singleChannelDownscale;
         }
         
+        // Gather sophistication evidence (used by SAFEGUARDs 9, 10, 11)
+        const mouseScore = analysis.mouse && analysis.mouse.available ? analysis.mouse.score : 0;
+        const mouseBreakdown = analysis.mouse && analysis.mouse.scoringBreakdown;
+        const hasBezier = mouseBreakdown && mouseBreakdown.bezierPattern && mouseBreakdown.bezierPattern.triggered;
+        const kbBreakdown = analysis.keyboard && analysis.keyboard.scoringBreakdown;
+        const scrollBreakdown = analysis.scroll && analysis.scroll.scoringBreakdown;
+        const hasHumanKeyboard = kbBreakdown && kbBreakdown.highInterKeyVariance && kbBreakdown.highInterKeyVariance.triggered;
+        const hasHumanScroll = scrollBreakdown && scrollBreakdown.highIntervalVariance && scrollBreakdown.highIntervalVariance.triggered;
+        const hasSophistication = hasHumanKeyboard || hasHumanScroll;
+        
         // SAFEGUARD 10: Multi-channel corroboration rescue
-        // When 3+ input channels show signals but individual scores are moderate,
+        // When 2+ input channels show signals but individual scores are moderate,
         // the combined evidence of bot activity across channels justifies a higher
         // overall score. This catches cheap interleaved bots whose per-channel
         // timing patterns are diluted by cross-channel action mixing.
-        // Only applied when no Bezier pattern is detected (Bezier = more sophisticated bot).
-        const mouseBreakdown = analysis.mouse && analysis.mouse.scoringBreakdown;
-        const hasBezier = mouseBreakdown && mouseBreakdown.bezierPattern && mouseBreakdown.bezierPattern.triggered;
+        // Bezier blocking only applies when mouse is strongly detected (mouse >= 0.20);
+        // weak-mouse Bezier bots still get rescued since their sophistication is
+        // accounted for by the split rescue cap and SAFEGUARD 9 discount.
         const rescueThreshold = S.multiChannelRescueThreshold ?? 0.10;
-        const rescueCap = S.multiChannelRescueCap ?? 0.42;
+        const rescueCapNormal = S.multiChannelRescueCap ?? 0.42;
+        const rescueCapSoph = S.multiChannelRescueCapSophisticated ?? rescueCapNormal;
+        const rescueCap = hasSophistication ? rescueCapSoph : rescueCapNormal;
         const rescueBoost = S.multiChannelRescueBoost ?? 1.50;
         const rescueMinChannels = S.multiChannelRescueMinChannels ?? 3;
         const activeInputChannels = confidentChannels.filter(ch =>
             !ch.isSensor && !ch.isWebgl && ch.result.score >= rescueThreshold
         );
-        if (activeInputChannels.length >= rescueMinChannels && score < rescueCap && !hasBezier) {
+        const blockRescueByBezier = hasBezier && mouseScore >= 0.20;
+        if (activeInputChannels.length >= rescueMinChannels && score < rescueCap && !blockRescueByBezier) {
             score = Math.min(rescueCap, score * rescueBoost);
         }
         
-        // SAFEGUARD 9: Sophistication-aware modulation
+        // SAFEGUARD 11: Single-input-channel boost
+        // When only 1 input channel detects bot evidence, the zero-score channels
+        // dilute the weighted average. Boost to compensate, capped to avoid
+        // over-escalation. Applies to scroll-only and mouse-only bots.
+        const singleBoost = S.singleInputChannelBoost ?? 0;
+        const singleCap = S.singleInputChannelCap ?? 0.55;
+        if (singleBoost > 0 && activeInputChannels.length === 1) {
+            score = Math.min(singleCap, score * singleBoost);
+        }
+        
+        // SAFEGUARD 9: Sophistication-aware graduated modulation
         // When BOTH keyboard AND scroll show human-like timing patterns (high variance)
         // AND mouse is not strongly flagged, this indicates a sophisticated bot that
         // leaks only through automation tool artifacts, not through behavioral patterns.
-        // Apply a discount to reflect lower detection confidence.
+        // Apply a graduated discount: less discount when mouse partially detects the bot
+        // (higher mouse score → more detection confidence → less discount needed).
         // Requires BOTH channels to show human-like patterns to avoid false discounts
         // on cheap interleaved bots where only one channel has high variance.
-        const mouseScore = analysis.mouse && analysis.mouse.available ? analysis.mouse.score : 0;
-        const kbBreakdown = analysis.keyboard && analysis.keyboard.scoringBreakdown;
-        const scrollBreakdown = analysis.scroll && analysis.scroll.scoringBreakdown;
-        const hasHumanKeyboard = kbBreakdown && kbBreakdown.highInterKeyVariance && kbBreakdown.highInterKeyVariance.triggered;
-        const hasHumanScroll = scrollBreakdown && scrollBreakdown.highIntervalVariance && scrollBreakdown.highIntervalVariance.triggered;
-        
-        // Only apply discount when mouse isn't strongly detecting the bot
-        // (if mouse score >= 0.40, the bot is detectable through mouse regardless of kb/scroll patterns)
         const sophisticationThreshold = S.sophisticationMouseThreshold ?? 0.40;
-        const sophisticationDiscount = S.sophisticationDiscount ?? 0.60;
+        const discountMin = S.sophisticationDiscountMin ?? 0.60;
+        const discountMax = S.sophisticationDiscountMax ?? discountMin;
         if (mouseScore < sophisticationThreshold && (hasHumanKeyboard && hasHumanScroll)) {
-            score *= sophisticationDiscount;
+            const ratio = mouseScore / sophisticationThreshold;
+            const discount = discountMin + ratio * (discountMax - discountMin);
+            score *= discount;
         }
         
         // SAFEGUARD 5: Time accumulation before escalation

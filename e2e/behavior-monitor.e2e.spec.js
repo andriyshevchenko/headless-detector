@@ -1,13 +1,44 @@
 /**
  * Playwright E2E tests for behavior monitor
  * 
- * FORMULA: final_level = round(code_maintenance_difficulty × realism_degree)
+ * FORMULA: final_level = round(CM × R)
  * 
- * code_maintenance_difficulty (1-10): Time/expertise to implement and maintain.
- * realism_degree (0-1): How practical is this bot in real-world automation.
- *   Single-channel bots (scroll-only, keyboard-only, mouse-only) get low
- *   realism because they're not useful for real web automation.
- *   Inhuman-speed bots get reduced realism (easily rate-limited).
+ *   CM = code_complexity (1-10): Time/expertise to implement and maintain.
+ *   R  = real_world_threat (0-1): How threatening is this bot in production.
+ * 
+ * FORMULA ANALYSIS:
+ *   The product CM × R is effective because bot danger requires BOTH
+ *   sophisticated code AND real-world applicability. If either factor is low,
+ *   the bot poses minimal threat — a complex single-channel bot (high CM,
+ *   low R) can't automate real tasks, while a simple multi-channel bot
+ *   (low CM, high R) is trivially detected. The product captures this AND
+ *   relationship naturally.
+ * 
+ *   Strengths:
+ *   - Product relationship models that both factors must be high for danger
+ *   - CM ∈ [1,10] × R ∈ [0,1] → level ∈ [1,10] maps cleanly to the scale
+ *   - Reflects the economic model: higher levels = exponentially more investment
+ *   - Correctly penalizes single-channel and inhuman-speed bots
+ * 
+ *   R is a composite of three measurable sub-factors (simple average):
+ *     R = (channel_coverage + speed_feasibility + deployment_practicality) / 3
+ * 
+ *     channel_coverage (0-1):        Input channel completeness for real automation.
+ *       1.0 = all channels (mouse + keyboard + scroll)
+ *       0.5 = two channels
+ *       0.3 = single channel (mouse-only, scroll-only, keyboard-only)
+ *     speed_feasibility (0-1):       Whether operating speeds are sustainable.
+ *       1.0 = human-like speeds, fully sustainable
+ *       0.8 = slightly fast but sustainable (100-500ms intervals)
+ *       0.5 = fast but technically feasible
+ *       0.3 = burst patterns, easily rate-limited
+ *       0.1 = inhuman speeds (5-20ms), trivially flagged
+ *     deployment_practicality (0-1): How useful the bot is in production.
+ *       1.0 = drop-in replacement for human interaction
+ *       0.9 = practical for most automation tasks
+ *       0.7 = usable but with limitations
+ *       0.4 = limited to specific scenarios
+ *       0.1 = essentially impractical for real attacks
  * 
  * TIER-TO-CATEGORY MAPPING (score expectations per tier):
  * - Level 1-2  → 💰 TRIVIAL/CHEAP  → 🤖 BOT (≥0.40)
@@ -16,45 +47,47 @@
  * - Level 7-8  → 💵💵💵 EXPENSIVE   → 👤 LIKELY_HUMAN (0.12-0.25)
  * - Level 9-10 → 💵💵💵💵 EXPERT    → ✅ VERIFIED (≤0.12)
  * 
- * BOT LEVELS (code_maint × realism = final_level):
- * 
+ * BOT LEVELS (CM × R = final_level):
+ *                                                         ch   sp   dp
  * LEVEL 1 (💰 TRIVIAL):
- *   - robot:          CM=1 × R=0.9  = 0.9 → L1   (all channels, fixed 100ms)
- *   - impulsive:      CM=2 × R=0.5  = 1.0 → L1   (inhuman 5-20ms bursts)
- *   - burst-only:     CM=2 × R=0.5  = 1.0 → L1   (10-50ms burst pattern)
- *   - scroll-heavy:   CM=2 × R=0.3  = 0.6 → L1   (scroll-only, impractical)
- *   - keyboard-heavy: CM=2 × R=0.3  = 0.6 → L1   (keyboard-only, impractical)
+ *   - robot:          CM=1 × R=0.9  = 0.9 → L1         (1.0, 0.8, 0.9) all channels, fixed 100ms, straight lines
+ *   - impulsive:      CM=2 × R=0.5  = 1.0 → L1         (1.0, 0.1, 0.4) inhuman 5-20ms bursts, straight lines
+ *   - burst-only:     CM=2 × R=0.5  = 1.0 → L1         (1.0, 0.1, 0.4) 10-50ms burst pattern, straight lines
+ *   - scroll-heavy:   CM=2 × R=0.3  = 0.6 → L1         (0.3, 0.5, 0.1) scroll-only, impractical
+ *   - keyboard-heavy: CM=2 × R=0.3  = 0.6 → L1         (0.3, 0.5, 0.1) keyboard-only, impractical
  * 
  * LEVEL 2 (💰 CHEAP):
- *   - robot-slow:       CM=2 × R=0.9  = 1.8 → L2   (all channels, slow 500ms)
- *   - robot-impulsive:  CM=3 × R=0.7  = 2.1 → L2   (random timing, straight lines)
- *   - replay-bot:       CM=3 × R=0.7  = 2.1 → L2   (pre-recorded patterns)
- *   - mouse-heavy:      CM=5 × R=0.4  = 2.0 → L2   (mouse-only, impractical)
+ *   - robot-slow:       CM=2 × R=0.9  = 1.8 → L2       (1.0, 0.8, 0.9) all channels, slow 500ms, straight lines
+ *   - robot-impulsive:  CM=3 × R=0.7  = 2.1 → L2       (1.0, 0.3, 0.8) random timing, straight lines
+ *   - replay-bot:       CM=3 × R=0.7  = 2.1 → L2       (1.0, 0.3, 0.8) pre-recorded patterns, cycling
+ *   - mouse-heavy:      CM=5 × R=0.4  = 2.0 → L2       (0.3, 0.7, 0.2) mouse-only Bezier, impractical
  * 
  * LEVEL 3 (💵 BUDGET):
- *   - timing-bot:  CM=4 × R=0.8 = 3.2 → L3   (Gaussian timing, linear paths)
+ *   - timing-bot:  CM=4 × R=0.8 = 3.2 → L3             (1.0, 0.7, 0.7) Gaussian timing, 5-step linear paths
  * 
  * LEVEL 4 (💵 BUDGET):
- *   - human-fast:      CM=5 × R=0.8  = 4.0 → L4   (fast Bezier, all channels)
- *   - human-impulsive: CM=5 × R=0.7  = 3.5 → L4   (Bezier + impulsive bursts)
+ *   - human-fast:      CM=5 × R=0.8  = 4.0 → L4        (1.0, 0.5, 0.9) fast Bezier (10-20 steps), all channels
+ *   - human-impulsive: CM=5 × R=0.7  = 3.5 → L4        (1.0, 0.3, 0.8) Bezier mouse + impulsive kb/scroll
  * 
  * LEVEL 5 (💵💵 MODERATE):
- *   - human-slow:   CM=5 × R=0.9  = 4.5 → L5   (slow Bezier, reading pauses)
- *   - stealth-bot:  CM=6 × R=0.8  = 4.8 → L5   (Bezier + sin() noise)
- *   - mixed-random: CM=6 × R=0.8  = 4.8 → L5   (9 sub-behaviors)
+ *   - human-slow:   CM=5 × R=0.9  = 4.5 → L5           (1.0, 0.8, 0.9) slow Bezier (80-120 steps), pauses
+ *   - stealth-bot:  CM=6 × R=0.8  = 4.8 → L5           (1.0, 0.7, 0.7) Bezier + sin() deterministic noise
+ *   - mixed-random: CM=6 × R=0.8  = 4.8 → L5           (1.0, 0.7, 0.7) 9 sub-behaviors, random switching
  * 
  * LEVEL 6 (💵💵 MODERATE):
- *   - alternating: CM=7 × R=0.9 = 6.3 → L6   (phase management, Bezier)
+ *   - alternating: CM=7 × R=0.9 = 6.3 → L6             (1.0, 0.8, 0.9) burst/smooth phase management, Bezier
  * 
  * LEVEL 7 (💵💵💵 EXPENSIVE):
- *   - human-like:   CM=7 × R=1.0 = 7.0 → L7   (full human simulation)
- *   - human-smooth:  CM=7 × R=1.0 = 7.0 → L7   (100-step Bezier)
+ *   - human-like:   CM=7 × R=1.0 = 7.0 → L7            (1.0, 1.0, 1.0) full human simulation, Bezier+jitter
+ *   - human-smooth: CM=7 × R=1.0 = 7.0 → L7            (1.0, 1.0, 1.0) 100-step Bezier, settling pauses
+ * 
+ * LEVEL 8 (💵💵💵 EXPENSIVE): [no current bot — gap acknowledged]
  * 
  * LEVEL 9 (💵💵💵💵 EXPERT):
- *   - advanced: CM=9 × R=0.95 = 8.55 → L9   (XY jitter, silence phases)
+ *   - advanced: CM=9 × R=0.95 = 8.55 → L9              (1.0, 0.9, 0.95) XY jitter, 3-phase orchestration
  * 
  * LEVEL 10 (💵💵💵💵 EXPERT):
- *   - ultimate-bot: CM=10 × R=1.0 = 10.0 → L10  (Perlin, Fitts's Law)
+ *   - ultimate-bot: CM=10 × R=1.0 = 10.0 → L10         (1.0, 1.0, 1.0) Perlin, Fitts's Law, ex-Gaussian
  */
 
 const { test, expect } = require('@playwright/test');
@@ -714,7 +747,7 @@ test.describe('Behavior Monitor E2E Tests', () => {
  * 
  * @param {number} score 
  * @param {string} testName
- * @param {number} sophisticationLevel - code maintenance difficulty (1=trivial, 10=expert)
+ * @param {number} sophisticationLevel - bot level from round(CM × R) formula (1=trivial, 10=expert)
  * @param {number} minExpected - minimum expected score
  * @param {number} maxExpected - maximum expected score
  */
